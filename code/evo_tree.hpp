@@ -333,7 +333,7 @@ public:
   void print_neighbors() const;
   void print_ancestral_edges(const int& node_id) const;
   void print_ancestral_edges(const int& node_id, ostream& stream) const;
-  void print_mutation_rates(int model, int only_seg) const;
+  void print_mutation_rates(int model, int cn_type) const;
 
   void write(ofstream& of) const;
   void write_with_mut(ofstream& of, const vector<int>& nmuts) const;

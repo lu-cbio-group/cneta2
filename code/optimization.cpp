@@ -150,7 +150,7 @@ void max_likelihood(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, LNL_TY
 
   int model = lnl_type.model;
   int cn_max = lnl_type.cn_max;
-  int only_seg = lnl_type.only_seg;
+  int cn_type = lnl_type.cn_type;
   int is_total = lnl_type.is_total;
 
   int cons = lnl_type.cons;
@@ -600,7 +600,8 @@ double optimize_mutation_rates(evo_tree& rtree, map<int, vector<vector<int>>>& v
 
     if(lnl_type.model == MK){
         optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 0, RATE_MIN, rtree.mu, RATE_MAX, tolerance, &negative_lh, &ferror);
-    }else{
+    }else{ // for other models
+      if(lnl_type.cn_type == ALL){ // optimize all rates
         optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 1, RATE_MIN, rtree.dup_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
         rtree.dup_rate = optx;
         if(debug){
@@ -612,27 +613,71 @@ double optimize_mutation_rates(evo_tree& rtree, map<int, vector<vector<int>>>& v
         if(debug){
             cout << "\tmax Brent logl: " << -negative_lh << " optimized deletion rate " << optx << endl;
         }
-
-        if(!lnl_type.only_seg){
-            optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 3, RATE_MIN, rtree.chr_gain_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
-            rtree.chr_gain_rate = optx;
-            if(debug){
-                cout << "\tmax Brent logl: " << -negative_lh << " optimized chromosome gain rate " << optx << endl;
-            }
-
-            optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 4, RATE_MIN, rtree.chr_loss_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
-            rtree.chr_loss_rate = optx;
-            if(debug){
-                cout << "\tmax Brent logl: " << -negative_lh << " optimized chromosome loss rate " << optx << endl;
-            }
-
-            optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 5, RATE_MIN, rtree.wgd_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
-            rtree.wgd_rate = optx;
-            if(debug){
-                cout << "\tmax Brent logl: " << -negative_lh << " optimized WGD rate " << optx << endl;
-            }
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 3, RATE_MIN, rtree.chr_gain_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.chr_gain_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized chromosome gain rate " << optx << endl;
+        } 
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 4, RATE_MIN, rtree.chr_loss_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.chr_loss_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized chromosome loss rate " << optx << endl;
         }
-    }
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 5, RATE_MIN, rtree.wgd_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.wgd_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized WGD rate " << optx << endl;
+        }
+      }else if (lnl_type.cn_type == ONLY_SEG){ // optimize only duplication and deletion rates
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 1, RATE_MIN, rtree.dup_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.dup_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized duplication rate " << optx << endl;
+        }
+
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 2, RATE_MIN, rtree.del_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.del_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized deletion rate " << optx << endl;
+        }
+      }else if (lnl_type.cn_type == EXCLUDE_SEG){ // optimize hromosome gain and loss rates and wgd rate
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 3, RATE_MIN, rtree.chr_gain_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.chr_gain_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized chromosome gain rate " << optx << endl;
+        }
+
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 4, RATE_MIN, rtree.chr_loss_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.chr_loss_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized chromosome loss rate " << optx << endl;
+        } 
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 5, RATE_MIN, rtree.wgd_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.wgd_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized WGD rate " << optx << endl;
+        }
+      }else if (lnl_type.cn_type == EXCLUDE_CHR){ // optimize duplication and deletion and wgd rates
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 1, RATE_MIN, rtree.dup_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.dup_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized duplication rate " << optx << endl;
+        }
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 2, RATE_MIN, rtree.del_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.del_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized deletion rate " << optx << endl;
+        } 
+        optx = minimizeOneDimen(rtree, vobs, obs_decomp, comps, lnl_type, 5, RATE_MIN, rtree.wgd_rate, RATE_MAX, tolerance, &negative_lh, &ferror);
+        rtree.wgd_rate = optx;
+        if(debug){
+            cout << "\tmax Brent logl: " << -negative_lh << " optimized WGD rate " << optx << endl;
+        }
+      }else{
+        cerr << "### ERROR: Unknown copy number alteration type for optimization!" << endl;
+        exit(1);
+      }
+    } 
     return -negative_lh;
 }
 
@@ -891,7 +936,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
     }
 
     int cn_max = lnl_type.cn_max;
-    int only_seg = lnl_type.only_seg;
+    int cn_type = lnl_type.cn_type;
     int is_total = lnl_type.is_total;
 
     int npar_ne = 0;
@@ -934,8 +979,8 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
                 cout << "\t" << n.age;
               }
               cout << endl;
-            }
-        }
+            } // debug
+        } // else
     }else{
         if(!lnl_type.cons){
             // npar_ne = nedge - 1;
@@ -968,7 +1013,8 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
                 }
                 cout << endl;
                 cout << "min age of root allowed " << min_root << endl;
-            }
+            } // debug
+
             // The estimated value may be nan
             for(int i = 0; i < npar_ne; i++){
                 double val = x[i + 1];
@@ -997,15 +1043,15 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
                 for(int i = 0; i < ratios.size(); i++){
                     cout << i + 1 << "\t" << "\t" << ratios[i] << endl;
                 }
-            }
-        }
+            } // debug
+          } // else
 
         if(debug){
           cout << "New branch lengths: \n";
           for(int i = 0; i < rtree.edges.size(); i++){
               cout << i + 1 << "\t" << "\t" << rtree.edges[i].length << endl;
           }
-        }
+        } // debug
     }
 
     if(lnl_type.cons && !is_tip_age_valid(rtree.get_node_ages(), opt_type.tobs)){
@@ -1023,27 +1069,60 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
                 for(int i = 0; i <= npar_ne + 1; i++){ cout << x[i] << '\n'; }
                 cout << "mu value so far: " << rtree.mu << endl;
             }
-        }else{
-            rtree.dup_rate = x[npar_ne + 1];
-            rtree.del_rate = x[npar_ne + 2];
-            if(!only_seg){
-                rtree.chr_gain_rate = x[npar_ne + 3];
-                rtree.chr_loss_rate = x[npar_ne + 4];
-                rtree.wgd_rate = x[npar_ne + 5];
-            }
+        }else{ // for other models
+          if(lnl_type.cn_type == ALL){
+              rtree.dup_rate = x[npar_ne + 1];
+              rtree.del_rate = x[npar_ne + 2];
+              rtree.chr_gain_rate = x[npar_ne + 3];
+              rtree.chr_loss_rate = x[npar_ne + 4];
+              rtree.wgd_rate = x[npar_ne + 5];
+          }else if (lnl_type.cn_type == ONLY_SEG){
+              rtree.dup_rate = x[npar_ne + 1];
+              rtree.del_rate = x[npar_ne + 2];
+          }else if (lnl_type.cn_type == EXCLUDE_SEG){
+              rtree.chr_gain_rate = x[npar_ne + 1];
+              rtree.chr_loss_rate = x[npar_ne + 2];
+              rtree.wgd_rate = x[npar_ne + 3];
+          }else if (lnl_type.cn_type == EXCLUDE_CHR){
+              rtree.dup_rate = x[npar_ne + 1];
+              rtree.del_rate = x[npar_ne + 2];
+              rtree.wgd_rate = x[npar_ne + 3];
+          }else{ //if not any above, exit and report error
+              exit(EXIT_FAILURE);
+          }
 
-            if(debug){
-                for(int i = 0; i <= npar_ne + 1; i++){ cout << x[i] << '\n';}
-                cout << "dup_rate value so far: " << rtree.dup_rate << endl;
-                cout << "del_rate value so far: " << rtree.del_rate << endl;
-                if(!only_seg){
-                    cout << "chr_gain_rate value so far: " << rtree.chr_gain_rate << endl;
-                    cout << "chr_loss_rate value so far: " << rtree.chr_loss_rate << endl;
-                    cout << "wgd_rate value so far: " << rtree.wgd_rate << endl;
-                }
-            }
+          if(debug){
+              // for(int i = 0; i <= npar_ne + 1; i++){ cout << x[i] << '\n';}
+              // cout << "dup_rate value so far: " << rtree.dup_rate << endl;
+              // cout << "del_rate value so far: " << rtree.del_rate << endl;
+              // if(!only_seg){
+              //     cout << "chr_gain_rate value so far: " << rtree.chr_gain_rate << endl;
+              //     cout << "chr_loss_rate value so far: " << rtree.chr_loss_rate << endl;
+              //     cout << "wgd_rate value so far: " << rtree.wgd_rate << endl;
+              // }
+              if (cn_type == ALL){
+                  cout << "dup_rate value so far: " << rtree.dup_rate << endl;
+                  cout << "del_rate value so far: " << rtree.del_rate << endl;
+                  cout << "chr_gain_rate value so far: " << rtree.chr_gain_rate << endl;
+                  cout << "chr_loss_rate value so far: " << rtree.chr_loss_rate << endl;
+                  cout << "wgd_rate value so far: " << rtree.wgd_rate << endl;
+              }else if (cn_type == ONLY_SEG){
+                  cout << "dup_rate value so far: " << rtree.dup_rate << endl;
+                  cout << "del_rate value so far: " << rtree.del_rate << endl;
+              }else if (cn_type == EXCLUDE_SEG){
+                  cout << "chr_gain_rate value so far: " << rtree.chr_gain_rate << endl;
+                  cout << "chr_loss_rate value so far: " << rtree.chr_loss_rate << endl;
+                  cout << "wgd_rate value so far: " << rtree.wgd_rate << endl;
+              }else if (cn_type == EXCLUDE_CHR){
+                  cout << "dup_rate value so far: " << rtree.dup_rate << endl;
+                  cout << "del_rate value so far: " << rtree.del_rate << endl;
+                  cout << "wgd_rate value so far: " << rtree.wgd_rate << endl;
+              }else{ //if not any above, exit and report error
+                  exit(EXIT_FAILURE);
+              }
+          } // debug
         }
-    }
+      }
 }
 
 
@@ -1053,16 +1132,44 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
     @param x the input vector x
     @return the function value at x (negative log likelihood)
 */
-double targetFunk(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
-LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double x[]){
-    update_variables_transformed(rtree, x, lnl_type, opt_type);
+// double targetFunk(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
+// LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double x[]){
+//     update_variables_transformed(rtree, x, lnl_type, opt_type);
 
-    if(lnl_type.model == DECOMP){
-        return -1.0 * get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
-    }else{
-        return -1.0 * get_likelihood_revised(rtree, vobs, lnl_type);
-    }
+//     if(lnl_type.model == DECOMP){
+//         return -1.0 * get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+//     }else{
+//         return -1.0 * get_likelihood_revised(rtree, vobs, lnl_type);
+//     }
+// }
+double targetFunk(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double x[]){
+  update_variables_transformed(rtree, x, lnl_type, opt_type);
+
+  double nlnl;
+  if(lnl_type.model == DECOMP){
+    nlnl = -1.0 * get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+  }else{
+    nlnl = -1.0 * get_likelihood_revised(rtree, vobs, lnl_type);
+  }
+
+  if(!isfinite(nlnl)){
+    cout << "[DEBUG] non-finite nlnl value check in targetFunk, nlnl = " << nlnl << endl;
+    cout << "        dup_rate=" << rtree.dup_rate
+         << " del_rate=" << rtree.del_rate
+         << " chr_gain_rate=" << rtree.chr_gain_rate
+         << " chr_loss_rate=" << rtree.chr_loss_rate
+         << " wgd_rate=" << rtree.wgd_rate << endl;            
+    int max_to_print = 10;   // print first 10 variables of x[i], which are 
+    cout << "        first "<< max_to_print <<" x: ";
+    for (int i = 1; i <= max_to_print; ++i) {
+      cout << " x[" << i << "]=" << x[i];
+    } 
+    cout << endl;
+    exit(EXIT_FAILURE); //nlnl = MAX_NLNL;// assign a large value, so that optimizer can continue, DEBUG ONLY
+  }
+  return nlnl;
 }
+
 
 
 /**
@@ -1291,7 +1398,7 @@ void max_likelihood_BFGS(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, O
     LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double &min_nlnl, int debug){
     int model = lnl_type.model;
     int cn_max = lnl_type.cn_max;
-    int only_seg = lnl_type.only_seg;
+    int cn_type = lnl_type.cn_type;
     int is_total = lnl_type.is_total;
     int patient_age = lnl_type.patient_age;
 
@@ -1318,7 +1425,7 @@ void max_likelihood_BFGS(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, O
       cout << "\nThere are " << npar_ne << " parameters to estimate " << endl;
     }
 
-    int ndim = get_ndim(maxj, npar_ne, model, only_seg);
+    int ndim = get_ndim(maxj, npar_ne, model, cn_type);
     double* variables = new double[ndim + 1];
     memset(variables, 0.0, (ndim + 1) * sizeof(double));
     double* upper_bound = new double[ndim + 1];
@@ -1386,7 +1493,8 @@ void max_likelihood_BFGS(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, O
             variables[i + 1] = rtree.mu;
             lower_bound[i + 1] = MIN_MRATE;
             upper_bound[i + 1] = MAX_MRATE;
-        }else{
+        }else{ // other models
+          if(cn_type == ALL){
             int i = npar_ne;
             variables[i + 1] = rtree.dup_rate;
             lower_bound[i + 1] = MIN_MRATE;
@@ -1397,23 +1505,65 @@ void max_likelihood_BFGS(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, O
             lower_bound[i + 1] = MIN_MRATE;
             upper_bound[i + 1] = MAX_MRATE;
 
-            if(!only_seg){
-                i = npar_ne + 2;
-                variables[i + 1] = rtree.chr_gain_rate;
-                lower_bound[i + 1] = MIN_MRATE;
-                upper_bound[i + 1] = MAX_MRATE;
+            i = npar_ne + 2;
+            variables[i + 1] = rtree.chr_gain_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
 
-                i = npar_ne + 3;
-                variables[i + 1] = rtree.chr_loss_rate;
-                lower_bound[i + 1] = MIN_MRATE;
-                upper_bound[i + 1] = MAX_MRATE;
+            i = npar_ne + 3;
+            variables[i + 1] = rtree.chr_loss_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
 
-                i = npar_ne + 4;
-                variables[i + 1] = rtree.wgd_rate;
-                lower_bound[i + 1] = MIN_MRATE;
-                upper_bound[i + 1] = MAX_MRATE;
-            }
-        }
+            i = npar_ne + 4;
+            variables[i + 1] = rtree.wgd_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
+          }else if(cn_type == ONLY_SEG){
+            int i = npar_ne;
+            variables[i + 1] = rtree.dup_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
+
+            i = npar_ne + 1;
+            variables[i + 1] = rtree.del_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
+          }else if (cn_type == EXCLUDE_SEG){
+            int i = npar_ne;
+            variables[i + 1] = rtree.chr_gain_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
+
+            i = npar_ne + 1;
+            variables[i + 1] = rtree.chr_loss_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
+
+            i = npar_ne + 2;
+            variables[i + 1] = rtree.wgd_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
+          }else if (cn_type == EXCLUDE_CHR){
+            int i = npar_ne;
+            variables[i + 1] = rtree.dup_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
+
+            i = npar_ne + 1;
+            variables[i + 1] = rtree.del_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
+
+            i = npar_ne + 2;
+            variables[i + 1] = rtree.wgd_rate;
+            lower_bound[i + 1] = MIN_MRATE;
+            upper_bound[i + 1] = MAX_MRATE;
+         }else{ //if not any above, exit
+            cout << "Error: unknown cn_type when optimizing mutation rates!" << endl;
+            exit(EXIT_FAILURE);
+         }
+       }
     }
 
     if(debug){

@@ -47,12 +47,16 @@ int allele_cn_to_state(int cnA, int cnB);
 
 
 // Find the potential number of WGDs for each sample
-void get_num_wgd(const vector<vector<vector<int>>>& s_info, int cn_max, vector<int>& obs_num_wgd, int is_total, int debug = 0);
-
+void get_num_wgd(const vector<vector<vector<int>>>& s_info, vector<int>& obs_num_wgd, int cn_max, int is_total, int debug = 0);
 
 // Find the potential number of chromosome changes for each sample
-void get_change_chr(const vector<vector<vector<int>>>& s_info, vector<vector<int>>& obs_change_chr, int cn_max, int is_total, int debug = 0);
+void get_change_chr(const vector<vector<vector<int>>>& s_info, vector<int>& chr_max_abs, int cn_max, int is_total, int debug = 0);
 
+// Find the potential number of site changes for each sample
+void get_site_change(const vector<vector<vector<int>>>& s_info, vector<int>&sample_site_change, int cn_max, int is_total, int debug = 0);
+
+// Compute the average copy number of a sample
+double compute_sample_avg_cn(const vector<vector<int>>& s_cn, map<int, vector<int>>& chr_cn, int cn_max, int is_total);
 
 // Find the largest copy number in a sample
 void get_sample_mcn(const vector<vector<vector<int>>>& s_info, vector<int>& sample_max_cn, int cn_max, int is_total, int debug = 0);

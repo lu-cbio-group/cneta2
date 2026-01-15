@@ -35,6 +35,7 @@ using namespace std;
 // MK model was used for test, not suitable for CN evolution
 // INFINITE was used for simulating Poisson process
 enum MODEL {MK, BOUNDT, BOUNDA, DECOMP, INFINITE = 3};
+enum CN_TYPE {ONLY_SEG, EXCLUDE_SEG, EXCLUDE_CHR, ALL}; // 0-ONLY_SEG: only use segments level CN changes (use only r1/r2); 1-EXCLUDE_SEG: exclude segment level CN changes (use only r3/r4/r5); 2-EXCLUDE_CHR: exclude chromosome level changes (use only r1/r2/r5) ; 3-ALL: three types of mutations (use r1 to r5)
 
 const int MAX_AGE = 100;
 

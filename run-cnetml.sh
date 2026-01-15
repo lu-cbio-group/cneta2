@@ -3,11 +3,11 @@
 # This script is used to run program cnetml.
 
 seed=$RANDOM # Setting seed for reproductive results
-verbose=1  # Whether or not to print debug information
+verbose=0  # Whether or not to print debug information. 0: default, 1: standard debug, 2: debug with details on tree
 
 # Running mode. 0: build maximum likelihood tree; 1: test; 2: compute likelihood; 3: compute maximum likelihood; 4: infer ancestral state
 mode=0
-plot=0
+plot=0 # Whether or not to plot the inferred trees
 
 ####################### Parameters related to input  ###########################
 idir="./example"   # The input directory
@@ -43,13 +43,10 @@ fi
 
 model=2  # Model of evolution.  0: Mk model, 1: bounded model for total copy number, 2: bounded model for haplotype-specific copy number, 3: independent Markov chain model
 # Parameters for independent Markov chain model
-max_wgd=0
-max_chr_change=0
-max_site_change=3
 m_max=1
 
 estmu=1  # Whether or not to estimate mutation rate
-only_seg=1  # 1: only estimate site duplication/deletion rates; 0: otherwise
+cn_type=0  # 0-ONLY_SEG: only use segments level CN changes (use only r1/r2); 1-EXCLUDE_SEG: exclude segment level CN changes (use only r3/r4/r5); 2-EXCLUDE_CHR: exclude chromosome level changes (use only r1/r2/r5) ; 3-ALL: three types of mutations (use r1 to r5)
 
 if [[ $times == "" ]]; then
   estmu=0
@@ -109,10 +106,21 @@ if [[ $mode -eq 0 ]]; then
 
   echo "seed $seed" > $dir/std_cnetml_"$suffix"
   # valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes -v
-  /usr/bin/time code/cnetml -c $input --seg_file $seg_file -t "$times" --tree_file "$tree_file" --is_total $is_total --max_wgd $max_wgd --max_chr_change $max_chr_change --max_site_change $max_site_change --is_bin $is_bin --incl_all $incl_all -s $Ns -p $Npop -g $Ngen -e $Nstop -r $tolerance -o $mltree -d $model --cn_max $cn_max --only_seg $only_seg --tree_search $tree_search --init_tree $init_tree --epop $Ne --beta $beta --gtime $gtime --dir_itrees $dir_itrees --optim $opt --constrained $cons --estmu $estmu --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode --speed_nni $speed_nni --seed $seed 2>&1 >> $dir/std_cnetml_"$suffix"
+  /usr/bin/time code/cnetml -c $input --seg_file $seg_file -t "$times" --tree_file "$tree_file" --is_total $is_total --m_max $m_max --is_bin $is_bin --incl_all $incl_all -s $Ns -p $Npop -g $Ngen -e $Nstop -r $tolerance -o $mltree -d $model --cn_max $cn_max --cn_type $cn_type --tree_search $tree_search --init_tree $init_tree --epop $Ne --beta $beta --gtime $gtime --dir_itrees $dir_itrees --optim $opt --constrained $cons --estmu $estmu --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode --speed_nni $speed_nni --seed $seed 2>&1 >> $dir/std_cnetml_"$suffix"
+  cnetml_status=$?
   # #
   #
+  if [[ $cnetml_status -ne 0 ]]; then
+    echo "cnetml main run FAILED (exit code ${cnetml_status})"
+  else
+    echo "cnetml main run SUCCEEDED (exit code 0)"
+  fi
+
   echo "Finish running cnetml"
+
+  if [[ $cnetml_status -ne 0 ]]; then
+    exit "$cnetml_status"
+  fi
 
   if [[ $plot -eq 1 ]]; then
     Rscript util/plot-trees-all.R -f $mltree -b 0 -t "single" -l "xlim" --time_file "$times"  #>& /dev/null
@@ -132,7 +140,7 @@ if [[ $mode -eq 0 ]]; then
       echo $i
       ofile=$bsdir1/MaxL-"$suffix"-btree-$i.txt
 
-      code/cnetml -c $input -t "$times" --tree_file "$tree_file" --is_total $is_total --max_wgd $max_wgd --max_chr_change $max_chr_change --max_site_change $max_site_change --is_bin $is_bin --incl_all $incl_all -s $Ns -p $Npop -g $Ngen -e $Nstop -r $tolerance -o $ofile -d $model --cn_max $cn_max --only_seg $only_seg --tree_search $tree_search --init_tree $init_tree --epop $Ne --beta $beta --gtime $gtime --dir_itrees $dir_itrees --optim $opt --constrained $cons --estmu $estmu  --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2  --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode -b 1 > $bsdir1/std_cnetml_"$suffix"-btree-$i
+      code/cnetml -c $input -t "$times" --tree_file "$tree_file" --is_total $is_total --m_max $m_max --is_bin $is_bin --incl_all $incl_all -s $Ns -p $Npop -g $Ngen -e $Nstop -r $tolerance -o $ofile -d $model --cn_max $cn_max --cn_type $cn_type --tree_search $tree_search --init_tree $init_tree --epop $Ne --beta $beta --gtime $gtime --dir_itrees $dir_itrees --optim $opt --constrained $cons --estmu $estmu  --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2  --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode -b 1 > $bsdir1/std_cnetml_"$suffix"-btree-$i
     done
     # Draw the ML tree with bootstrapping support
     if [[ $plot -eq 1 ]]; then
@@ -144,13 +152,13 @@ elif [[ $mode -eq 1 ]]; then
   suffix=sim1-m$model-test-"$prefix"
   mltree=$dir/MaxL-"$suffix".txt
 
-  code/cnetml -c $input -t "$times" --is_bin $is_bin --incl_all $incl_all --tree_file "$tree_file"  --is_total $is_total --max_wgd $max_wgd --max_chr_change $max_chr_change --max_site_change $max_site_change -s $Ns -p $Npop -g $Ngen -e $Nstop -r $tolerance -o $mltree -d $model --cn_max $cn_max --only_seg $only_seg --tree_search $tree_search --init_tree $init_tree --epop $Ne --beta $beta --gtime $gtime --dir_itrees $dir_itrees --optim $opt --constrained $cons --estmu $estmu --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose > $dir/std_cnetml_"$suffix"
+  code/cnetml -c $input -t "$times" --is_bin $is_bin --incl_all $incl_all --tree_file "$tree_file"  --is_total $is_total --m_max $m_max -s $Ns -p $Npop -g $Ngen -e $Nstop -r $tolerance -o $mltree -d $model --cn_max $cn_max --cn_type $cn_type --tree_search $tree_search --init_tree $init_tree --epop $Ne --beta $beta --gtime $gtime --dir_itrees $dir_itrees --optim $opt --constrained $cons --estmu $estmu --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose > $dir/std_cnetml_"$suffix"
 
 elif [[ $mode -eq 2 ]]; then
   # In this mode, the mutation rates have to be specified
   suffix=m$model-"$cons""$estmu"-mode"$mode"-"$prefix"
 
-  code/cnetml -c $input -t "$times" --is_bin $is_bin --incl_all $incl_all -s $Ns --tree_file "$tree_file" --is_total $is_total --max_wgd $max_wgd --max_chr_change $max_chr_change --max_site_change $max_site_change -d $model --cn_max $cn_max --only_seg $only_seg --constrained $cons --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode  --seed $seed > $dir/std_cnetml_"$suffix"
+  code/cnetml -c $input -t "$times" --is_bin $is_bin --incl_all $incl_all -s $Ns --tree_file "$tree_file" --is_total $is_total --m_max $m_max -d $model --cn_max $cn_max --cn_type $cn_type --constrained $cons --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode  --seed $seed > $dir/std_cnetml_"$suffix"
 
 elif [[ $mode -eq 3 ]]; then
   # In this mode, the mutation rates can be specified or not
@@ -164,7 +172,7 @@ elif [[ $mode -eq 3 ]]; then
   fi
 
   # valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes -v
-  /usr/bin/time code/cnetml --tree_file "$mltree" -o $mltree2 -c $input -t "$times" --is_bin $is_bin --incl_all $incl_all -s $Ns --is_total $is_total --max_wgd $max_wgd --max_chr_change $max_chr_change --max_site_change $max_site_change -d $model --cn_max $cn_max --only_seg $only_seg --tree_search $tree_search --init_tree $init_tree --epop $Ne --beta $beta --gtime $gtime --dir_itrees $dir_itrees --optim $opt --constrained $cons --estmu $estmu --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode > $dir/std_cnetml_"$suffix"-mode"$mode"
+  /usr/bin/time code/cnetml --tree_file "$mltree" -o $mltree2 -c $input -t "$times" --is_bin $is_bin --incl_all $incl_all -s $Ns --is_total $is_total --m_max $m_max -d $model --cn_max $cn_max --cn_type $cn_type --tree_search $tree_search --init_tree $init_tree --epop $Ne --beta $beta --gtime $gtime --dir_itrees $dir_itrees --optim $opt --constrained $cons --estmu $estmu --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode > $dir/std_cnetml_"$suffix"-mode"$mode"
 
   # plot the new tree
   if [[ $plot -eq 1 ]]; then
@@ -183,7 +191,7 @@ elif [[ $mode -eq 3 ]]; then
       ofile=$bsdir2/MaxL-"$suffix"-btree-$i.txt
 
       # valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes -v /usr/bin/time
-      code/cnetml --tree_file "$mltree" -o $ofile -c $input -t "$times" --is_bin $is_bin --incl_all $incl_all -s $Ns  --is_total $is_total --max_wgd $max_wgd --max_chr_change $max_chr_change --max_site_change $max_site_change  -d $model --cn_max $cn_max --only_seg $only_seg --tree_search $tree_search --init_tree $init_tree --epop $Ne --beta $beta --gtime $gtime --dir_itrees $dir_itrees --optim $opt --constrained $cons --estmu $estmu --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode -b 1 > $bsdir2/std_cnetml_"$suffix"-btree-$i
+      code/cnetml --tree_file "$mltree" -o $ofile -c $input -t "$times" --is_bin $is_bin --incl_all $incl_all -s $Ns  --is_total $is_total --m_max $m_max -d $model --cn_max $cn_max --cn_type $cn_type --tree_search $tree_search --init_tree $init_tree --epop $Ne --beta $beta --gtime $gtime --dir_itrees $dir_itrees --optim $opt --constrained $cons --estmu $estmu --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode -b 1 > $bsdir2/std_cnetml_"$suffix"-btree-$i
     done
 
     # Draw the ML tree with confidence intervals
@@ -204,5 +212,5 @@ elif [[ $mode -eq 4 ]]; then  # Inferring ancestral states of a given tree from 
   mltree=$dir/MaxL-"$suffix".txt
   echo "Inferring ancestral states of the given tree $mltree"
 
-  code/cnetml -c $input -t "$times" --tree_file "$mltree" -o "$mltree" --is_bin $is_bin --incl_all $incl_all -s $Ns --is_total $is_total --max_wgd $max_wgd --max_chr_change $max_chr_change --max_site_change $max_site_change -d $model --cn_max $cn_max --only_seg $only_seg --constrained $cons --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode  --seed $seed > $dir/std_cnetml_state_"$suffix"
+  code/cnetml -c $input -t "$times" --tree_file "$mltree" -o "$mltree" --is_bin $is_bin --incl_all $incl_all -s $Ns --is_total $is_total --m_max $m_max -d $model --cn_max $cn_max --cn_type $cn_type --constrained $cons --correct_bias $correct_bias -x $mu --dup_rate $r1 --del_rate $r2 --chr_gain_rate $r3 --chr_loss_rate $r4 --wgd_rate $r5 --verbose $verbose --mode $mode  --seed $seed > $dir/std_cnetml_state_"$suffix"
 fi

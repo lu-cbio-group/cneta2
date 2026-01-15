@@ -92,7 +92,7 @@ struct LNL_TYPE{
   int correct_bias; // Whether or not to correct acquisition bias, used in get_likelihood_*
   int num_invar_bins; // used in get_likelihood_*
 
-  int only_seg; // Whether or not to only consider segment-level mutations, used in get_likelihood_revised
+  int cn_type; // Whether or not to only consider segment-level mutations, used in get_likelihood_revised
 
   int infer_wgd; // whether or not to infer WGD status of a sample, called in initialize_lnl_table_decomp
   int infer_chr; // whether or not to infer chromosome gain/loss status of a sample, called in initialize_lnl_table_decomp
@@ -187,7 +187,7 @@ void get_likelihood_site(vector<vector<double>>& L_sk_k, const evo_tree& rtree, 
 // Get the likelihood on a set of chromosmes
 // only used in get_likelihood_revised
 // extracted as a function to avoid duplication in selection statement
-double get_likelihood_chr(map<int, vector<vector<int>>>& vobs, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int& has_wgd, const int& only_seg, const int& use_repeat, const int& model, const int& nstate, const int& is_total);
+double get_likelihood_chr(map<int, vector<vector<int>>>& vobs, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int& has_wgd, const int& cn_type, const int& use_repeat, const int& model, const int& nstate, const int& is_total);
 
 
 

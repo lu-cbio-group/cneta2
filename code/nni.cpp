@@ -990,7 +990,7 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
             cout << "score after global optimization " << curScore << endl;
             cout << "Newick String for current tree after global optimization is " << rtree.make_newick() << endl;
             cout << "Current estimation of mutation rates are: " << endl;
-            rtree.print_mutation_rates(lnl_type.model, lnl_type.only_seg);
+            rtree.print_mutation_rates(lnl_type.model, lnl_type.cn_type);
         }
 
         if(curScore < appliedNNIs.at(0).newloglh - loglh_epsilon){
@@ -1091,7 +1091,7 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
                     if(debug){
                         cout << "current score " << curScore << ", best NNI score " << appliedNNIs.at(0).newloglh << endl;
                         cout << "Current estimation of mutation rates are: " << endl;
-                        rtree.print_mutation_rates(lnl_type.model, lnl_type.only_seg);                    
+                        rtree.print_mutation_rates(lnl_type.model, lnl_type.cn_type);                    
                     }
                 }
                 // assert(curScore > appliedNNIs.at(0).newloglh - 0.1);

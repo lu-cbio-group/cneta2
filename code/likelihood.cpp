@@ -1,5 +1,20 @@
 #include "likelihood.hpp"
 
+#include "timing.hpp"
+using timing::TimePoint;
+using timing::now;
+using timing::elapsed_seconds;
+
+// global variables to track time spent in likelihood computation
+static double time_revised_all   = 0.0;
+static double time_revised_valid = 0.0;
+static long   cnt_revised_all    = 0;
+static long   cnt_revised_valid  = 0;
+
+static double time_decomp_all    = 0.0;
+static double time_decomp_valid  = 0.0;
+static long   cnt_decomp_all     = 0;
+static long   cnt_decomp_valid   = 0;
 
 
 void print_lnl_at_tips(const evo_tree& rtree, const vector<int>& obs, const vector<vector<double>>& L_sk_k, int nstate){
@@ -474,7 +489,7 @@ void get_likelihood_site_decomp(vector<vector<double>>& L_sk_k, const evo_tree& 
 }
 
 
-double get_likelihood_chr(map<int, vector<vector<int>>>& vobs, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int& has_wgd, const int& only_seg, const int& use_repeat, const int& model, const int& nstate, const int& is_total){
+double get_likelihood_chr(map<int, vector<vector<int>>>& vobs, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int& has_wgd, const int& cn_type, const int& use_repeat, const int& model, const int& nstate, const int& is_total){
     int debug = 0;
     double logL = 0.0;    // for all chromosmes
     double chr_gain = 0.0;
@@ -519,8 +534,9 @@ double get_likelihood_chr(map<int, vector<vector<int>>>& vobs, const evo_tree& r
           }
       }
 
+      // likelihood calculation with chr gain/loss
       double chr_normal = 1.0;
-      if(!only_seg){
+      if(cn_type != ONLY_SEG){
           chr_gain = rtree.chr_gain_rate;
           chr_loss = rtree.chr_loss_rate;
 
@@ -547,7 +563,7 @@ double get_likelihood_chr(map<int, vector<vector<int>>>& vobs, const evo_tree& r
           cout << "Likelihood without chr gain/loss: " << chr_logL_normal << endl;
       }
 
-      if(!only_seg){
+      if(cn_type != ONLY_SEG){
           if(fabs(chr_loss) > SMALL_VAL){
               z = -1;
               double site_logL = 0.0;   // log likelihood for all sites on a chromosome
@@ -684,8 +700,14 @@ double get_likelihood_revised(evo_tree& rtree, map<int, vector<vector<int>>>& vo
   // int debug = 0;
   // if(debug) cout << "\tget_likelihood by matrix exponential" << endl;
 
-  if(!is_tree_valid(rtree, lnl_type.max_tobs, lnl_type.patient_age, lnl_type.cons)){
-       return SMALL_LNL;
+    TimePoint start_time = now();
+    ++cnt_revised_all;
+    
+    if(!is_tree_valid(rtree, lnl_type.max_tobs, lnl_type.patient_age, lnl_type.cons)){// invalid tree only count toward "all" calls
+        TimePoint end_all_invalid = now();
+        time_revised_all += elapsed_seconds(start_time, end_all_invalid);
+
+    return SMALL_LNL;
    }
 
   int model = lnl_type.model;
@@ -763,13 +785,13 @@ double get_likelihood_revised(evo_tree& rtree, map<int, vector<vector<int>>>& vo
 
   double logL = 0.0;
 
-  if(lnl_type.only_seg){
+  if(lnl_type.cn_type){
       // if(debug) cout << "Computing the likelihood without consideration of WGD" << endl;
-      logL += get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 0, lnl_type.only_seg, lnl_type.use_repeat, model, nstate, is_total);
+      logL += get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 0, lnl_type.cn_type, lnl_type.use_repeat, model, nstate, is_total);
   }else{
       // if(debug) cout << "Computing the likelihood with consideration of WGD" << endl;
-      logL += (1 - rtree.wgd_rate) * get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 0, lnl_type.only_seg, lnl_type.use_repeat, model, nstate, is_total);
-      logL += rtree.wgd_rate * get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 1, lnl_type.only_seg, lnl_type.use_repeat, model, nstate, is_total);
+      logL += (1 - rtree.wgd_rate) * get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 0, lnl_type.cn_type, lnl_type.use_repeat, model, nstate, is_total);
+      logL += rtree.wgd_rate * get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 1, lnl_type.cn_type, lnl_type.use_repeat, model, nstate, is_total);
   }
 
   // if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;
@@ -827,9 +849,13 @@ double get_likelihood_revised(evo_tree& rtree, map<int, vector<vector<int>>>& vo
       }
 
       lnl_invar = extract_tree_lnl(L_sk_k, rtree.nleaf - 1, model);
-
+      cout << "Likelihood of an invariant bin: " << lnl_invar << endl;
       double bias = lnl_type.num_invar_bins * lnl_invar;
+      cout << "Number of invariant bins " << lnl_type.num_invar_bins << endl;
       logL = logL + bias;
+      cout << "Bias to correct " << bias << endl;
+      cout << "Final likelihood after correcting acquisition bias: " << logL << endl;
+
 
       // if(debug){
       //     cout << "Likelihood of an invariant bin: " << lnl_invar << endl;
@@ -847,6 +873,14 @@ double get_likelihood_revised(evo_tree& rtree, map<int, vector<vector<int>>>& vo
   delete [] qmat;
   for_each(pmat_per_blen.begin(), pmat_per_blen.end(), DeleteObject());
 
+  // end time measurement, only count toward "valid" calls
+  TimePoint end_all_valid = now();
+  double dt_valid = elapsed_seconds(start_time, end_all_valid);
+  
+  time_revised_all   += dt_valid; // valid also count toward all, so time for all is always updated
+  time_revised_valid += dt_valid; // only update time for valid calls
+  ++cnt_revised_valid; // only update count for valid calls
+
   return logL;
 }
 
@@ -856,7 +890,15 @@ double get_likelihood_decomp(evo_tree& rtree, map<int, vector<vector<int>>>& vob
   int debug = 0;
   if(debug) cout << "\tget_likelihood from multiple chains" << endl;
 
+  // start calculating time
+  TimePoint start_time = now();
+  ++cnt_decomp_all;
+
   if(!is_tree_valid(rtree, lnl_type.max_tobs, lnl_type.patient_age, lnl_type.cons)){
+       // invalid tree only count toward "all" calls
+       TimePoint end_all_invalid = now();
+       time_decomp_all += elapsed_seconds(start_time, end_all_invalid);
+
        return SMALL_LNL;
    }
 
@@ -1039,6 +1081,14 @@ double get_likelihood_decomp(evo_tree& rtree, map<int, vector<vector<int>>>& vob
       }
   }
 
+  TimePoint end_all_valid = now();
+  double dt_valid= elapsed_seconds(start_time, end_all_valid);
+  
+  time_decomp_all   += dt_valid; // valid also count toward all, so time for all is always updated
+  time_decomp_valid += dt_valid; // only update time for valid calls
+  ++cnt_decomp_valid; // only update count for valid calls
+
+  cout << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
   return logL;
 }
 

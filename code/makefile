@@ -2,31 +2,44 @@
 CCC = g++
 # CCC = clang++   # when compiling on Mac
 BOOST = /usr/local
+# BOOST = /opt/homebrew/opt/boost
 # BOOST = /share/apps/boost-1.71.0
 # GSL = /share/apps/gsl-2.5/
 GSL = /usr/local
-omp = -fopenmp
-# omp =
+# GSL = /opt/homebrew/opt/gsl
+# omp = -fopenmp
+omp =
 FLAG = -O3 -std=gnu++11
 # FLAG =
 # FLAG = -O3 -lintlc 	#  Add -lintlc when using intel complier
+CXXFLAGS += -DBOOST_ERROR_CODE_HEADER_ONLY -DBOOST_SYSTEM_NO_LIB
+
 
 all: cnets cnetml cnetmcmc 
 
 cnets: cnets.cpp
 	cd gzstream/ && make
 	cd lbfgsb/ && cmake ./ && make
-	$(CCC) $(FLAG) cnets.cpp matexp/matrix_exponential.cpp matexp/r8lib.cpp evo_tree.cpp tree_op.cpp genome.cpp model.cpp parse_cn.cpp stats.cpp -o cnets -L$(BOOST)/lib/ -lboost_program_options -L$(GSL)/lib/ -lgsl -lgslcblas -L./lbfgsb -llbfgsb -L./gzstream -lgzstream -lz -I$(BOOST)/include -I$(GSL)/include -I./gzstream  -I./lbfgsb
+	$(CCC) $(FLAG) cnets.cpp matexp/matrix_exponential.cpp matexp/r8lib.cpp \
+	evo_tree.cpp tree_op.cpp genome.cpp model.cpp \
+	parse_cn.cpp stats.cpp -o cnets \
+	-L$(BOOST)/lib/ -lboost_program_options \
+	-L$(GSL)/lib/ -lgsl -lgslcblas \
+	-L./lbfgsb -llbfgsb -L./gzstream -lgzstream -lz \
+	-I$(BOOST)/include -I$(GSL)/include -I./gzstream  -I./lbfgsb
 
 cnetml: cnetml.cpp
 	cd gzstream/ && make
 	cd lbfgsb/ && cmake ./ && make
-	$(CCC) $(FLAG) $(omp) cnetml.cpp matexp/matrix_exponential.cpp matexp/r8lib.cpp stats.cpp evo_tree.cpp tree_op.cpp model.cpp likelihood.cpp nni.cpp optimization.cpp parse_cn.cpp state.cpp -o cnetml -L$(BOOST)/lib/ -lboost_filesystem -lboost_system -lboost_program_options -L$(GSL)/lib/ -lgsl -lgslcblas -L./lbfgsb -llbfgsb -L./gzstream -lgzstream -lz -I./ -I$(BOOST)/include -I$(GSL)/include -I./gzstream -I./lbfgsb
+	$(CCC) $(FLAG) $(omp) cnetml.cpp matexp/matrix_exponential.cpp matexp/r8lib.cpp \
+	stats.cpp evo_tree.cpp tree_op.cpp model.cpp likelihood.cpp nni.cpp optimization.cpp parse_cn.cpp state.cpp timing.cpp -o cnetml \
+	-L$(BOOST)/lib/ -lboost_filesystem  -lboost_program_options \
+	-L$(GSL)/lib/ -lgsl -lgslcblas -L./lbfgsb -llbfgsb -L./gzstream -lgzstream -lz -I./ -I$(BOOST)/include -I$(GSL)/include -I./gzstream -I./lbfgsb
 
 cnetmcmc: cnetmcmc.cpp
 	cd gzstream/ && make
 	cd lbfgsb/ && cmake ./ && make
-	$(CCC) $(FLAG) cnetmcmc.cpp matexp/matrix_exponential.cpp matexp/r8lib.cpp stats.cpp evo_tree.cpp tree_op.cpp model.cpp likelihood.cpp nni.cpp optimization.cpp parse_cn.cpp -o cnetmcmc -L$(BOOST)/lib/ -lboost_program_options -L$(GSL)/lib/ -lgsl -lgslcblas -L./lbfgsb -llbfgsb -L./gzstream -lgzstream -lz  -I./ -I$(BOOST)/include -I$(GSL)/include -I./gzstream -I./lbfgsb
+	$(CCC) $(FLAG) cnetmcmc.cpp matexp/matrix_exponential.cpp matexp/r8lib.cpp stats.cpp evo_tree.cpp tree_op.cpp model.cpp likelihood.cpp nni.cpp optimization.cpp parse_cn.cpp timing.cpp -o cnetmcmc -L$(BOOST)/lib/ -lboost_program_options -L$(GSL)/lib/ -lgsl -lgslcblas -L./lbfgsb -llbfgsb -L./gzstream -lgzstream -lz  -I./ -I$(BOOST)/include -I$(GSL)/include -I./gzstream -I./lbfgsb
 
 # test: test.cpp
 #	cd gzstream/ && make

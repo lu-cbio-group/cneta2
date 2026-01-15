@@ -79,9 +79,9 @@ public:
   genome(const genome& _g2);
 
   void initialize_cnp();    // initialize CNP at the beginning so that all positions are recorded
-  int reset_cn(copy_number& cnp);   // reset counter to 0 for recounting after CN changes without losing positions
-  void calculate_cn();   // Compute total copy number
-  void calculate_allele_cn();   // Compute haplotype-specific copy number
+  int reset_cn(copy_number& cnp, int debug);   // reset counter to 0 for recounting after CN changes without losing positions
+  void calculate_cn(const vector<int>& chr_lengths, int debug);   // Compute total copy number
+  void calculate_allele_cn(int debug);   // Compute haplotype-specific copy number
   int get_rcn_baseline(int cn, int baseline, gsl_rng* r, int random_round = 0);
 
   void print_muts(ostream& stream) const;
@@ -109,19 +109,19 @@ int get_max_cn_dup_seg(genome& g, int c, int start, int end);
 // Find the current maximum copy number for one interval (loc, loc + len) on a chromosome, assuming the interval contains several segments (not used)
 int get_max_cn_chr_seg(genome& g, int c, int loc, int len);
 // Find the current maximum copy number for one chromosome
-int get_max_cn_chr(genome& g, int c);
+int get_max_cn_chr(genome& g, int c, int debug = 0);
 // Find the current maximum copy number for the whole genome
-int get_max_cn_genome(genome& g);
+int get_max_cn_genome(genome& g, int debug = 0);
 
 int get_num_available_chr(const genome& g);
 void get_available_chr(const genome& g, vector<int>& available_chrs);
 
 // The WGD rate of the genome changes as the copy numbers change, due to the upper limit on total copy number
 // WGD is impossible when it is approaching cn_max
-void update_wgd_rate(genome& g, double& wgd_rate, int cn_max);
+void update_wgd_rate(genome& g, double& wgd_rate, int cn_max, int debug);
 // The chromosome gain rate of the genome changes as the copy numbers change, due to the upper limit on total copy number
-void update_chr_gain_rate(genome& g, int c, double& chr_gain_rate, int cn_max);
-void update_chr_loss_rate(genome& g, int c, double& chr_loss_rate);
+void update_chr_gain_rate(genome& g, int c, vector<double>& gain_rates, int cn_max, int debug);
+void update_chr_loss_rate(genome& g, int c, vector<double>& loss_rates, int debug);
 
 /*
 Return the rate, q_i = sum(q_{ij}), where i!=j, of site duplication and deletion at a site

@@ -3,11 +3,11 @@
 # This script is used to run program cnets, which can generate a random colesence tree (of tumor samples from a single patient) and structual variations along the tree branches.
 
 seed=$RANDOM  # used for reproducing the results
-verbose=0   # Whether or not to print debug information
+verbose=0   # Whether or not to print debug information. 0: default, 1: standard debug, 2: debug with details on tree
 Nsim=1  # The number of simulations. Number of patients to simulate
 
-print_relative=1
-plot=0
+print_relative=1 # Whether or not to print relative copy numbers (to normal)
+plot=0 # Whether or not to plot the simulated trees and copy numbers
 
 ####################### Parameters related to tree generation ##################
 Ns=3 # The number of tumor regions to sample. Output will be Ns+1 including germline normal region
@@ -18,7 +18,7 @@ gtime=0.002739726 # generation time in year
 age=60  # Age of the patient at first sample
 cons=1  # Whether the tree height is constrained by age or not
 dt=2  # time step for simulating different sampling times
-stime=""
+stime="" # Sampling times (in years) of the tumor regions. If not given, they will be simulated. The first time is always 0 (for normal). For example,
 # stime="0 1 2"
 ################################################################################
 

@@ -1447,8 +1447,8 @@ evo_tree get_tree_from_file(const string& tree_file, int Ns, vector<double>& rat
     }
 
     cout << "\nReading the tree from file " << tree_file << endl;
-    // string format = tree_file.substr(tree_file.find_last_of(".") + 1);
-    // cout << "Format of the input tree file is " << format << endl;
+    string format = tree_file.substr(tree_file.find_last_of(".") + 1);
+    cout << "Format of the input tree file is " << format << endl;
 
     // if(format == "txt"){
     evo_tree tree = read_tree_info(tree_file, Ns);

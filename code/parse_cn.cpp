@@ -214,9 +214,9 @@ vector<vector<vector<int>>> read_cn(const string& filename, int Ns, int& num_tot
 
 
 
-void get_num_wgd(const vector<vector<vector<int>>>& s_info, int cn_max, vector<int>& obs_num_wgd, int is_total, int debug){
-    cout << "Getting the potential number of WGDs for each sample" << endl;
-
+void get_num_wgd(const vector<vector<vector<int>>>& s_info, vector<int>& obs_num_wgd, int cn_max, int is_total, int debug){
+    cout << "\nGetting the potential number of WGDs for each sample" << endl;
+   
     for(int i = 0; i < s_info.size(); i++){
         int nwgd = 0;
         int sum_cn = 0;
@@ -257,8 +257,12 @@ void get_num_wgd(const vector<vector<vector<int>>>& s_info, int cn_max, vector<i
 }
 
 
-void get_change_chr(const vector<vector<vector<int>>>& s_info, vector<vector<int>>& obs_change_chr, int cn_max, int is_total, int debug){
-    cout << "Getting the potential number of chromosome changes for each sample" << endl;
+void get_change_chr(const vector<vector<vector<int>>>& s_info, vector<int>& chr_max_abs, int cn_max, int is_total, int debug){
+    cout << "\nGetting the potential number of chromosome changes for each sample" << endl;
+    vector<vector<int>> obs_change_chr;
+    vector<int> chr_gain_max, chr_loss_min;
+    vector<double> sample_ploidy;   
+
     for(int i = 0; i < s_info.size(); i++){
         // chr, seg, CN
         vector<vector<int>> s_cn = s_info[i];
@@ -267,24 +271,27 @@ void get_change_chr(const vector<vector<vector<int>>>& s_info, vector<vector<int
         map<int, vector<int>> chr_cn;
         vector<int> chr_change;
 
-        // iterate through all records for a sample
-        for(int j = 0; j < s_cn.size(); j++){
-            vector<int> cp = s_cn[j];
-            int cn = cp[2];
-            if(!is_total) cn = state_to_total_cn(cn, cn_max);
-            chr_cn[cp[0]].push_back(cn);
-            avg_cn += cn;
-            num_seg++;
-        }
+        // // iterate through all records for a sample
+        // for(int j = 0; j < s_cn.size(); j++){
+        //     vector<int> cp = s_cn[j];
+        //     int cn = cp[2];
+        //     if(!is_total) cn = state_to_total_cn(cn, cn_max);
+        //     chr_cn[cp[0]].push_back(cn);
+        //     avg_cn += cn;
+        //     num_seg++;
+        // }
 
-        avg_cn = avg_cn / num_seg;
+        // avg_cn = avg_cn / num_seg;
+
+        avg_cn = compute_sample_avg_cn(s_cn, chr_cn, cn_max, is_total); //replace above block
 
         for(auto c : chr_cn){
             vector<int> cp = c.second;
             int chr_sum_cn = accumulate(cp.begin(), cp.end(), 0);
             double avg_chr_cn = (double) chr_sum_cn / cp.size();
             double num_change = avg_chr_cn - avg_cn;
-            int round_num_change = (int) (num_change + 0.5 - (num_change < 0));
+            // int round_num_change = (int) (num_change + 0.5 - (num_change < 0));
+            int round_num_change = (int) lround(num_change);
             // cout << "Number of segments in chromosome " << c.first << " is " << cp.size() << "; avg cn: " << avg_chr_cn << "; exact num changes: " << num_change  << "; num changes: " << round_num_change << endl;
             chr_change.push_back(round_num_change);
         }
@@ -294,10 +301,29 @@ void get_change_chr(const vector<vector<vector<int>>>& s_info, vector<vector<int
             // cout << "Number of segments " << num_seg << endl;
             int num_gain = count_if(chr_change.begin(), chr_change.end(), [](int c){return c >= 1;});
             int num_loss = count_if(chr_change.begin(), chr_change.end(), [](int c){return c <= -1;});
-            cout << "There are probably " << num_gain << " chromosome gain events and " << num_loss << " chromosome loss events" << endl;
-            cout << "Average copy number in the genome " << avg_cn << endl << endl;
+            // cout << "There are probably " << num_gain << " chromosome gain events and " << num_loss << " chromosome loss events" << endl;
+            cout << "Chromosomes with gain-like shift: " << num_gain
+                 << ", loss-like shift: " << num_loss << endl;
+            cout << "Average copy number in the genome " << avg_cn << endl;
         }
-        obs_change_chr.push_back(chr_change);
+        // calculate max gain/loss and absolute change
+        int gain_cn = 0;
+        int loss_cn = 0;
+        int max_abs_change = 0;
+        if (!chr_change.empty()) {
+            gain_cn = max(0, *max_element(chr_change.begin(), chr_change.end()));
+            loss_cn = min(0, *min_element(chr_change.begin(), chr_change.end()));
+            max_abs_change = max(abs(gain_cn), abs(loss_cn));
+        }
+        cout << "   Maximum gain on a chromosome: " << gain_cn << endl;
+        cout << "   Maximum loss on a chromosome: " << loss_cn << endl;
+        cout << "   Maximum absolute change on a chromosome: " << max_abs_change << endl;
+
+        // chr_gain_max.push_back(gain_cn);
+        // chr_loss_min.push_back(loss_cn);
+        chr_max_abs.push_back(max_abs_change);
+        // sample_ploidy.push_back(avg_cn);
+        // obs_change_chr.push_back(chr_change);
     }
 }
 
@@ -346,16 +372,16 @@ void get_var_bins(const vector<vector<vector<int>>>& s_info, int Ns, int num_tot
         }
     }
 
-    if(debug){
-        cout << "\tVariable bins found:" << endl;
-        for(int k = 0; k < num_total_bins; ++k){
-            if(var_bins[k]){
-              cout << s_info[0][k][0] << "\t" << s_info[0][k][1];
-              for(int i = 0; i < Ns; ++i) cout << "\t" << s_info[i][k][2];
-              cout << endl;
-            }
-        }
-    }
+    // if(debug){
+    //     cout << "\n\tVariable bins found:" << endl;
+    //     for(int k = 0; k < num_total_bins; ++k){
+    //         if(var_bins[k]){
+    //           cout << s_info[0][k][0] << "\t" << s_info[0][k][1];
+    //           for(int i = 0; i < Ns; ++i) cout << "\t" << s_info[i][k][2];
+    //           cout << endl;
+    //         }
+    //     }
+    // }
 
     int nvar = accumulate(var_bins.begin(), var_bins.end(), 0);
     cout << "\tTotal number of bins:\t" << num_total_bins << endl;
@@ -474,11 +500,13 @@ vector<double> compute_segment_cn(int i, const vector<vector<int>>& segs, const 
     }
   }
 
-  if(debug){
-    cout << "\n" << segs[i][0] << "\t" << segs[i][1] << "\t" << segs[i][2];
-    for(int j = 0; j < Ns; ++j) cout << "\t" << av_cn[j];
-    cout << endl;
-  }
+//   if(debug){
+//     cout << "\ntesting segment copy number for segment " << i << ":";
+//     cout << "\n" << segs[i][0] << "\t" << segs[i][1] << "\t" << segs[i][2];
+//     for(int j = 0; j < Ns; ++j) cout << "\t" << av_cn[j];
+//     cout << endl;
+//     cout << "----------------------------------------" << endl;
+//   }
 
   return av_cn;
 }
@@ -512,19 +540,18 @@ map<int, vector<vector<int>>> group_segs_by_chr(const vector<vector<int>>& segs,
     if(seg_file != "") fcn.close();
     // output segments in a file for reference by site, which can be converted to same format as original input
     cout << "\tUsing segments:\t\t" << Nchar << endl;
-    if(debug){
-        // row: sites, column: samples, value: CN
-        for(auto it : ret){
-            vector<vector<int>> sites = it.second;
-            for(int j = 0; j < sites.size(); ++j){
-                 cout << sites[j][0] << "\t" << sites[j][1] + 1 << "\t" << sites[j][2] + 1;
-                 for(int k = 0; k < Ns; ++k){
-                     cout << "\t" << sites[j][k+3];
-                 }
-                 cout << endl;
-            }
-        }
-    }
+    // if(debug){
+    //     // row: sites, column: samples, value: CN
+    //     for(auto it : ret){
+    //         vector<vector<int>> sites = it.second;
+    //         for(int j = 0; j < sites.size(); ++j){
+    //              cout << sites[j][0] << "\t" << sites[j][1] + 1 << "\t" << sites[j][2] + 1;
+    //              for(int k = 0; k < Ns; ++k){
+    //                  cout << "\t" << sites[j][k+3];
+    //              }
+    //              cout << endl;
+    //         }
+    //     }
 
     return ret;
 }
@@ -567,8 +594,12 @@ int get_segs_cn(vector<vector<vector<int>>>& s_info, vector<vector<int>>& segs, 
     s_info = read_cn(filename, input_prop.Ns, input_data.num_total_bins, cn_max, input_prop.is_total, input_prop.is_rcn, debug);
 
     if(input_prop.model == DECOMP){
-        get_num_wgd(s_info, cn_max, input_data.obs_num_wgd, input_prop.is_total, debug);
-        get_change_chr(s_info, input_data.obs_change_chr, cn_max, input_prop.is_total, debug);
+        get_num_wgd(s_info, input_data.obs_num_wgd, cn_max, input_prop.is_total, debug);
+        // get_change_chr(s_info, input_data.obs_change_chr, cn_max, input_prop.is_total, debug);
+        vector<vector<int>> obs_change_chr;
+        vector<int> chr_gain_max, chr_loss_min, chr_max_abs;
+        vector<double> sample_ploidy;
+        get_change_chr(s_info, chr_max_abs, cn_max, input_prop.is_total, debug);
     }
 
     get_sample_mcn(s_info, input_data.sample_max_cn, cn_max, input_prop.is_total, debug);
@@ -665,4 +696,84 @@ void get_bootstrap_vector_by_chr(map<int, vector<vector<int>>>& data, map<int, v
         // cout << obs_chr.size() << endl;
         vobs[nchr] = obs_chr;
     }
+}
+
+// [ADD] Compute per-sample site-level max deviation from avg_cn (baseline),
+// then take ceiling as an integer bound.
+void get_site_change(const vector<vector<vector<int>>>& s_info, vector<int>&sample_site_change, int cn_max, int is_total, int debug){
+    cout << "\nGetting the potential number of site changes for each sample" << endl;
+
+    vector<double> sample_avg_cn;
+    sample_site_change.clear();
+    sample_avg_cn.clear();
+    sample_site_change.reserve(s_info.size());
+    sample_avg_cn.reserve(s_info.size());
+
+    for(int i = 0; i < (int)s_info.size(); i++){
+        const auto& s_cn = s_info[i];
+        if(s_cn.empty()){
+            sample_avg_cn.push_back(0.0);
+            sample_site_change.push_back(0);
+            if(debug) cout << "[DEBUG] Sample " << (i+1) << " has 0 records, site_change=0" << endl;
+            continue;
+        }
+
+        // 1) avg_cn
+        // double sum_cn = 0.0;
+        // for(int j = 0; j < (int)s_cn.size(); j++){
+        //     int cn = s_cn[j][2];
+        //     if(!is_total) cn = state_to_total_cn(cn, cn_max);
+        //     sum_cn += cn;
+        // }
+        // double avg_cn = sum_cn / (double)s_cn.size();
+        map<int, vector<int>> chr_cn; // to store per-chromosome CNs
+        double avg_cn = compute_sample_avg_cn(s_cn, chr_cn, cn_max, is_total);
+        sample_avg_cn.push_back(avg_cn);
+
+        // 2) max deviation from avg_cn
+        int max_dev = 0;
+        int max_chr = -1, max_seg = -1, max_cn_val = -1;
+
+        for(int j = 0; j < (int)s_cn.size(); j++){
+            int cn = s_cn[j][2];
+            if(!is_total) cn = state_to_total_cn(cn, cn_max);
+            int dev = abs(cn - lround(avg_cn));
+            if(dev > max_dev){
+                max_dev = dev;
+                max_chr = s_cn[j][0];
+                max_seg = s_cn[j][1];
+                max_cn_val = cn;
+            }
+        }
+
+        // 3) record result
+        sample_site_change.push_back(max_dev);
+
+        if(debug){
+            cout << "Sample " << (i+1)
+                 << " avg_cn=" << avg_cn
+                 << " max|cn-avg_cn|=" << max_dev
+                 << " -> site_change=" << max_dev
+                 << " (at chr " << max_chr << ", seg " << max_seg << ", cn " << max_cn_val << ")"
+                 << endl;
+        }
+    }
+}
+
+// function for calculating avg_cn for ONE sample (records: [chr, sid, cn])
+double compute_sample_avg_cn(const vector<vector<int>>& s_cn, map<int, vector<int>>& chr_cn, int cn_max, int is_total){
+    if (s_cn.empty()) return 0.0;
+
+    double sum_cn = 0.0;
+    int num_seg = 0;
+    for(int j = 0; j < (int)s_cn.size(); j++){
+        int cn = s_cn[j][2];
+        if(!is_total) cn = state_to_total_cn(cn, cn_max);
+        chr_cn[s_cn[j][0]].push_back(cn);
+        sum_cn += cn;
+        num_seg++;
+    }
+
+    double avg_cn = sum_cn / (double)num_seg;
+    return avg_cn;
 }

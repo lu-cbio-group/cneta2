@@ -122,7 +122,7 @@ double optimize_all_branches(evo_tree& rtree, map<int, vector<vector<int>>>& vob
 *****************************************************/
 
 // The number of parameters to estimate, different when the mutation rates are estimated
-inline int get_ndim(int maxj, int npar_ne, int model, int only_seg){
+inline int get_ndim(int maxj, int npar_ne, int model, int cn_type){
     int ndim = 0;
 
     if(!maxj){
@@ -131,10 +131,17 @@ inline int get_ndim(int maxj, int npar_ne, int model, int only_seg){
         if(model == MK){
             ndim = npar_ne + 1;
         }else{
-            if(only_seg){
-                ndim = npar_ne + 2;
-            }else{
+            if (cn_type == ALL) { //segmental, chromosomal and whole-genome
                 ndim = npar_ne + 5;
+            }else if (cn_type == ONLY_SEG) { //segmental only
+                    ndim = npar_ne + 2;
+            }else if (cn_type == EXCLUDE_SEG) { //chromosomal and whole-genome
+                    ndim = npar_ne + 3;
+            }else if (cn_type == EXCLUDE_CHR)  { //segmental and whole-genome
+                    ndim = npar_ne + 3;        
+            }else{
+                cerr << "### ERROR: Unknown copy number alteration type for optimization!" << endl;
+                exit(1);
             }
         }
     }

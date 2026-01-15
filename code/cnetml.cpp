@@ -14,6 +14,11 @@ This file builds phylogenetic tree from integer copy numbers of multiple samples
 // #include "optimization.hpp"
 #include "state.hpp"
 
+#include "timing.hpp"
+using timing::TimePoint;
+using timing::now;
+using timing::elapsed_seconds;
+
 
 // using namespace std;
 
@@ -258,11 +263,12 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
     #pragma omp parallel for
     #endif
     for(int i = 0; i < max_tree_num; ++i){
+        int tree_id = i + 1; // for display only
         string tstring = order_tree_string_uniq(create_tree_string_uniq(init_trees[i]));
         if(debug){
-            cout << "\nString for tree " << i+1 << " is " << tstring << endl;
+            cout << "\nString for tree " << tree_id << " is " << tstring << endl;
             string newick = init_trees[i].make_newick(PRINT_PRECISION);
-            cout << "Newick String for tree " << i+1 << " is " << newick << endl;
+            cout << "Newick String for tree " << tree_id << " is " << newick << endl;
         }
 
         // if(debug) cout << "Maximization for tree " << i << endl;
@@ -280,8 +286,31 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
                 // init_trees[i] has already been the same as best_tree
                 max_likelihood_BFGS(init_trees[i], vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
             }
+            // —— DEBUG, check if nlnl is NaN or inf ——
+            if(!std::isfinite(nlnl)){
+                #ifdef _OPENMP
+                #pragma omp critical
+                #endif
+                {
+                    cout << "[DEBUG] non-finite nlnl value check in do_exhaustive_search\n";
+                    cout << "        tree index = " << i
+                         << " iteration = " << (count+1) << "\n";
+                    cout << "        nlnl = " << nlnl << "\n";
+                    cout << "        dup_rate=" << init_trees[i].dup_rate
+                         << " del_rate=" << init_trees[i].del_rate
+                         << " chr_gain_rate=" << init_trees[i].chr_gain_rate
+                         << " chr_loss_rate=" << init_trees[i].chr_loss_rate
+                         << " wgd_rate=" << init_trees[i].wgd_rate << endl;                    
+                }
+                // stop the whole program when nlnl is non-finite
+                std::exit(EXIT_FAILURE);
+            }else{
+                // cout << " !std::isfinite(nlnl) is false, nlnl is finite, no bug, continuing..." << endl;
+                // continue as usual if no bug
+            }
+
             count++;
-            // cout << nlnl << " \t " << min_nlnl << endl;
+            // cout << "nlnl: "<< nlnl << " \t min-nlnl: " << min_nlnl << endl;
             if(nlnl < min_nlnl){   // Find a better tree
                 min_nlnl = nlnl;
                 lnLs[i] = -nlnl;
@@ -290,7 +319,7 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
                 count_static++;
             }
             if(count_static >= max_static){
-                if(debug) cout << "\tstatic likelihood " << lnLs[i] << " for tree " << i << endl;
+                if(debug) cout << "\tstatic likelihood " << lnLs[i] << " for tree " << tree_id << endl;
                 break;
             }
         }
@@ -299,7 +328,7 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
         if(tstring == real_tstring){
             tid = tid + "(real)";
         }
-        cout << "Score for tree " << tid << " is: " << lnLs[i] << endl;
+        if(debug) cout << "Score for tree " << tree_id << " is: " << lnLs[i] << endl;
     }
 
     // Output best tree in C
@@ -639,16 +668,22 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
 // Get the mutation rates in year along each branch
 // num_total_bins: number of total segments in the (haploid) genome
 // unit of mutation rate: duplication/deletion rate -- bin/allele/year, chromosome gain/loss rate -- chromosome/year, WGD date -- year
-vector<int> compute_mutation_rates(evo_tree& tree, int only_seg, int num_total_bins){
+vector<int> compute_mutation_rates(evo_tree& tree, int cn_type, int num_total_bins){
     double mu_est;  // mutation rate per year
     vector<double> mu_all;
     vector<int> nmuts;
 
-    if(!only_seg){
+    if (cn_type == ALL){ // all types of CNAs
         mu_est = NORM_PLOIDY * NUM_CHR * (tree.chr_gain_rate + tree.chr_loss_rate) + NORM_PLOIDY * num_total_bins * (tree.dup_rate + tree.del_rate) + tree.wgd_rate;
-    }
-    else{
+    }else if(cn_type == ONLY_SEG){  // only segmental CNAs
         mu_est = NORM_PLOIDY * num_total_bins * (tree.dup_rate + tree.del_rate);
+    }else if(cn_type == EXCLUDE_SEG){  // only chromosomal and wgd CNAs
+        mu_est = NORM_PLOIDY * NUM_CHR * (tree.chr_gain_rate + tree.chr_loss_rate) + tree.wgd_rate;
+    }else if(cn_type == EXCLUDE_CHR){  // only segmental and wgd CNAs
+        mu_est = NORM_PLOIDY * num_total_bins * (tree.dup_rate + tree.del_rate) + tree.wgd_rate;
+    }else{
+        cout << "Error in cn_type!" << endl;
+        exit(EXIT_FAILURE);
     }
 
     mu_all.clear();
@@ -673,7 +708,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     //vector<double> l (arr2, arr2 + sizeof(arr2) / sizeof(arr2[0]) );
     int model = lnl_type.model;
     int cn_max = lnl_type.cn_max;
-    int only_seg = lnl_type.only_seg;
+    int cn_type = lnl_type.cn_type;
     int correct_bias = lnl_type.correct_bias;
     int is_total = lnl_type.is_total;
     int cons = lnl_type.cons;
@@ -707,15 +742,33 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     maxj = 0;
     max_likelihood_BFGS(test_tree, vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
-    cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t" << min_tree.dup_rate << "\t" << min_tree.del_rate;
-    if(!only_seg){
-        cout << "\t" << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t" << min_tree.wgd_rate;
+    
+    if (cn_type == ALL) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
+             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
+             << min_tree.wgd_rate;
+    }else if (cn_type == ONLY_SEG) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate;
+    }else if (cn_type == EXCLUDE_SEG) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
+             << min_tree.wgd_rate;
+    }else if (cn_type == EXCLUDE_CHR) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
+             << min_tree.wgd_rate;
+    }else{
+        cout << "Error in cn_type!" << endl;
+        exit(EXIT_FAILURE);
     }
+
     cout << endl;
     min_tree.print();
     fname = tree_file + ".opt00_bfgs.txt";
     out_tree.open(fname);
-    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, only_seg, num_total_bins));
+    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins));
     out_tree.close();
 
 
@@ -727,16 +780,34 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     maxj = 1;
     max_likelihood_BFGS(test_tree, vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
-    cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t" << min_tree.dup_rate << "\t" << min_tree.del_rate;
-    if(!only_seg){
-        cout << "\t" << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t" << min_tree.wgd_rate;
+   
+    if (cn_type == ALL) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
+             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
+             << min_tree.wgd_rate;
+    }else if (cn_type == ONLY_SEG) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate;
+    }else if (cn_type == EXCLUDE_SEG) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
+             << min_tree.wgd_rate;
+    }else if (cn_type == EXCLUDE_CHR) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
+             << min_tree.wgd_rate;
+    }else{
+        cout << "Error in cn_type!" << endl;
+        exit(EXIT_FAILURE);
     }
+
     cout << endl;
     min_tree.print();
     fname = tree_file + ".opt01_bfgs.txt";
     out_tree.open(fname);
     // min_tree.write(out_tree
-    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, only_seg, num_total_bins));
+    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins));
     out_tree.close();
 
 
@@ -748,16 +819,34 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     maxj = 0;
     max_likelihood_BFGS(test_tree, vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
-    cout << "\nMinimised tree likelihood / mu by BFGS: " << nlnl << "\t" << min_tree.dup_rate << "\t" << min_tree.del_rate;
-    if(!only_seg){
-        cout << "\t" << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t" << min_tree.wgd_rate;
+
+    if (cn_type == ALL) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
+             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
+             << min_tree.wgd_rate;
+    }else if (cn_type == ONLY_SEG) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate;
+    }else if (cn_type == EXCLUDE_SEG) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
+             << min_tree.wgd_rate;
+    }else if (cn_type == EXCLUDE_CHR) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
+             << min_tree.wgd_rate;
+    }else{
+        cout << "Error in cn_type!" << endl;
+        exit(EXIT_FAILURE);
     }
+    
     cout << endl;
     min_tree.print();
     fname = tree_file + ".opt10_bfgs.txt";
     out_tree.open(fname);
     // min_tree.write(out_tree);
-    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, only_seg, num_total_bins));
+    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins));
     out_tree.close();
 
 
@@ -769,16 +858,34 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     maxj = 1;
     max_likelihood_BFGS(test_tree, vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
-    cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t" << min_tree.dup_rate << "\t" << min_tree.del_rate;
-    if(!only_seg){
-        cout << "\t" << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t" << min_tree.wgd_rate;
+
+    if (cn_type == ALL) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
+             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
+             << min_tree.wgd_rate;
+    }else if (cn_type == ONLY_SEG) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate;
+    }else if (cn_type == EXCLUDE_SEG) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
+             << min_tree.wgd_rate;
+    }else if (cn_type == EXCLUDE_CHR) {
+        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
+             << min_tree.wgd_rate;
+    }else{
+        cout << "Error in cn_type!" << endl;
+        exit(EXIT_FAILURE);
     }
+
     cout << endl;
     min_tree.print();
     fname = tree_file + ".opt11_bfgs.txt";
     out_tree.open(fname);
     // min_tree.write(out_tree);
-    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, only_seg, num_total_bins));
+    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins));
     out_tree.close();
 
 }
@@ -802,7 +909,7 @@ double compute_tree_likelihood(evo_tree& tree, map<int, vector<vector<int>>>& vo
 
 
 void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofile, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int maxj, int debug){
-    int only_seg = lnl_type.only_seg;
+    int cn_type = lnl_type.cn_type;
     int model = lnl_type.model;
 
     cout.precision(PRINT_PRECISION);
@@ -813,7 +920,7 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
     }else{
         cout << "Pre-specified mutation rates: " << endl;
     }
-    min_nlnl_tree.print_mutation_rates(model, only_seg);
+    min_nlnl_tree.print_mutation_rates(model, cn_type);
 
     // Recompute the likelihood to check it is not affected by tree adjustment
     if(debug > 0){
@@ -829,11 +936,18 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
 
     // When mutation rates are not estimated, using specified rates to compute number of mutations
     double mu_est = 0.0;
-    if(!only_seg){
-        // int total_chr = vobs.size();
+
+    if (cn_type == ALL){ // all types of CNAs
         mu_est = NORM_PLOIDY * NUM_CHR * (min_nlnl_tree.chr_gain_rate + min_nlnl_tree.chr_loss_rate) + NORM_PLOIDY * num_total_bins * (min_nlnl_tree.dup_rate + min_nlnl_tree.del_rate) + min_nlnl_tree.wgd_rate;
-    }else{
+    }else if(cn_type == ONLY_SEG){  // only segmental CNAs
         mu_est = NORM_PLOIDY * num_total_bins * (min_nlnl_tree.dup_rate + min_nlnl_tree.del_rate);
+    }else if(cn_type == EXCLUDE_SEG){  // only chromosomal and wgd CNAs
+        mu_est = NORM_PLOIDY * NUM_CHR * (min_nlnl_tree.chr_gain_rate + min_nlnl_tree.chr_loss_rate) + min_nlnl_tree.wgd_rate;
+    }else if(cn_type == EXCLUDE_CHR){  // only segmental and wgd CNAs
+        mu_est = NORM_PLOIDY * num_total_bins * (min_nlnl_tree.dup_rate + min_nlnl_tree.del_rate) + min_nlnl_tree.wgd_rate;
+    }else{
+        cout << "Error in cn_type!" << endl;
+        exit(EXIT_FAILURE);
     }
 
     cout << "Total mutation rate per year " << mu_est << endl;
@@ -867,30 +981,54 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
 
 // Given a tree, compute its maximum likelihood
 void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& ofile, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int optim, double ssize, int debug){
+    TimePoint t_max_start = now();
+    int outer_iter = 0;
     lnl_type.knodes = get_inodes_bottom_up(tree, debug);
 
     double nlnl = MAX_NLNL;
     if(optim == GSL){
+        cout << "[TIME] maximize_tree_likelihood: using GSL optimizer\n";
         while(!(nlnl < MAX_NLNL)){
-            nlnl = MAX_NLNL;
-            max_likelihood(tree, vobs, lnl_type, opt_type, nlnl, ssize);
+        ++outer_iter;
+        cout << "[TIME] GSL outer iteration " << outer_iter << " starts\n";
+        TimePoint t_iter_start = now();
+        nlnl = MAX_NLNL;
+        max_likelihood(tree, vobs, lnl_type, opt_type, nlnl, ssize);
+        TimePoint t_iter_end = now();
+        cout << "[TIME] GSL outer iteration " << outer_iter
+             << " took " << elapsed_seconds(t_iter_start, t_iter_end)
+             << " s, nlnl = " << nlnl << "\n"; 
         }
     }else{
+        cout << "[TIME] maximize_tree_likelihood: using BFGS optimizer\n";
         while(!(nlnl < MAX_NLNL)){
+            ++outer_iter;
+            cout << "[TIME] BFGS outer iteration " << outer_iter << " starts\n";
+            TimePoint t_iter_start = now();
             nlnl = MAX_NLNL;
             max_likelihood_BFGS(tree, vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
+            TimePoint t_iter_end = now();
+            cout << "[TIME] BFGS outer iteration " << outer_iter
+                 << " took " << elapsed_seconds(t_iter_start, t_iter_end)
+                 << " s, nlnl = " << nlnl << "\n";
         }
     }
     cout << "\nMinimised negative log likelihood: " << nlnl << endl;
-
+    TimePoint t_write_start = now();
     write_min_nlnl_tree(tree, num_total_bins, ofile, vobs, obs_decomp, comps, lnl_type, opt_type.maxj, debug);
+    TimePoint t_write_end = now();
+    cout << "[TIME] write_min_nlnl_tree: "
+         << elapsed_seconds(t_write_start, t_write_end) << " s\n";
+    TimePoint t_max_end = now();
+    cout << "[TIME] maximize_tree_likelihood total: "
+         << elapsed_seconds(t_max_start, t_max_end) << " s\n";
 }
 
 
 // Build ML tree from given CNPs
 void find_ML_tree(string real_tstring, int num_total_bins, string ofile, int tree_search, int Ns, int Npop, int Ngen, int init_tree, string dir_itrees, int max_static, double ssize, int optim, const vector<double>& rates, const ITREE_PARAM& itree_param, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, int debug){
     evo_tree min_nlnl_tree;
-    int only_seg = lnl_type.only_seg;
+    int cn_type = lnl_type.cn_type;
     int age = lnl_type.patient_age;
     int model = lnl_type.model;
     int maxj = opt_type.maxj;
@@ -920,7 +1058,7 @@ void find_ML_tree(string real_tstring, int num_total_bins, string ofile, int tre
 }
 
 
-void print_desc(int cons, int maxj, int correct_bias, int use_repeat, int optim, int model, int is_total, int age, int only_seg){
+void print_desc(int cons, int maxj, int correct_bias, int use_repeat, int optim, int model, int is_total, int age, int cn_type){
     if(is_total){
         cout << "\nTaking total copy number as input" << endl;
     }else{
@@ -939,10 +1077,22 @@ void print_desc(int cons, int maxj, int correct_bias, int use_repeat, int optim,
         cout << "\nAssuming mutation rate is fixed " << endl;
     }else{
         cout << "\nEstimating mutation rates" << endl;
-        if(!only_seg){
+        // if(!only_seg){
+        //     cout << "\tfor site duplication/deletion, chromosome gain/loss, and whole genome doubling " << endl;
+        // }else{
+        //     cout << "\tfor site duplication/deletion " << endl;
+        // }
+        if (cn_type == ALL){
             cout << "\tfor site duplication/deletion, chromosome gain/loss, and whole genome doubling " << endl;
-        }else{
+        }else if(cn_type == ONLY_SEG){
             cout << "\tfor site duplication/deletion " << endl;
+        }else if(cn_type == EXCLUDE_SEG){
+            cout << "\tfor chromosome gain/loss, and whole genome doubling " << endl;
+        }else if(cn_type == EXCLUDE_CHR){
+            cout << "\tfor site duplication/deletion, and whole genome doubling " << endl;
+        }else{
+            cout << "Error in cn_type!" << endl;
+            exit(EXIT_FAILURE);
         }
     }
 
@@ -992,6 +1142,7 @@ void print_desc(int cons, int maxj, int correct_bias, int use_repeat, int optim,
 
 
 int main(int argc, char** const argv){
+    TimePoint t_program_start = now();
     /********* input parameters ***********/
     int debug;
     unsigned seed;
@@ -1006,9 +1157,9 @@ int main(int argc, char** const argv){
 
     // Set max_* as global variables to avoid adding more parameters in maximization
     int m_max;
-    int max_wgd;
-    int max_chr_change;
-    int max_site_change;
+    int max_wgd = 0;
+    int max_chr_change = 0;
+    int max_site_change = 0;
 
     int cn_max;
     int is_total; // whether or not the input is total copy number
@@ -1020,7 +1171,7 @@ int main(int argc, char** const argv){
     int use_repeat;   // whether or not to use repeated site patterns, used in get_likelihood_chr*
     int correct_bias; // Whether or not to correct acquisition bias, used in get_likelihood_*
 
-    int only_seg; // Whether or not to only consider segment-level mutations, used in get_likelihood_revised
+    int cn_type; // type of copy number changes modeled (0: only segmental CNAs; 1: only chromosomal and WGD CNAs; 2: segmental and WGD CNAs; 3: all types of CNAs)
 
     int infer_wgd; // whether or not to infer WGD status of a sample, called in initialize_lnl_table_decomp
     int infer_chr; // whether or not to infer chromosome gain/loss status of a sample, called in initialize_lnl_table_decomp
@@ -1087,9 +1238,9 @@ int main(int argc, char** const argv){
     // limits on copy number changes
     ("cn_max", po::value<int>(&cn_max)->default_value(4), "maximum copy number of a segment")
     ("m_max", po::value<int>(&m_max)->default_value(1), "maximum number of copies of a segment in a chromosome")
-    ("max_wgd", po::value<int>(&max_wgd)->default_value(1), "maximum number of WGD")
-    ("max_chr_change", po::value<int>(&max_chr_change)->default_value(1), "maximum number of chromosome changes")
-    ("max_site_change", po::value<int>(&max_site_change)->default_value(2), "maximum number of segment changes")
+    // ("max_wgd", po::value<int>(&max_wgd)->default_value(1), "maximum number of WGD")
+    // ("max_chr_change", po::value<int>(&max_chr_change)->default_value(1), "maximum number of chromosome changes")
+    // ("max_site_change", po::value<int>(&max_site_change)->default_value(2), "maximum number of segment changes")
 
     // types of copy number changes
     ("is_total", po::value<int>(&is_total)->default_value(1), "whether or not the input is total copy number")
@@ -1097,7 +1248,8 @@ int main(int argc, char** const argv){
     ("is_bin", po::value<int>(&is_bin)->default_value(1), "whether or not the input copy number is for each bin. If not, the input copy number is read as it is. Or else, consecutive bins will be merged")
     ("incl_all", po::value<int>(&incl_all)->default_value(1), "whether or not to include all the input copy numbers without further propressing")
 
-    ("only_seg", po::value<int>(&only_seg)->default_value(1), "Whether or not to only consider segment-level mutations (0: include chromosome gain/loss and whole genome doubling, 1: only consider segment-level mutations)")
+    ("cn_type", po::value<int>(&cn_type), "Type of copy number changes to consider (0: only segment-level mutations, 1: only chromosome gain/loss and whole genome doubling, 2: only duplication/deletion and whole genome doubling, 3: all types of mutations)")
+
     ("infer_wgd", po::value<int>(&infer_wgd)->default_value(0), "whether or not to infer WGD status of a sample from its ABSOLUTE copy numbers")
     ("infer_chr", po::value<int>(&infer_chr)->default_value(0), "whether or not to infer chromosome gain/loss status of a sample from its ABSOLUTE copy numbers")
 
@@ -1201,7 +1353,7 @@ int main(int argc, char** const argv){
         }
     }
 
-    print_desc(cons, maxj, correct_bias, use_repeat, optim, model, is_total, age, only_seg);
+    print_desc(cons, maxj, correct_bias, use_repeat, optim, model, is_total, age, cn_type);
 
     INPUT_PROPERTY input_prop{Ns, cn_max, model, is_total, is_rcn, is_bin, incl_all};
     INPUT_DATA input_data{num_invar_bins, num_total_bins, Nchar, obs_num_wgd, obs_change_chr, sample_max_cn};
@@ -1240,20 +1392,49 @@ int main(int argc, char** const argv){
     // Build the table after reading input file
     if(model == DECOMP){
         // adjust_m_max();
+    
+        // 1) WGD per sample and global max_wgd
+        int max_wgd = 0;
+        vector<vector<vector<int>>> s_info = read_cn(datafile, Ns, num_total_bins, cn_max, is_total, is_rcn, debug);
+
+        get_num_wgd(s_info, obs_num_wgd, cn_max, is_total, debug);
+        max_wgd = *max_element(obs_num_wgd.begin(), obs_num_wgd.end());
+
+        // 2) chromosome change per sample (gain and loss) and global max_chr_change
+        int max_chr_change = 0;
+        vector<int> chr_max_abs;
+        get_change_chr(s_info, chr_max_abs, cn_max, is_total, debug);
+        max_chr_change = *max_element(chr_max_abs.begin(), chr_max_abs.end());
+
+        // 3) site change per sample and global max_site_change
+        int max_site_change = 0;
+        vector<int> sample_site_change;
+        get_site_change(s_info, sample_site_change, cn_max, is_total, debug);
+        max_site_change = *max_element(sample_site_change.begin(), sample_site_change.end());
+
         cout << "maximum number of WGD events is " << max_wgd << endl;
         cout << "maximum number of chromosome gain/loss events on one chromosome is " << max_chr_change << endl;
         cout << "maximum number of site duplication/deletion events is " << max_site_change << endl;
+
+        // TimePoint t_decomp_table_start = now();
         build_decomp_table(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
-        // build_decomp_table_withm(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
+        // TimePoint t_decomp_table_end = now();
+        build_decomp_table_withm(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
+        // cout << "[TIME] build_decomp_table: "
+        //      << elapsed_seconds(t_decomp_table_start, t_decomp_table_end) << " s" << endl;
         cout << "\tNumber of states is " << comps.size() << endl;
+        // TimePoint t_print_decomp_start = now();
         print_decomp_table(decomp_table);
         print_comps(comps);
+        // TimePoint t_print_decomp_end = now();
+        // cout << "[TIME] print_decomp_table: "
+        //      << elapsed_seconds(t_print_decomp_start, t_print_decomp_end) << " s" << endl;
     }
 
     max_tobs = *max_element(tobs.begin(), tobs.end());
     // a list of nodes to loop over for bottom-up likelihood computation, and the root is last
     vector<int> knodes(Ns, 0);
-    lnl_type = {model, cn_max, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, only_seg, infer_wgd, infer_chr, knodes};
+    lnl_type = {model, cn_max, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, cn_type, infer_wgd, infer_chr, knodes};
 
     obs_decomp = {m_max, max_wgd, max_chr_change, max_site_change, obs_num_wgd, obs_change_chr};
 
@@ -1302,6 +1483,7 @@ int main(int argc, char** const argv){
           exit(EXIT_FAILURE);
         }
         cout << "Running test on tree " << tree_file << endl;
+        TimePoint t_mode1_start = now();
         input_data.num_invar_bins = 0;
         input_data.num_total_bins = 0;
         input_data.seg_size = 0;
@@ -1319,25 +1501,34 @@ int main(int argc, char** const argv){
         }
 
         run_test(tree_file, Ns, num_total_bins, Nchar, vobs0, input_data.seg_size, rates, ssize, tolerance, miter, vobs, obs_decomp, comps, lnl_type, opt_type, debug);
+        TimePoint t_mode1_end = now();
+        cout << "[TIME] mode 1 total: "
+             << elapsed_seconds(t_mode1_start, t_mode1_end) << " s" << endl;
 
     }else if(mode == 2){
         cout << "Computing the likelihood of a given tree from copy number profile " << endl;
-
+        TimePoint t_mode2_start = now();
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
 
         double lnl = compute_tree_likelihood(tree, vobs, obs_decomp, comps, lnl_type, debug);
+        TimePoint t_mode2_end = now();
         cout << "The log likelihood of the input tree is " << lnl << endl;
+        cout << "[TIME] mode 2 total: "
+             << elapsed_seconds(t_mode2_start, t_mode2_end) << " s" << endl;
+
 
     }else if(mode == 3){
         cout << "Computing maximum likelihood of a given tree from copy number profile " << endl;
-
+        TimePoint t_mode3_start = now();
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
 
         maximize_tree_likelihood(tree, num_total_bins, ofile, vobs, obs_decomp, comps, lnl_type, opt_type, optim, ssize, debug);
-
+        TimePoint t_mode3_end = now();
+        cout << "[TIME] mode 3 total: "
+             << elapsed_seconds(t_mode3_start, t_mode3_end) << " s" << endl;
     }else{
         cout << "Inferring ancestral states of a given tree from copy number profile " << endl;
-
+        TimePoint t_mode4_start = now();
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
 
         if(!incl_all){
@@ -1368,7 +1559,13 @@ int main(int argc, char** const argv){
                reconstruct_joint_ancestral_state(tree, vobs, inodes, model, cn_max, use_repeat, is_total, m_max, ofile);
             }
         }
+        TimePoint t_mode4_end = now();
+        cout << "[TIME] mode 4 total: "
+             << elapsed_seconds(t_mode4_start, t_mode4_end) << " s" << endl;
     }
 
     gsl_rng_free(r);
+    TimePoint t_program_end = now(); 
+    cout << "[TIME] Total program time: "
+         << elapsed_seconds(t_program_start, t_program_end) << " s" << endl;
 }

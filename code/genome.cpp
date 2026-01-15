@@ -133,7 +133,7 @@ void genome::initialize_cnp(){
 }
 
 
-int genome::reset_cn(copy_number& cnp){
+int genome::reset_cn(copy_number& cnp, int debug){
   int size = 0;
   for(copy_number::iterator it1 = cnp.begin(); it1 != cnp.end(); ++it1){
     for(map<int, int>::iterator it2 = it1->second.begin(); it2 != it1->second.end(); ++it2){
@@ -141,19 +141,21 @@ int genome::reset_cn(copy_number& cnp){
          size++;
     }
   }
-//   cout << "size of CNP " << size << endl;
+  if(debug) cout << "size of CNP after reset_cn " << size << endl;
+  // print_cn();
   return size;
 }
 
 
 // Compute total copy number
-void genome::calculate_cn(){
-  int size = reset_cn(cn_profile);
+void genome::calculate_cn(const vector<int>& chr_lengths, int debug){
+  int size = reset_cn(cn_profile, debug);
+
   if(size != num_site){
-      cout << "Wrong CNP!" << endl;
+      cout << "Wrong CNP: " << size << "\t" << num_site << endl;
       for(int i = 0; i < NUM_CHR; i++){
-        if(cn_profile[i].size() != BIN_SIZE[i]){
-            cout << "chr " << i + 1 << " (should have " << BIN_SIZE[i] << " sites) has " << cn_profile[i].size() << " sites:" << endl;  
+        if(cn_profile[i].size() != chr_lengths[i]){
+            cout << "chr " << i + 1 << " (should have " << chr_lengths[i] << " sites) has " << cn_profile[i].size() << " sites:" << endl;  
             for(auto cnp: cn_profile[i]){
                 cout << "\t" << cnp.first + 1;
             } 
@@ -164,18 +166,42 @@ void genome::calculate_cn(){
   }
 
   // a completely lost segment will disappear from "chrs[i]"
-  for(int i = 0; i < chrs.size(); ++i){
-    for(int j = 0; j < chrs[i].size(); ++j){
+  for(int i = 0; i < chrs.size(); ++i){ // 44 chrs
+    if(debug) cout << "Calculating total CN for chr " << i + 1 << endl;
+    for(int j = 0; j < chrs[i].size(); ++j){ 
       segment s = chrs[i][j];
-      cn_profile[s.chr % NUM_CHR][s.seg_id]++;
+      if(debug > 1) cout << "\tsegment: " << s.chr + 1 << "\t" << s.chr % NUM_CHR << "\t"  << s.seg_id + 1 << endl;
+      if(s.chr % NUM_CHR != i % NUM_CHR){
+          cout << "Inconsistent chromosome ID in genome chr " << i % NUM_CHR << " and segment chr " << s.chr % NUM_CHR << endl;
+          exit(EXIT_FAILURE);   
+      }
+      if(s.seg_id >= 0){
+          cn_profile[i % NUM_CHR][s.seg_id]++;
+      }else{
+          cout << "Wrong segment ID " << s.seg_id << endl;
+          exit(EXIT_FAILURE);          
+      }   
     }
+    if(debug) cout << "Finished calculating total CN for chr " << i + 1 << endl;
   }
+
+//   // verify the size of cn_profile for each chromosome
+//   for(int i = 0; i < NUM_CHR; i++){
+//         if(cn_profile[i].size() != chr_lengths[i]){
+//             cout << "chr " << i + 1 << " (should have " << chr_lengths[i] << " sites) has " << cn_profile[i].size() << " sites:" << endl;  
+//             for(auto cnp: cn_profile[i]){
+//                 cout << "\t" << cnp.first + 1;
+//             } 
+//             cout << endl;          
+//             exit(EXIT_FAILURE);
+//         }         
+//     }
 }
 
 
 // Compute haplotype-specific copy number
-void genome::calculate_allele_cn(){
-  int size = reset_cn(allele_cn_profile);
+void genome::calculate_allele_cn(int debug){
+  int size = reset_cn(allele_cn_profile, debug);
   if(size != num_site * 2){
       cout << "Wrong haplotype-specific CNP!" << endl;
       print_cnp(allele_cn_profile);
@@ -239,8 +265,10 @@ void genome::print_muts(ostream& stream) const{
 void genome::print_cn() const{
   // cn is stored as [chr][seg_id][count]
   map<int, int>::const_iterator it2;
-  cout << "\tCOPY NUMBER (" << node_id + 1 << "):" << endl;
+  cout << "\tCOPY NUMBER for node (" << node_id + 1 << "):" << endl;
   for(copy_number::const_iterator it1 = cn_profile.begin(); it1 != cn_profile.end(); ++it1){
+    // print size of it2 
+    cout << "\tchr " << it1->first + 1 << ":" << it1->second.size() << endl;
     for(it2 = it1->second.begin(); it2 != it1->second.end(); ++it2){
       cout << "\t" << it1->first + 1 << "_" << it2->first + 1;
     }
@@ -493,8 +521,8 @@ int get_max_cn_chr_seg(genome& g, int c, int loc, int len){
 }
 
 
-int get_max_cn_chr(genome& g, int c){
-    int debug = 0;
+int get_max_cn_chr(genome& g, int c, int debug){
+    // int debug = 0;
     int max_cn = 0;
 
     for(int i = 0; i < g.chrs[c].size(); i++){
@@ -512,12 +540,12 @@ int get_max_cn_chr(genome& g, int c){
 }
 
 
-int get_max_cn_genome(genome& g){
-    int debug = 0;
+int get_max_cn_genome(genome& g, int debug){
+    // int debug = 0;
     int max_cn = 0;
 
     for(int chr = 0; chr < NUM_CHR; chr++){
-        int cn = get_max_cn_chr(g, chr);
+        int cn = get_max_cn_chr(g, chr, debug);
         if(cn > max_cn){
             max_cn = cn;
         }
@@ -555,32 +583,66 @@ void get_available_chr(const genome& g, vector<int>& available_chrs){
 }
 
 
-void update_wgd_rate(genome& g, double& wgd_rate, int cn_max){
-    int max_cn = get_max_cn_genome(g);
+void update_wgd_rate(genome& g, double& wgd_rate, int cn_max, int debug){
+    int max_cn = get_max_cn_genome(g, debug);
     // max_cn <= 0 -- all segments have been lost
     if(max_cn <= 0 || 2 * max_cn > cn_max){
         // cout << "Allowed MAX CN is " << cn_max << endl;
         // cout << "Maximum copy number on genome " << g.node_id << " is " << max_cn << endl;
         wgd_rate = 0.0;
     }
+
+    //// debug for wgd rate update
+    //if (debug) {
+    //    cout << "[update_wgd_rate] max_cn = " << max_cn
+    //         << " cn_max = " << cn_max
+    //         << " 2*max_cn = " << 2*max_cn
+    //         << " -> final wgd_rate = " << wgd_rate << endl;
+
+    // debug info for max_cn
+    if(debug){
+        if(max_cn <= 0){
+            cout << "[update_wgd_rate] node_id " << g.node_id
+                 << " max_cn=" << max_cn
+                 << " -> wgd_rate set to 0.0 (all segments lost)" << endl;
+        }else if(2 * max_cn > cn_max){
+            cout << "[update_wgd_rate] node_id " << g.node_id
+                 << " max_cn=" << max_cn
+                 << " cn_max=" << cn_max
+                 << " -> wgd_rate set to 0.0 (would exceed cn_max)" << endl;
+        }else{
+            cout << "[update_wgd_rate] node_id " << g.node_id
+                 << " max_cn=" << max_cn
+                 << " cn_max=" << cn_max
+                 << " -> wgd_rate remains " << wgd_rate << endl;
+        }
+    }
 }
 
 
-void update_chr_gain_rate(genome& g, int c, double& chr_gain_rate, int cn_max){
-    double max_cn_c = get_max_cn_chr(g, c);
+void update_chr_gain_rate(genome& g, int c, vector<double>& gain_rates, int cn_max, int debug){
+    double max_cn_c = get_max_cn_chr(g, c, debug);
     // double max_snum = get_max_seg_num_chr(g, c);
     // max_cn_c <= 0 -- all segments on chr c have been lost
-    if(max_cn_c <= 0 || 2 * max_cn_c > cn_max){
-        chr_gain_rate = 0.0;
+    if(max_cn_c <= 0 || (max_cn_c + 1) > cn_max){
+    // if(max_cn_c <= 0 || 2 * max_cn_c > cn_max){
+        gain_rates[c % NUM_CHR] = 0.0;
     }
 }
 
 
-void update_chr_loss_rate(genome& g, int c, double& chr_loss_rate){
-    double max_cn_c = get_max_cn_chr(g, c);
+void update_chr_loss_rate(genome& g, int c, vector<double>& loss_rates, int debug){
+    double max_cn_c = get_max_cn_chr(g, c, debug);
+    // if(debug){
+    //     cout << "loss rate for chr " << c + 1 << " is " << chr_loss_rate << " before update" << endl;
+    // }
+    // max_cn_c <= 0 -- all segments on chr c have been lost
     if(max_cn_c <= 0){
-        chr_loss_rate = 0.0;
+        loss_rates[c % NUM_CHR] = 0.0;
     }
+    // if(debug){
+    //     cout << "loss rate for chr " << c + 1 << " is " << chr_loss_rate << " after update" << endl;
+    // }    
 }
 
 
@@ -648,6 +710,9 @@ double get_total_rates_allele_specific(genome& g, vector<double>& site_dup_rates
 
     double chr_gain_rate = rate_consts[2];
     double chr_loss_rate = rate_consts[3];
+    // create an array to store chromosome gain/loss rates for each chromosome 
+    vector<double> gain_rates(NUM_CHR, chr_gain_rate);      
+    vector<double> loss_rates(NUM_CHR, chr_loss_rate); 
     double wgd_rate = rate_consts[4];
 
     double dup_rate_all = 0.0;
@@ -655,9 +720,17 @@ double get_total_rates_allele_specific(genome& g, vector<double>& site_dup_rates
     double gain_rate_all = 0.0;
     double loss_rate_all = 0.0;
 
-    if(debug){
-        cout << "CNP before updating rates" << endl;
-        g.print_cn();
+    // if(debug){
+    //     cout << "CNP before updating rates" << endl;
+    //     g.print_cn();
+    // }
+
+    // debug info for max_cn
+    int max_cn = get_max_cn_genome(g, debug);
+    if (debug) {
+        cout << "[rates] node_id " << g.node_id
+             << " max_cn=" << max_cn
+             << " cn_max=" << cn_max << endl;
     }
 
     vector<double> rates_chrs(g.cn_profile.size(), 0.0);  // mutation rates on each chromosome
@@ -692,10 +765,10 @@ double get_total_rates_allele_specific(genome& g, vector<double>& site_dup_rates
 
         // Get the rate on one chromosome
         double rate_c = accumulate(rates_chr_sites.begin(), rates_chr_sites.end(), 0.0);    // rates for duplication/deletion
-        update_chr_gain_rate(g, chr, chr_gain_rate, cn_max);
-        update_chr_loss_rate(g, chr, chr_loss_rate);
-        rate_c += chr_loss_rate;
-        rate_c += chr_gain_rate;
+        update_chr_gain_rate(g, chr, gain_rates, cn_max, debug);
+        update_chr_loss_rate(g, chr, loss_rates, debug);
+        rate_c += loss_rates[chr];
+        rate_c += gain_rates[chr];
         rates_chrs[chr] = rate_c;
 
         if(debug){
@@ -703,17 +776,28 @@ double get_total_rates_allele_specific(genome& g, vector<double>& site_dup_rates
             cout << "Chromosome gain rate " << chr_gain_rate << "\tChromosome loss rate " << chr_loss_rate << endl;
         }
 
-        chr_gain_rates[chr] = chr_gain_rate;
-        chr_loss_rates[chr] = chr_loss_rate;
-        gain_rate_all += chr_gain_rate;
-        loss_rate_all += chr_loss_rate;
+        chr_gain_rates[chr] = gain_rates[chr];
+        chr_loss_rates[chr] = loss_rates[chr];
+        gain_rate_all += gain_rates[chr];
+        loss_rate_all += loss_rates[chr];
     } 
     // assert(i == 4401);
     // Get the total rate of mutation for the current genome (the sum of rates accross sites, chromosomes)
     double rate = accumulate(rates_chrs.begin(), rates_chrs.end(), 0.0);
-    // cout << "WGD rate before " << wgd_rate << endl;
-    update_wgd_rate(g,  wgd_rate, cn_max);
-    // cout << "WGD rate after " << wgd_rate << endl;
+
+    // debug info before updating WGD rate
+    if (debug) {
+        int max_cn_g = get_max_cn_genome(g, debug);
+        cout << "Before update_wgd_rate: wgd_rate_const = " << rate_consts[4]
+             << "  current max_cn_g = " << max_cn_g
+             << "  cn_max = " << cn_max
+             << "  condition 2*max_cn_g > cn_max ? "
+             << (2 * max_cn_g > cn_max) << endl;
+    }
+
+    cout << "WGD rate before " << wgd_rate << endl; // debug
+    update_wgd_rate(g,  wgd_rate, cn_max, debug);
+    cout << "WGD rate after " << wgd_rate << endl; // debug
     rate += wgd_rate;
 
     type_rates.insert(type_rates.end(), {dup_rate_all, del_rate_all, gain_rate_all, loss_rate_all, wgd_rate});
@@ -740,9 +824,32 @@ double get_total_rates_allele_specific(genome& g, vector<double>& site_dup_rates
         // }
         // cout << endl;
 
-        cout << "CNP after updating rates" << endl;
-        g.print_cn();
+        // cout << "CNP after updating rates" << endl;
+        // g.print_cn();
     }
+
+    // debug info for rate proportions
+    if (debug) {
+        double site_rate_all = dup_rate_all + del_rate_all;
+        double chr_rate_all  = gain_rate_all + loss_rate_all;
+        double total_rate    = site_rate_all + chr_rate_all + wgd_rate;
+
+        cout << "RATES at node_id " << g.node_id
+            << "  total_rate = " << total_rate << endl;
+        cout << "  site dup_all = " << dup_rate_all
+            << "  site del_all = " << del_rate_all << endl;
+        cout << "  chr gain_all = " << gain_rate_all
+            << "  chr loss_all = " << loss_rate_all << endl;
+        cout << "  WGD rate     = " << wgd_rate << endl;
+        cout << "  Proportions: "
+            << "dup="  << dup_rate_all  / total_rate
+            << " del=" << del_rate_all  / total_rate
+            << " gain="<< gain_rate_all / total_rate
+            << " loss="<< loss_rate_all / total_rate
+            << " wgd=" << wgd_rate      / total_rate
+            << endl;
+    }
+
 
     return rate;
 }
@@ -914,6 +1021,10 @@ int generate_duplication(genome& g, int c, int seg_id, int mean_dup_size, int mo
     }else if(model == BOUNDT || model == BOUNDA){
         g.chrs[ins_chr].insert(g.chrs[ins_chr].begin() + ins_start, g.chrs[c].begin() + orig_start, g.chrs[c].begin() + orig_end);
         // g.chrs[c].insert(g.chrs[c].begin() + ins_start, len, segment(c % NUM_CHR, seg_id));
+    //    std::vector<segment> tmp(g.chrs[c].begin() + orig_start, g.chrs[c].begin() + orig_end);
+    //for (auto &s : tmp) s.chr = ins_chr;
+    //g.chrs[ins_chr].insert(g.chrs[ins_chr].begin() + ins_start, tmp.begin(), tmp.end());
+
     }else{
         cerr << "Model not supported!" << endl;
         exit(EXIT_FAILURE);
@@ -1060,7 +1171,7 @@ int generate_deletion(genome& g, int c, int seg_id, int mean_del_size, int model
 
 
 int generate_chr_gain(genome& g, int c, int cn_max, int debug){
-    double max_cn_c = get_max_cn_chr(g, c);
+    double max_cn_c = get_max_cn_chr(g, c, debug);
     if(max_cn_c <= 0 || 2 * max_cn_c > cn_max){
         return 0;
     }
@@ -1070,7 +1181,7 @@ int generate_chr_gain(genome& g, int c, int cn_max, int debug){
     assert(orig_size % NUM_CHR == 0);
     // cout << "Size of chrs " << orig_size << endl;
     
-    int new_chr = orig_size + c % NUM_CHR;   // insert new chr at the end by default
+    int new_chr = orig_size + c % NUM_CHR;   // insert new chr at the end 
     int is_in = 0;
     // If some haplotype of c is in the genome, but has lost all segments, just fill the segments
     for(int i = 0; i < orig_size / NUM_CHR; i++){  
@@ -1091,6 +1202,7 @@ int generate_chr_gain(genome& g, int c, int cn_max, int debug){
     }
 
     g.chrs[new_chr].insert(g.chrs[new_chr].begin(), g.chrs[c].begin(), g.chrs[c].end());
+    // TODO: update chr properties for inserted segments
 
     if(debug){
       cout << "ID for gained Chromosome " << new_chr << endl;
@@ -1106,20 +1218,37 @@ int generate_chr_gain(genome& g, int c, int cn_max, int debug){
 
 
 int generate_chr_loss(genome& g, int c, int debug){
-  double max_cn_c = get_max_cn_chr(g, c);
+  double max_cn_c = get_max_cn_chr(g, c, debug);
   if(max_cn_c <= 0){
       return 0;
   }
 
   // Delete the segments in the chromosome, but keep the chromosome ID so that it can be remapped by NUM_CHR
+  if(debug){
+    cout << "Before deleting all segments on chr " << c + 1 << endl;
+    // print g.chrs[c].begin(), g.chrs[c].end()
+    for(int i = 0; i < g.chrs[c].size(); i++){
+        cout << "\t" << g.chrs[c][i].seg_id;
+    }
+    cout << endl;
+  }
+
   g.chrs[c].erase(g.chrs[c].begin(), g.chrs[c].end());
 
+  if(debug){
+    cout << "After deleting all segments on chr " << c + 1 << endl;
+    // print g.chrs[c].begin(), g.chrs[c].end()
+    for(int i = 0; i < g.chrs[c].size(); i++){
+        cout << "\t" << g.chrs[c][i].seg_id;
+    }
+    cout << endl;
+  }
   return 1;
 }
 
 
 int generate_wgd(genome& g, int cn_max, int debug){
-    int max_cn_g = get_max_cn_genome(g);
+    int max_cn_g = get_max_cn_genome(g, debug);
     if(g.chrs.size() <= 0 || 2 * max_cn_g > cn_max){
         return 0;
     }

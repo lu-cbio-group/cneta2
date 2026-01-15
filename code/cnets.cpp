@@ -494,7 +494,19 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int& ed
         if(debug){
             cout << "Current time " << time << endl;
             cout << "Total mutation rate on the genome " << rate << endl;
+            // print rates for each mutation type
+            cout << "Mutation rates for each type: ";
+            for(int i = 0; i < type_rates.size(); i++){
+                cout << type_rates[i] << "\t";
+            }
+            cout << endl;
             cout << "Chosen event " << MUT_TYPES[e] << endl;
+        }
+
+        // debug info for max CN before mutation
+        if (debug) {
+            int max_cn = get_max_cn_genome(g);
+            cout << "[event] Node ID " << g.node_id << " edge " << edge_id + 1 << " time " << time << " chose " << MUT_TYPES[e] << " max_cn(before)= " << max_cn << endl;
         }
 
         int res = 0;
@@ -554,8 +566,13 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int& ed
             g.nmuts[e]++;
             g.mutations.push_back(mut);
             if(debug) cout << "Update copy number after each mutation event" << endl;
-            g.calculate_cn();
-            g.calculate_allele_cn();
+            g.calculate_cn(chr_lengths, debug);
+            g.calculate_allele_cn(debug);
+            // debug info for max CN after mutation
+            if (debug) {
+                int max_cn = get_max_cn_genome(g);
+                cout << "[event] Node ID " << g.node_id << " edge " << edge_id + 1 << " time " << time << " applied " << MUT_TYPES[e] << " max_cn(after)= " << max_cn << endl;
+            }
         }else{
              if(debug){
                 cout << "\tMutation failed on chr " << c + 1 << " with segments below:";
@@ -570,7 +587,12 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int& ed
         }
 
         if(debug){
-            cout << "node\tedge\ttime2event\ttotalTime\tbranchLength\tevent\tchr\tsite\tcopyNumber\n\t" << g.node_id + 1 << "\t" << edge_id + 1 << "\t" << tevent << "\t" << time << "\t" << blength << "\t  " << MUT_TYPES[e] << "\t" << c + 1 << "\t" << seg_id + 1 << "\t" << g.cn_profile[c % NUM_CHR][seg_id] << endl;
+            cout << "node\tedge\ttime2event\ttotalTime\tbranchLength\tevent\tchr\tsite\tcopyNumber\n\t" << g.node_id + 1 << "\t" << edge_id + 1 << "\t" << tevent << "\t" << time << "\t" << blength << "\t  " << MUT_TYPES[e] << "\t" << c + 1 << "\t" << seg_id + 1 << "\t";
+            if(seg_id >= 0){
+                cout << g.cn_profile[c % NUM_CHR][seg_id] << endl;
+            }else{
+                cout << "N/A" << endl;
+            }               
 
             cout << "GENOME AFTER " << MUT_TYPES[e] << endl;
             g.print_cn();
@@ -971,7 +993,7 @@ void run_test(gsl_rng* r, int mode, string dir, unsigned seed, const ITREE_PARAM
 
 
 // Print data simulated with waiting times
-void print_simulations(int mode, int model, int num_seg, vector<genome>& results, const vector<int>& chr_lengths, map<int, vector<mutation>>& muts, map<int, int>& failed_muts, evo_tree& test_tree, string dir, string prefix, int age, int cn_max, PRINT_LEVEL print_level, gsl_rng* r, int cons, int nerr = 0, int debug = 0){
+void print_simulations(int mode, int model, int num_seg, const vector<double>& rate_consts, vector<genome>& results, const vector<int>& chr_lengths, map<int, vector<mutation>>& muts, map<int, int>& failed_muts, evo_tree& test_tree, string dir, string prefix, int age, int cn_max, PRINT_LEVEL print_level, gsl_rng* r, int cons, int nerr = 0, int debug = 0){
     stringstream sstm;
 
     sstm << dir << prefix << "-cn.txt.gz";
@@ -991,6 +1013,64 @@ void print_simulations(int mode, int model, int num_seg, vector<genome>& results
     int is_rcn = 0;
     cout << "Reading data and calculating CNA regions" << endl;
     vector<vector<vector<int>>> s_info = read_cn(sstm.str(), test_tree.nleaf - 1, num_total_bins, cn_max, is_total, is_rcn, debug);
+
+    // 1) global max_wgd
+    int max_wgd = 0;
+    if(rate_consts[4] > 0.0){
+        vector<int> obs_num_wgd;
+        get_num_wgd(s_info, obs_num_wgd, cn_max, is_total, debug);
+        max_wgd = *max_element(obs_num_wgd.begin(), obs_num_wgd.end());
+    }  
+    cout << "[CHECK OVER SAMPLES] max_wgd = " << max_wgd << endl;
+
+    // 2) global max_chr_change
+    int max_chr_change = 0;
+    if (rate_consts[2] > 0.0 && rate_consts[3] > 0.0){
+        vector<int> chr_max_abs;
+        get_change_chr(s_info, chr_max_abs, cn_max, is_total, debug);
+        max_chr_change = *max_element(chr_max_abs.begin(), chr_max_abs.end());
+    }
+    cout << "[CHECK OVER SAMPLES] max_chr_change = " << max_chr_change << endl;
+
+    // 3) global max_site_change
+    int max_site_change = 0;
+    if (rate_consts[0] > 0.0 && rate_consts[1] > 0.0){
+        vector<int> sample_site_change;
+        get_site_change(s_info, sample_site_change, cn_max, is_total, debug);
+        max_site_change = *max_element(sample_site_change.begin(), sample_site_change.end());
+    }
+    cout << "[CHECK OVER SAMPLES] max_site_change = " << max_site_change << endl << endl;
+
+    // 4) print numbers to a file (per prefix)
+    std::string odir = dir + "events/";
+    std::string mkcmd = "mkdir -p \"" + odir + "\"";
+    int mkret = system(mkcmd.c_str());
+    if (mkret != 0) {
+        std::cerr << "Error: failed to create directory " << odir
+                << " (system() returned " << mkret << ")\n";
+    }
+
+    // // Every prefix has its own parameter file: events/<prefix>-cn_params.txt
+    // std::string param_file = odir + prefix + "-cn_params.txt";
+    // std::ofstream outp(param_file);
+    // if (!outp) {
+    //     std::cerr << "Error: cannot write to " << param_file << std::endl;
+    // } else {
+    //     outp << "max_wgd         = " << max_wgd         << "\n";
+    //     outp << "max_chr_change  = " << max_chr_change  << "\n";
+    //     outp << "max_site_change = " << max_site_change << "\n";
+    //     outp.close();
+    // }
+
+    // Get an excel summary file: events/simulation_cn_summary.txt
+    std::string summary_file = odir + "simulation_cn_summary.txt";
+    std::ofstream outs(summary_file, std::ios::app);
+    if (!outs) {
+        std::cerr << "Error: cannot write to " << summary_file << std::endl;
+    } else {
+        outs << prefix << "\t" << max_wgd << "\t" << max_chr_change << "\t" << max_site_change << "\n";
+        outs.close();
+    }
 
     vector<vector<int>> segs;
     if(mode == 0){
@@ -1188,7 +1268,7 @@ void run_simulations(string tree_file, int mode, int method, const vector<int>& 
         if(method == SIM_TIME){     // applicable for all models
             simulate_samples(r, genomes, muts, failed_muts, test_tree, germline, chr_lengths, rate_consts, sv_size, model, cn_max, debug);
             int num_seg = get_num_seg(chr_lengths);
-            print_simulations(mode, model, num_seg, genomes, chr_lengths, muts, failed_muts, test_tree, dir, prefix, age, cn_max, print_level, r, cons, nerr, debug);
+            print_simulations(mode, model, num_seg, rate_consts, genomes, chr_lengths, muts, failed_muts, test_tree, dir, prefix, age, cn_max, print_level, r, cons, nerr, debug);
         }else{  // model can only be BOUNDA or BOUNDT
             assert(model == BOUNDA || model == BOUNDT);
             int root = Ns + 1;
@@ -1214,7 +1294,7 @@ void run_simulations(string tree_file, int mode, int method, const vector<int>& 
             double del_rate = rate_consts[1];
             if(model == BOUNDA){
                 if(debug){
-                    cout << "\tGetting  rate matrix" << endl;
+                    cout << "\tGetting rate matrix" << endl;
                 }
                 get_rate_matrix_allele_specific(qmat, dup_rate, del_rate, cn_max);
             }else{
