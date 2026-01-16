@@ -49,7 +49,7 @@ public:
   vector<vector<segment>> chrs;
 
   int node_id;    // associated tree node
-  int num_site;   // a genome is divideded into a number of sites for computing CNP
+  int num_site;   // a genome is divided into a number of sites for computing CNP
 
   // the cn profile is calculated wrt to the original unmutated genome
   // map [chr][seg_id] = copy_number

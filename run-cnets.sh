@@ -25,7 +25,7 @@ stime="" # Sampling times (in years) of the tumor regions. If not given, they wi
 
 ####################### Parameters related to mutation generation ##############
 model=2 # Model of evolution. 0: Mk, 1: one-step bounded (total), 2: one-step bounded (haplotype-specific), 3: Poisson
-mode=1  # 0: Simuting genome in fix-sized bins, 1: Simulating genome in segments of random size
+mode=1  # 0: Simulating genome in fix-sized bins, 1: Simulating genome in segments of random size
 seg_max=1000  # Maximum number of segments on the genome
 fix_nseg=1  # Whether or not to fix the number of segments to be seg_max
 method=1  # Simulating method. 0: waiting times, 1: sequences

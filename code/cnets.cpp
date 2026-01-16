@@ -1294,7 +1294,7 @@ void run_simulations(string tree_file, int mode, int method, const vector<int>& 
             double del_rate = rate_consts[1];
             if(model == BOUNDA){
                 if(debug){
-                    cout << "\tGetting rate matrix" << endl;
+                    cout << "\tGetting haplotype-specific rate matrix" << endl;
                 }
                 get_rate_matrix_allele_specific(qmat, dup_rate, del_rate, cn_max);
             }else{

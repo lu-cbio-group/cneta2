@@ -137,11 +137,11 @@ Mk model is an extension of JC69 model on total copy numbers, where duplication 
 
 In bounded model, duplication rate may be different from deletion rate. Once a copy number becomes 0, it cannot be changed. Once a copy number becomes maximum (cn_max), it cannot be increased.
 
-There are three copy-number mutation types (CN_TYPE):
-* CN_TYPE = 0 (ONLY_SEG mode): only use segment level copy-number changes (rates r1 and r2).
-* CN_TYPE = 1 (EXCLUDE_SEG mode): exclude segment level changes, use only chromosome level copy-number changes and allow WGDs (rates r3, r4, r5).
-* CN_TYPE = 2 (EXCLUDE_CHR mode): exclude chromosome level changes, use only segment level copy-number changes and allow WGDs (rates r1, r2, r5).
-* CN_TYPE = 3 (ALL mode): use segment level, chromosome level copy-number changes and also allow WGDs (rates r1 to r5).
+There are three copy-number mutation types (cn_type):
+* cn_type = 0 (ONLY_SEG mode): only use segment level copy-number changes (rates r1 and r2).
+* cn_type = 1 (EXCLUDE_SEG mode): exclude segment level changes, use only chromosome level copy-number changes and allow WGDs (rates r3, r4, r5).
+* cn_type = 2 (EXCLUDE_CHR mode): exclude chromosome level changes, use only segment level copy-number changes and allow WGDs (rates r1, r2, r5).
+* cn_type = 3 (ALL mode): use segment level, chromosome level copy-number changes and also allow WGDs (rates r1 to r5).
 
 There are two ways of simulating mutations along a tree:
 1. Simulating waiting times along a branch (default). A random waiting time is generated from the exponential distribution with mean `1/r`. Here, `r` is the total mutation rate across the genome, obtained by adding up the duplication and deletion rates across all sites in the genome, chromosomal gain or loss rates across all chromosomes and whole genome doubling rate. When a mutation is generated, its type is randomly chosen based on the relative rates of different types of mutational events.
