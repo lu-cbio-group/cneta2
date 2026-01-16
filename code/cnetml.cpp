@@ -898,7 +898,7 @@ double compute_tree_likelihood(evo_tree& tree, map<int, vector<vector<int>>>& vo
     double Ls = 0.0;
     if(lnl_type.model == DECOMP){
       if(debug) cout << "\nComputing the likelihood based on independent Markov chain model " << endl;
-      Ls = get_likelihood_decomp(tree, vobs, obs_decomp, comps, lnl_type);
+      Ls = get_likelihood_decomp(tree, vobs, obs_decomp, comps, lnl_type, debug);
     }else{
       if(debug) cout << "\nComputing the likelihood based on haplotype-specific model " << endl;
       Ls = get_likelihood_revised(tree, vobs, lnl_type);
@@ -926,7 +926,7 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
     if(debug > 0){
         double lnL = 0.0;
         if(model == DECOMP){
-            lnL = get_likelihood_decomp(min_nlnl_tree, vobs, obs_decomp, comps, lnl_type);
+            lnL = get_likelihood_decomp(min_nlnl_tree, vobs, obs_decomp, comps, lnl_type, debug);
         }else{
             lnL = get_likelihood_revised(min_nlnl_tree, vobs, lnl_type);
         }
@@ -1157,9 +1157,9 @@ int main(int argc, char** const argv){
 
     // Set max_* as global variables to avoid adding more parameters in maximization
     int m_max;
-    int max_wgd = 0;
-    int max_chr_change = 0;
-    int max_site_change = 0;
+    int max_wgd = 0;    // maximum number of WGD
+    int max_chr_change = 0; // maximum number of chromosome changes
+    int max_site_change = 0;  // maximum number of segment changes
 
     int cn_max;
     int is_total; // whether or not the input is total copy number
@@ -1238,9 +1238,6 @@ int main(int argc, char** const argv){
     // limits on copy number changes
     ("cn_max", po::value<int>(&cn_max)->default_value(4), "maximum copy number of a segment")
     ("m_max", po::value<int>(&m_max)->default_value(1), "maximum number of copies of a segment in a chromosome")
-    // ("max_wgd", po::value<int>(&max_wgd)->default_value(1), "maximum number of WGD")
-    // ("max_chr_change", po::value<int>(&max_chr_change)->default_value(1), "maximum number of chromosome changes")
-    // ("max_site_change", po::value<int>(&max_site_change)->default_value(2), "maximum number of segment changes")
 
     // types of copy number changes
     ("is_total", po::value<int>(&is_total)->default_value(1), "whether or not the input is total copy number")
@@ -1381,6 +1378,7 @@ int main(int argc, char** const argv){
     vobs = get_obs_vector_by_chr(data, Ns);
 
     if(model == MK)   mu = 1 / Nchar;
+
     vector<double> rates{mu, dup_rate, del_rate, chr_gain_rate, chr_loss_rate, wgd_rate};
 
     if(infer_wgd){
@@ -1391,33 +1389,42 @@ int main(int argc, char** const argv){
 
     // Build the table after reading input file
     if(model == DECOMP){
+        vector<vector<vector<int>>> s_info = read_cn(datafile, Ns, num_total_bins, cn_max, is_total, is_rcn, debug);
+
         // adjust_m_max();
     
         // 1) WGD per sample and global max_wgd
-        int max_wgd = 0;
-        vector<vector<vector<int>>> s_info = read_cn(datafile, Ns, num_total_bins, cn_max, is_total, is_rcn, debug);
-
-        get_num_wgd(s_info, obs_num_wgd, cn_max, is_total, debug);
-        max_wgd = *max_element(obs_num_wgd.begin(), obs_num_wgd.end());
+        if(cn_type != ONLY_SEG){
+            get_num_wgd(s_info, obs_num_wgd, cn_max, is_total, debug);
+            max_wgd = *max_element(obs_num_wgd.begin(), obs_num_wgd.end());
+            if(max_wgd > 0){
+                infer_wgd = 1;
+            }
+        }
 
         // 2) chromosome change per sample (gain and loss) and global max_chr_change
-        int max_chr_change = 0;
-        vector<int> chr_max_abs;
-        get_change_chr(s_info, chr_max_abs, cn_max, is_total, debug);
-        max_chr_change = *max_element(chr_max_abs.begin(), chr_max_abs.end());
+        if(cn_type == EXCLUDE_SEG || cn_type == ALL){ 
+            vector<int> chr_max_abs;
+            get_chr_change(s_info, chr_max_abs, cn_max, is_total, debug);
+            max_chr_change = *max_element(chr_max_abs.begin(), chr_max_abs.end());
+            if(max_chr_change > 0){
+                infer_chr = 1;
+            }
+        }
 
         // 3) site change per sample and global max_site_change
-        int max_site_change = 0;
-        vector<int> sample_site_change;
-        get_site_change(s_info, sample_site_change, cn_max, is_total, debug);
-        max_site_change = *max_element(sample_site_change.begin(), sample_site_change.end());
+        if(cn_type != EXCLUDE_SEG){ 
+            vector<int> sample_site_change;
+            get_site_change(s_info, sample_site_change, cn_max, is_total, debug);
+            max_site_change = *max_element(sample_site_change.begin(), sample_site_change.end());
+        }
 
         cout << "maximum number of WGD events is " << max_wgd << endl;
         cout << "maximum number of chromosome gain/loss events on one chromosome is " << max_chr_change << endl;
         cout << "maximum number of site duplication/deletion events is " << max_site_change << endl;
 
         // TimePoint t_decomp_table_start = now();
-        build_decomp_table(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
+        // build_decomp_table(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
         // TimePoint t_decomp_table_end = now();
         build_decomp_table_withm(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
         // cout << "[TIME] build_decomp_table: "
@@ -1484,6 +1491,7 @@ int main(int argc, char** const argv){
         }
         cout << "Running test on tree " << tree_file << endl;
         TimePoint t_mode1_start = now();
+
         input_data.num_invar_bins = 0;
         input_data.num_total_bins = 0;
         input_data.seg_size = 0;
@@ -1501,6 +1509,7 @@ int main(int argc, char** const argv){
         }
 
         run_test(tree_file, Ns, num_total_bins, Nchar, vobs0, input_data.seg_size, rates, ssize, tolerance, miter, vobs, obs_decomp, comps, lnl_type, opt_type, debug);
+
         TimePoint t_mode1_end = now();
         cout << "[TIME] mode 1 total: "
              << elapsed_seconds(t_mode1_start, t_mode1_end) << " s" << endl;
@@ -1508,9 +1517,11 @@ int main(int argc, char** const argv){
     }else if(mode == 2){
         cout << "Computing the likelihood of a given tree from copy number profile " << endl;
         TimePoint t_mode2_start = now();
+
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
 
         double lnl = compute_tree_likelihood(tree, vobs, obs_decomp, comps, lnl_type, debug);
+
         TimePoint t_mode2_end = now();
         cout << "The log likelihood of the input tree is " << lnl << endl;
         cout << "[TIME] mode 2 total: "
@@ -1520,15 +1531,18 @@ int main(int argc, char** const argv){
     }else if(mode == 3){
         cout << "Computing maximum likelihood of a given tree from copy number profile " << endl;
         TimePoint t_mode3_start = now();
+
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
 
         maximize_tree_likelihood(tree, num_total_bins, ofile, vobs, obs_decomp, comps, lnl_type, opt_type, optim, ssize, debug);
+
         TimePoint t_mode3_end = now();
         cout << "[TIME] mode 3 total: "
              << elapsed_seconds(t_mode3_start, t_mode3_end) << " s" << endl;
     }else{
         cout << "Inferring ancestral states of a given tree from copy number profile " << endl;
         TimePoint t_mode4_start = now();
+
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
 
         if(!incl_all){
@@ -1559,12 +1573,14 @@ int main(int argc, char** const argv){
                reconstruct_joint_ancestral_state(tree, vobs, inodes, model, cn_max, use_repeat, is_total, m_max, ofile);
             }
         }
+
         TimePoint t_mode4_end = now();
         cout << "[TIME] mode 4 total: "
              << elapsed_seconds(t_mode4_start, t_mode4_end) << " s" << endl;
     }
 
     gsl_rng_free(r);
+
     TimePoint t_program_end = now(); 
     cout << "[TIME] Total program time: "
          << elapsed_seconds(t_program_start, t_program_end) << " s" << endl;

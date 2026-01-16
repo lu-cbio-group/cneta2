@@ -1027,7 +1027,7 @@ void print_simulations(int mode, int model, int num_seg, const vector<double>& r
     int max_chr_change = 0;
     if (rate_consts[2] > 0.0 && rate_consts[3] > 0.0){
         vector<int> chr_max_abs;
-        get_change_chr(s_info, chr_max_abs, cn_max, is_total, debug);
+        get_chr_change(s_info, chr_max_abs, cn_max, is_total, debug);
         max_chr_change = *max_element(chr_max_abs.begin(), chr_max_abs.end());
     }
     cout << "[CHECK OVER SAMPLES] max_chr_change = " << max_chr_change << endl;

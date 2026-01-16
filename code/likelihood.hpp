@@ -239,7 +239,7 @@ double get_likelihood_chr_decomp(map<int, vector<vector<int>>>& vobs, OBS_DECOMP
 
 // Computing likelihood when WGD and chr gain/loss are incorporated
 // Assume likelihood is for haplotype-specific information
-double get_likelihood_decomp(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type);
+double get_likelihood_decomp(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int debug = 0);
 
 // Get the likelihood of the tree from likelihood table of state combinations
 double extract_tree_lnl_decomp(vector<vector<double>>& L_sk_k, const set<vector<int>>& comps, int Ns);

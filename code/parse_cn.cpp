@@ -257,7 +257,7 @@ void get_num_wgd(const vector<vector<vector<int>>>& s_info, vector<int>& obs_num
 }
 
 
-void get_change_chr(const vector<vector<vector<int>>>& s_info, vector<int>& chr_max_abs, int cn_max, int is_total, int debug){
+void get_chr_change(const vector<vector<vector<int>>>& s_info, vector<int>& chr_max_abs, int cn_max, int is_total, int debug){
     cout << "\nGetting the potential number of chromosome changes for each sample" << endl;
     vector<vector<int>> obs_change_chr;
     vector<int> chr_gain_max, chr_loss_min;
@@ -595,11 +595,11 @@ int get_segs_cn(vector<vector<vector<int>>>& s_info, vector<vector<int>>& segs, 
 
     if(input_prop.model == DECOMP){
         get_num_wgd(s_info, input_data.obs_num_wgd, cn_max, input_prop.is_total, debug);
-        // get_change_chr(s_info, input_data.obs_change_chr, cn_max, input_prop.is_total, debug);
+        // get_chr_change(s_info, input_data.obs_change_chr, cn_max, input_prop.is_total, debug);
         vector<vector<int>> obs_change_chr;
         vector<int> chr_gain_max, chr_loss_min, chr_max_abs;
         vector<double> sample_ploidy;
-        get_change_chr(s_info, chr_max_abs, cn_max, input_prop.is_total, debug);
+        get_chr_change(s_info, chr_max_abs, cn_max, input_prop.is_total, debug);
     }
 
     get_sample_mcn(s_info, input_data.sample_max_cn, cn_max, input_prop.is_total, debug);
@@ -636,6 +636,7 @@ vector<vector<int>> read_data_var_regions(const string& filename, const INPUT_PR
 }
 
 
+// used in tree building for more comprehensive data processing
 map<int, vector<vector<int>>> read_data_var_regions_by_chr(const string& filename, const INPUT_PROPERTY& input_prop, INPUT_DATA& input_data, const string& seg_file, int debug){
     cout << "\nReading data and group regions by chromosome" << endl;
 

@@ -50,7 +50,7 @@ int allele_cn_to_state(int cnA, int cnB);
 void get_num_wgd(const vector<vector<vector<int>>>& s_info, vector<int>& obs_num_wgd, int cn_max, int is_total, int debug = 0);
 
 // Find the potential number of chromosome changes for each sample
-void get_change_chr(const vector<vector<vector<int>>>& s_info, vector<int>& chr_max_abs, int cn_max, int is_total, int debug = 0);
+void get_chr_change(const vector<vector<vector<int>>>& s_info, vector<int>& chr_max_abs, int cn_max, int is_total, int debug = 0);
 
 // Find the potential number of site changes for each sample
 void get_site_change(const vector<vector<vector<int>>>& s_info, vector<int>&sample_site_change, int cn_max, int is_total, int debug = 0);

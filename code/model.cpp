@@ -18,7 +18,7 @@ bool check_matrix_row_sum(double *mat, int nstate){
 
 
 void check_pmats_blen2(int nstate, const vector<double>& blens, const vector<double*> pmat_per_blen){
-  cout << "check pmats" << endl;
+  cout << "check P matrix" << endl;
   // find index of bli and blj in blens
   double bli = blens[1];
   double blj = blens[2];
@@ -38,9 +38,9 @@ void check_pmats_blen2(int nstate, const vector<double>& blens, const vector<dou
   double* pbli = pmat_per_blen[idx_bli];
   double* pblj = pmat_per_blen[idx_blj];
 
-  cout << "Get Pmatrix for branch length " << bli << "\t" << blens[idx_bli] << endl;
+  cout << "Print P matrix for branch length " << bli << "\t" << blens[idx_bli] << endl;
   r8mat_print(nstate, nstate, pmat_per_blen[idx_bli], "  P matrix:");
-  cout << "Get Pmatrix for branch length " << blj << "\t" << blens[idx_blj] << endl;
+  cout << "Print P matrix for branch length " << blj << "\t" << blens[idx_blj] << endl;
   r8mat_print(nstate, nstate, pmat_per_blen[idx_blj], "  P matrix:");
 
 }
@@ -67,7 +67,7 @@ void check_pmats_blen2(int nstate, const vector<double>& blens, const vector<dou
 
 
 void get_rate_matrix_bounded(double* m, const double& dup_rate, const double& del_rate, const int& cn_max){
-    int debug = 0;
+    int debug = 0;   // for debugging internally
     int ncol = cn_max + 1;
 
     for (unsigned i = 0; i < ncol; ++ i){
@@ -90,6 +90,7 @@ void get_rate_matrix_bounded(double* m, const double& dup_rate, const double& de
 }
 
 
+// rate matrix for haplotype-specific CNAs
 void get_rate_matrix_allele_specific(double* m, const double& dup_rate, const double& del_rate, const int& cn_max){
     int debug = 0;
     int ncol = (cn_max + 1) * (cn_max + 2) / 2;
@@ -117,7 +118,7 @@ void get_rate_matrix_allele_specific(double* m, const double& dup_rate, const do
     c = r - (cn_max + 1);
     m[r + c*ncol] = del_rate;
     m[r + r*ncol] = 0 - del_rate;
-    // middle rows with two possiblities
+    // middle rows with two possibilities
     for(int j = cn_max; j > 1; j--){
         r = ncol - j;
         if(debug) cout << "Filling row " << r << endl;
@@ -128,7 +129,6 @@ void get_rate_matrix_allele_specific(double* m, const double& dup_rate, const do
 
         s++;
     }
-
 
     int tcn = 0;    // total copy number
     // For entries with at least one zero, filling bottom up
@@ -182,7 +182,7 @@ void get_rate_matrix_allele_specific(double* m, const double& dup_rate, const do
 }
 
 
-// rate matrix for segment-level CNAs
+// rate matrix for segment-level CNAs using independent Markov chain model
 void get_rate_matrix_site_change(double* m, const double& dup_rate, const double& del_rate, const int& site_change_max){
     int debug = 0;
     int ncol = 2 * site_change_max + 1;
@@ -207,7 +207,7 @@ void get_rate_matrix_site_change(double* m, const double& dup_rate, const double
 
     if(debug){
         std::cout << m << std::endl;
-        r8mat_print(ncol, ncol, m, "  A:");
+        r8mat_print(ncol, ncol, m, "  Site-level P matrix:");
     }
 }
 
@@ -237,7 +237,7 @@ void get_rate_matrix_chr_change(double* m, const double& chr_gain_rate, const do
 
     if(debug){
         std::cout << m << std::endl;
-        r8mat_print(ncol, ncol, m, "  A:");
+        r8mat_print(ncol, ncol, m, "  Chr-level P matrix:");
     }
 }
 
@@ -259,7 +259,7 @@ void get_rate_matrix_wgd(double* m, const double& wgd_rate, const int& wgd_max){
 
     if(debug){
         std::cout << m << std::endl;
-        r8mat_print(ncol, ncol, m, "  A:");
+        r8mat_print(ncol, ncol, m, "  WGD P matrix:");
     }
 }
 
@@ -307,8 +307,7 @@ void get_transition_matrix_bounded(double* q, double* p, const double& t, const 
 }
 
 
-
-// not used in practice to save effeorts in function call
+// not used in practice to save efforts in function call
 double get_transition_prob_bounded(double* p, const int& sk, const int& sj, const int& n){
     int debug = 0;
 
@@ -324,6 +323,7 @@ double get_transition_prob_bounded(double* p, const int& sk, const int& sj, cons
 }
 
 
+// a tuple of copy number changes with 3 parameters indicating WGD, chromosome gain/loss, and segment duplication/deletion
 void insert_tuple(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int i, int j, int k){
     int sum = pow(2, i + 1) + j + k;
     // cout << i << "\t" << j << "\t" << k << "\t" << sum << endl;
@@ -336,6 +336,7 @@ void insert_tuple(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& co
 
 
 // Get possible combinations for a total copy number with ordering of different types of events considered (at most 1 WGD)
+// Assuming at most 1 WGD event
 void insert_tuple_order_withm(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int m1, int m2, int i, int j, int k, int j0, int k0){
     int sum = pow(2, i + 1) + m1 * j + k + 2 * m2 * j0 + 2 * k0;
     // cout << i << "\t" << j << "\t" << k << "\t" << sum << endl;
@@ -532,7 +533,7 @@ void build_decomp_table_withm(map<int, set<vector<int>>>& decomp_table, set<vect
     }
     if(is_total){
         int m1_max, m2_max;  // No need to consider m_max when there is no chromosome change
-        // No need to consider addtional terms when no WGD occurs.
+        // No need to consider additional terms when no WGD occurs.
         for(int j = 0; j <= max_chr_change; j++){
             for(int k = 0; k <= max_site_change; k++){
                 if(j == 0) m1_max = 0; else m1_max = m_max;

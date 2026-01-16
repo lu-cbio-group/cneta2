@@ -87,7 +87,7 @@ vector<vector<double>> initialize_lnl_table_decomp(vector<int>& obs, OBS_DECOMP&
         if(infer_chr && chr > 0){
             num_change = obs_decomp.obs_change_chr[i][chr-1];
         }
-        if(!is_total){    // changing input allel-specific copy number to total
+        if(!is_total){    // changing input haplotype-specific copy number to total
             cn = state_to_total_cn(obs[i], cn_max);
         }
         if(debug) cout << "\nStart filling likelihood table for sample "  << i + 1 << " chromosome " << chr  << " copy number " << cn << endl;
@@ -102,7 +102,7 @@ vector<vector<double>> initialize_lnl_table_decomp(vector<int>& obs, OBS_DECOMP&
                 cout << endl;
             }
             int alpha = c[0];  // wgd component
-            // If a sample has one WGD event, the correponding component must be the same
+            // If a sample has one WGD event, the corresponding component must be the same
             if(infer_wgd && alpha != obs_decomp.obs_num_wgd[i]) continue;
 
             // WGD may occur before, at least one chromosome gain before or after WGD
@@ -886,8 +886,7 @@ double get_likelihood_revised(evo_tree& rtree, map<int, vector<vector<int>>>& vo
 
 // Computing likelihood when WGD and chr gain/loss are incorporated
 // Assume likelihood is for haplotype-specific information
-double get_likelihood_decomp(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type){
-  int debug = 0;
+double get_likelihood_decomp(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int debug){
   if(debug) cout << "\tget_likelihood from multiple chains" << endl;
 
   // start calculating time
@@ -1088,7 +1087,7 @@ double get_likelihood_decomp(evo_tree& rtree, map<int, vector<vector<int>>>& vob
   time_decomp_valid += dt_valid; // only update time for valid calls
   ++cnt_decomp_valid; // only update count for valid calls
 
-  cout << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
+  if(debug)  << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
   return logL;
 }
 
