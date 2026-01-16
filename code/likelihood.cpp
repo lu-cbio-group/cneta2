@@ -1087,7 +1087,7 @@ double get_likelihood_decomp(evo_tree& rtree, map<int, vector<vector<int>>>& vob
   time_decomp_valid += dt_valid; // only update time for valid calls
   ++cnt_decomp_valid; // only update count for valid calls
 
-  if(debug)  << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
+  if(debug > 1)  cout << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
   return logL;
 }
 
