@@ -20,9 +20,6 @@ using timing::now;
 using timing::elapsed_seconds;
 
 
-// using namespace std;
-
-
 typedef std::numeric_limits<double> dbl;
 
 enum OPT_METHOD {GSL, BFGS};
@@ -33,6 +30,9 @@ enum SEARCH_METHOD {EVOLUTION, HILLCLIMB, EXHAUST};
 static const int NUM_TREES[] = {1, 1, 3, 15, 105, 945, 10395, 135135, 2027025, 34459425, 654729075};
 // The maximum number of samples in the tree which allows exhaustive search
 const int LARGE_TREE = 11;
+
+
+/**************** parameters for hill climbing ****************/
 // The number of trees to search before terminating
 const int MAX_TREE = 100;
 // The maximum number of trees to perturb
@@ -94,9 +94,25 @@ evo_tree perturb_tree_set(vector<evo_tree>& trees, gsl_rng* r, long unsigned (*f
 }
 
 
-// Generate initial set of unique trees, at most Npop trees, either reading from files or generating random coalescence trees
+/** 
+ * @brief: Generate initial set of unique trees, at most Npop trees, either reading from files or generating random coalescence trees 
+ * TODO: procedure can be improved for tree listing
+ * @param init_tree: indicator of whether to read initial trees from files
+ * @param dir_itrees: directory of initial trees
+ * @param Ns: number of samples
+ * @param Npop: number of trees to generate
+ * @param rates: mutation rates for different types of mutations
+ * @param tobs: sampling times of different samples
+ * @param max_tobs: maximum sampling time
+ * @param age: patient age
+ * @param max_tree_num: maximum number of initial trees to generate
+ * @param cons: indicator of whether to use time constraints
+ * @param itree_param: parameters for generating coalescence trees
+ * @param debug: debug flag
+ * @return vector<evo_tree>: 
+ */
+// 
 vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int Npop, const vector<double>& rates, const vector<double>& tobs, double max_tobs, int age, int max_tree_num, int cons, const ITREE_PARAM& itree_param, int debug){
-    // int debug = 0;
     vector<evo_tree> trees;
 
     if(init_tree){     // read MP trees from files
@@ -213,7 +229,16 @@ vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int
 }
 
 
-// Finding n trees with higher likelihood
+
+
+/** 
+ * @brief: Finding n trees with higher likelihood             
+ * @param trees:
+ * @param lnLs:
+ * @param index:    
+ * @param n:
+ * @return vector<evo_tree>:    
+ */
 // There may be multiple trees with the same likelihood, getting the one with maximum score (log likelihood)
 // access issues with pointers exist
 vector<evo_tree> find_best_trees(const vector<evo_tree>& trees, const vector<double>& lnLs, vector<int>& index, int n){
@@ -232,9 +257,30 @@ vector<evo_tree> find_best_trees(const vector<evo_tree>& trees, const vector<dou
 
 
 
+/** 
+ * @brief: Exhaustive search of all possible tree topologies, with multiple optimizations for each tree
+ * @param min_nlnl_tree: tree with minimum negative log likelihood
+ * @param real_tstring: string representation of the real tree
+ * @param Ns: number of samples
+ * @param Ngen: number of optimizations for each tree
+ * @param init_tree: indicator of whether to read initial trees from files
+ * @param dir_itrees: directory of initial trees
+ * @param rates: mutation rates for different types of mutations
+ * @param ssize: step size for optimization
+ * @param optim: optimization method
+ * @param max_static: maximum number of static optimizations before terminating optimization for one tree
+ * @param itree_param: parameters for generating coalescence trees
+ * @param vobs: observed copy number profiles
+ * @param vobs_change: observed decomposed copy number changes
+ * @param obs_decomp: observed decomposition parameters
+ * @param comps: set of feasible copy number profiles
+ * @param lnl_type: likelihood computation parameters
+ * @param opt_type: optimization parameters
+ * @param debug: debug flag
+ */
 // Only feasible for trees with fewer than 12 samples
 // Do maximization multiple times (determined by Ngen), since numerical optimizations are local hill-climbing algorithms and may converge to a local peak
-void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, int max_static, const ITREE_PARAM& itree_param, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
+void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, int max_static, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
     // initialize candidate tree set
     if(Ns > LARGE_TREE){
         cout << "\nFor data with larger than " << LARGE_TREE << " samples, it is very slow!" << endl;
@@ -284,7 +330,7 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
                 max_likelihood(init_trees[i], vobs, lnl_type, opt_type, nlnl, ssize);
             }else{
                 // init_trees[i] has already been the same as best_tree
-                max_likelihood_BFGS(init_trees[i], vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
+                max_likelihood_BFGS(init_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
             }
             // —— DEBUG, check if nlnl is NaN or inf ——
             if(!std::isfinite(nlnl)){
@@ -344,7 +390,7 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
 // Npop determines the maximum number of unique trees to try
 // assume nni5 = true
 // have to update knodes when topolgy is changed
-void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, const ITREE_PARAM& itree_param, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, int debug){
+void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, int debug){
     // int debug = 0;
     double max_tobs = lnl_type.max_tobs;
     int age = lnl_type.patient_age;
@@ -372,7 +418,7 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
     for(int i = 0; i < num2init; ++i){
         double nlnl = MAX_NLNL;
         if(debug)  cout << "\noptimize tree " << i + 1 << ": " << trees[i].make_newick() << endl;
-        if(optim == GSL){  // use gsl libaries (deprecated)
+        if(optim == GSL){  // use gsl libraries (deprecated)
             while(!(nlnl < MAX_NLNL)){
               nlnl = MAX_NLNL;
               max_likelihood(trees[i], vobs, lnl_type, opt_type, nlnl, ssize);
@@ -380,7 +426,7 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
         }else{
             while(!(nlnl < MAX_NLNL)){
               nlnl = MAX_NLNL;
-              max_likelihood_BFGS(trees[i], vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
+              max_likelihood_BFGS(trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
             }
         }
         trees[i].score = -nlnl;
@@ -420,7 +466,7 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
             // trees2[i].print();
             cout << trees2[i].make_newick() << endl;
         }
-        do_hill_climbing_NNI(trees2[i], vobs, obs_decomp, comps, lnl_type, opt_type, loglh_epsilon, speed_nni);
+        do_hill_climbing_NNI(trees2[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, loglh_epsilon, speed_nni);
         trees2[i].delete_neighbors();
 
         lnLs2[i] = trees2[i].score;
@@ -464,7 +510,7 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
         do_random_NNIs(ttree, r, cons);
         lnl_type.knodes = get_inodes_bottom_up(ttree, debug);
 
-        do_hill_climbing_NNI(ttree, vobs, obs_decomp, comps, lnl_type, opt_type, loglh_epsilon, speed_nni);
+        do_hill_climbing_NNI(ttree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, loglh_epsilon, speed_nni);
         ttree.delete_neighbors();
 
         // evo_tree btree = find_best_trees(trees3, lnLs3, index3, 1)[0];
@@ -519,7 +565,7 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
 
 
 // Using genetic algorithm to search tree space (TODO: optimize)
-void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, int max_static, const ITREE_PARAM& itree_param, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
+void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, int max_static, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
   //cout << "Running evolutionary algorithm" << endl;
   // create initial population of trees. Sample from coalescent trees
   double max_tobs = lnl_type.max_tobs;
@@ -557,7 +603,7 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
         if(optim == GSL){
            max_likelihood(new_trees[i], vobs, lnl_type, opt_type, nlnl, ssize);
         }else{
-           max_likelihood_BFGS(new_trees[i], vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
+           max_likelihood_BFGS(new_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
         }
         new_trees[i].score = -nlnl;
         // cout << "otree tobs " << otree.tobs[0] << endl;
@@ -589,7 +635,7 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
         	    max_likelihood(new_trees[Npop + i], vobs, lnl_type, opt_type, nlnl, ssize);
             }else{
                 // new_trees[Npop + i].print();
-                max_likelihood_BFGS(new_trees[Npop + i], vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
+                max_likelihood_BFGS(new_trees[Npop + i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
             }
         	new_trees[Npop + i].score = -nlnl;
             // cout << "otree tobs " << otree.tobs[0] << endl;
@@ -699,7 +745,7 @@ vector<int> compute_mutation_rates(evo_tree& tree, int cn_type, int num_total_bi
 
 
 // Run the program on a given tree with different modes of estimation (branch length constrained or not, mutation rate estimated or not)
-void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, const vector<vector<int>>& vobs0, int Nchar0, const vector<double>& rates, double ssize, double tolerance, double miter, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
+void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, const vector<vector<int>>& vobs0, int Nchar0, const vector<double>& rates, double ssize, double tolerance, double miter, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
     // MLE testing
     //static const int arr1[] = {8,5, 8,1, 9,2, 9,3, 10,9, 10,8, 11,4, 11,10, 7,11, 7,6 };
     //vector<int> e (arr1, arr1 + sizeof(arr1) / sizeof(arr1[0]) );
@@ -712,7 +758,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     int correct_bias = lnl_type.correct_bias;
     int is_total = lnl_type.is_total;
     int cons = lnl_type.cons;
-    int maxj = opt_type.maxj;
+    int estmu = opt_type.estmu;
     vector<double> tobs = opt_type.tobs;
 
     // read in true tree
@@ -739,8 +785,8 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     cout << "\n\n### Running optimisation: branches free, mu fixed" << endl;
     nlnl = 0;
     cons = 0;
-    maxj = 0;
-    max_likelihood_BFGS(test_tree, vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
+    estmu = 0;
+    max_likelihood_BFGS(test_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
     
     if (cn_type == ALL) {
@@ -777,8 +823,8 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     restore_mutation_rates(test_tree, rates);
     nlnl = 0;
     cons = 0;
-    maxj = 1;
-    max_likelihood_BFGS(test_tree, vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
+    estmu = 1;
+    max_likelihood_BFGS(test_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
    
     if (cn_type == ALL) {
@@ -816,8 +862,8 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     restore_mutation_rates(test_tree, rates);
     nlnl = 0;
     cons = 1;
-    maxj = 0;
-    max_likelihood_BFGS(test_tree, vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
+    estmu = 0;
+    max_likelihood_BFGS(test_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
 
     if (cn_type == ALL) {
@@ -855,8 +901,8 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     restore_mutation_rates(test_tree, rates);
     nlnl = 0;
     cons = 1;
-    maxj = 1;
-    max_likelihood_BFGS(test_tree, vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
+    estmu = 1;
+    max_likelihood_BFGS(test_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
 
     if (cn_type == ALL) {
@@ -892,13 +938,14 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
 
 
 // Compute the likelihood of a tree given the observed copy number profile
-double compute_tree_likelihood(evo_tree& tree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int debug){
+double compute_tree_likelihood(evo_tree& tree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int debug){
     lnl_type.knodes = get_inodes_bottom_up(tree, debug);
 
     double Ls = 0.0;
     if(lnl_type.model == DECOMP){
       if(debug) cout << "\nComputing the likelihood based on independent Markov chain model " << endl;
-      Ls = get_likelihood_decomp(tree, vobs, obs_decomp, comps, lnl_type, debug);
+      // Ls = get_likelihood_decomp(tree, vobs, obs_decomp, comps, lnl_type, debug);
+      Ls = get_likelihood_change(tree, vobs_change, obs_decomp, lnl_type, debug);
     }else{
       if(debug) cout << "\nComputing the likelihood based on haplotype-specific model " << endl;
       Ls = get_likelihood_revised(tree, vobs, lnl_type);
@@ -908,14 +955,14 @@ double compute_tree_likelihood(evo_tree& tree, map<int, vector<vector<int>>>& vo
 }
 
 
-void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofile, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int maxj, int debug){
+void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofile, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int estmu, int debug){
     int cn_type = lnl_type.cn_type;
     int model = lnl_type.model;
 
     cout.precision(PRINT_PRECISION);
     min_nlnl_tree.print();
 
-    if(maxj){
+    if(estmu){
         cout << "Estimated mutation rates: " << endl;
     }else{
         cout << "Pre-specified mutation rates: " << endl;
@@ -926,7 +973,8 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
     if(debug > 0){
         double lnL = 0.0;
         if(model == DECOMP){
-            lnL = get_likelihood_decomp(min_nlnl_tree, vobs, obs_decomp, comps, lnl_type, debug);
+            // lnL = get_likelihood_decomp(min_nlnl_tree, vobs, obs_decomp, comps, lnl_type, debug);
+            lnL = get_likelihood_change(min_nlnl_tree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             lnL = get_likelihood_revised(min_nlnl_tree, vobs, lnl_type);
         }
@@ -980,7 +1028,7 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
 
 
 // Given a tree, compute its maximum likelihood
-void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& ofile, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int optim, double ssize, int debug){
+void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& ofile, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int optim, double ssize, int debug){
     TimePoint t_max_start = now();
     int outer_iter = 0;
     lnl_type.knodes = get_inodes_bottom_up(tree, debug);
@@ -1006,7 +1054,7 @@ void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& 
             cout << "[TIME] BFGS outer iteration " << outer_iter << " starts\n";
             TimePoint t_iter_start = now();
             nlnl = MAX_NLNL;
-            max_likelihood_BFGS(tree, vobs, obs_decomp, comps, lnl_type, opt_type, nlnl);
+            max_likelihood_BFGS(tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
             TimePoint t_iter_end = now();
             cout << "[TIME] BFGS outer iteration " << outer_iter
                  << " took " << elapsed_seconds(t_iter_start, t_iter_end)
@@ -1015,7 +1063,7 @@ void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& 
     }
     cout << "\nMinimised negative log likelihood: " << nlnl << endl;
     TimePoint t_write_start = now();
-    write_min_nlnl_tree(tree, num_total_bins, ofile, vobs, obs_decomp, comps, lnl_type, opt_type.maxj, debug);
+    write_min_nlnl_tree(tree, num_total_bins, ofile, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type.estmu, debug);
     TimePoint t_write_end = now();
     cout << "[TIME] write_min_nlnl_tree: "
          << elapsed_seconds(t_write_start, t_write_end) << " s\n";
@@ -1026,39 +1074,39 @@ void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& 
 
 
 // Build ML tree from given CNPs
-void find_ML_tree(string real_tstring, int num_total_bins, string ofile, int tree_search, int Ns, int Npop, int Ngen, int init_tree, string dir_itrees, int max_static, double ssize, int optim, const vector<double>& rates, const ITREE_PARAM& itree_param, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, int debug){
+void find_ML_tree(string real_tstring, int num_total_bins, string ofile, int tree_search, int Ns, int Npop, int Ngen, int init_tree, string dir_itrees, int max_static, double ssize, int optim, const vector<double>& rates, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, int debug){
     evo_tree min_nlnl_tree;
     int cn_type = lnl_type.cn_type;
     int age = lnl_type.patient_age;
     int model = lnl_type.model;
-    int maxj = opt_type.maxj;
+    int estmu = opt_type.estmu;
     vector<double>& tobs = opt_type.tobs;
     double tolerance = opt_type.tolerance;
     int miter = opt_type.miter;
 
     if(tree_search == EVOLUTION){
         cout << "\nSearching tree space with evolutionary algorithm" << endl;
-        do_evolutionary_algorithm(min_nlnl_tree, Ns, Npop, Ngen, init_tree, dir_itrees, rates, ssize, optim, max_static, itree_param, vobs, obs_decomp, comps, lnl_type, opt_type, debug);
+        do_evolutionary_algorithm(min_nlnl_tree, Ns, Npop, Ngen, init_tree, dir_itrees, rates, ssize, optim, max_static, itree_param, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, debug);
     }else if(tree_search == HILLCLIMB){
         cout << "\nSearching tree space with hill climbing algorithm" << endl;
         if(Ns < MIN_NSAMPLE_HCLIMB){
             cout << "Hill climbing only support trees with at least 5 samples!" << endl;
             exit(EXIT_FAILURE);
         }
-        do_hill_climbing(min_nlnl_tree, Ns, Npop, Ngen, init_tree, dir_itrees, rates, ssize, optim, itree_param, vobs, obs_decomp, comps, lnl_type, opt_type, loglh_epsilon, speed_nni, debug);
+        do_hill_climbing(min_nlnl_tree, Ns, Npop, Ngen, init_tree, dir_itrees, rates, ssize, optim, itree_param, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, loglh_epsilon, speed_nni, debug);
     }else{
         cout << "\nSearching tree space exhaustively (only feasible for small trees)" << endl;
         // cout << "Parameters: " << Ngen << "\t" << Ns << "\t" << Nchar << "\t" << num_invar_bins << "\t" << model << "\t" << cons << "\t" << cn_max << "\t" << only_seg << "\t" << correct_bias << "\t" << is_total << endl;
-        do_exhaustive_search(min_nlnl_tree, real_tstring, Ns, Ngen, init_tree, dir_itrees, rates, ssize, optim, max_static, itree_param, vobs, obs_decomp, comps, lnl_type, opt_type, debug);
+        do_exhaustive_search(min_nlnl_tree, real_tstring, Ns, Ngen, init_tree, dir_itrees, rates, ssize, optim, max_static, itree_param, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, debug);
     }
 
     if(debug) cout << "Writing results ......" << endl;
     // Write out the top tree
-    write_min_nlnl_tree(min_nlnl_tree, num_total_bins, ofile, vobs, obs_decomp, comps, lnl_type, maxj, debug);
+    write_min_nlnl_tree(min_nlnl_tree, num_total_bins, ofile, vobs, vobs_change, obs_decomp, comps, lnl_type, estmu, debug);
 }
 
 
-void print_desc(int cons, int maxj, int correct_bias, int use_repeat, int optim, int model, int is_total, int age, int cn_type){
+void print_desc(int cons, int estmu, int correct_bias, int use_repeat, int optim, int model, int is_total, int age, int cn_type){
     if(is_total){
         cout << "\nTaking total copy number as input" << endl;
     }else{
@@ -1073,7 +1121,7 @@ void print_desc(int cons, int maxj, int correct_bias, int use_repeat, int optim,
         // cout << "\nThe age of patient is assumed to be: " << age << endl;
     }
 
-    if(!maxj){
+    if(!estmu){
         cout << "\nAssuming mutation rate is fixed " << endl;
     }else{
         cout << "\nEstimating mutation rates" << endl;
@@ -1155,18 +1203,12 @@ int main(int argc, char** const argv){
     int Ns;   // number of samples
     int age = MAX_AGE;
 
-    // Set max_* as global variables to avoid adding more parameters in maximization
-    int m_max;
-    int max_wgd = 0;    // maximum number of WGD
-    int max_chr_change = 0; // maximum number of chromosome changes
-    int max_site_change = 0;  // maximum number of segment changes
-
     int cn_max;
     int is_total; // whether or not the input is total copy number
 
     int model;
     int cons;
-    int maxj;
+    int estmu;
 
     int use_repeat;   // whether or not to use repeated site patterns, used in get_likelihood_chr*
     int correct_bias; // Whether or not to correct acquisition bias, used in get_likelihood_*
@@ -1182,12 +1224,25 @@ int main(int argc, char** const argv){
 
     /********* derived from input ***********/
     map<int, vector<vector<int>>> vobs;   // CNP for each site, grouped by chr
+    map<int, vector<vector<CN_CHANGE>>> vobs_change;   // copy number changes for each site, grouped by chr
     vector<double> tobs; // input times for each sample, should be the same for all trees, defined when reading input, used in likelihood computation
     double max_tobs;
 
-    vector<int> obs_num_wgd;  // possible number of WGD events
-    vector<vector<int>> obs_change_chr;
+    vector<int> sample_num_wgd;  // estimated number of WGD events from observed copy numbers for each sample
+    vector<vector<int>> sample_change_chr;  // estimated change of chromosome gain/loss from observed copy numbers for each sample
+    vector<int> chr_max_change;  
+    vector<vector<int>> sample_change_site;  // estimated change of site duplication/deletion from observed copy numbers for each sample    
+    vector<int> site_max_change;
     vector<int> sample_max_cn;
+    vector<double> sample_avg_cn;  // estimated sample ploidy
+    vector<map<int, vector<int>>> sample_chr_cn; // chromosome copy numbers grouped by chr for each sample
+
+    // Set max_* as global variables to avoid adding more parameters in maximization
+    int m_max;   // maximum number of site copies before chromosome gain/loss
+    int max_wgd = 0;    // maximum number of WGD
+    int max_chr_change = 0; // maximum number of chromosome changes
+    int max_site_change = 0;  // maximum number of site (segment/bin) changes
+
 
     map<int, set<vector<int>>> decomp_table;  // possible state combinations for observed copy numbers
     set<vector<int>> comps;
@@ -1232,18 +1287,18 @@ int main(int argc, char** const argv){
 
     ("model,d", po::value<int>(&model)->default_value(2), "model of evolution (0: Mk, 1: one-step bounded (total), 2: one-step bounded (haplotype-specific), 3: independent Markov chains)")
     ("constrained", po::value<int>(&cons)->default_value(1), "constraints on branch length (0: none, 1: fixed total time)")
-    ("estmu,u", po::value<int>(&maxj)->default_value(0), "estimation of mutation rate (0: mutation rate fixed to be the given value, 1: estimating mutation rate)")
+    ("estmu,u", po::value<int>(&estmu)->default_value(0), "estimation of mutation rate (0: mutation rate fixed to be the given value, 1: estimating mutation rate)")
     ("optim", po::value<int>(&optim)->default_value(1), "method of optimization (0: Simplex, 1: L-BFGS-B)")
 
     // limits on copy number changes
-    ("cn_max", po::value<int>(&cn_max)->default_value(4), "maximum copy number of a segment")
+    ("cn_max", po::value<int>(&cn_max)->default_value(4), "maximum copy number of a segment allowed by the program")
     ("m_max", po::value<int>(&m_max)->default_value(1), "maximum number of copies of a segment in a chromosome")
 
     // types of copy number changes
     ("is_total", po::value<int>(&is_total)->default_value(1), "whether or not the input is total copy number")
     ("is_rcn", po::value<int>(&is_rcn)->default_value(0), "whether or not the input is relative copy number")
     ("is_bin", po::value<int>(&is_bin)->default_value(1), "whether or not the input copy number is for each bin. If not, the input copy number is read as it is. Or else, consecutive bins will be merged")
-    ("incl_all", po::value<int>(&incl_all)->default_value(1), "whether or not to include all the input copy numbers without further propressing")
+    ("incl_all", po::value<int>(&incl_all)->default_value(1), "whether or not to include all the input copy numbers for phylogeny inference")
 
     ("cn_type", po::value<int>(&cn_type), "Type of copy number changes to consider (0: only segment-level mutations, 1: only chromosome gain/loss and whole genome doubling, 2: only duplication/deletion and whole genome doubling, 3: all types of mutations)")
 
@@ -1279,6 +1334,7 @@ int main(int argc, char** const argv){
     ("scale_tobs", po::value<double>(&scale_tobs)->default_value(1.0), "scale factor to get lower limit of root age when doing constrained optimization (BFGS) based on maximimum sample time difference.")
 
     // mutation rates
+    // TODO: add rate unit 
     ("mu,x", po::value<double>(&mu)->default_value(0.02), "overall mutation rate")
     ("dup_rate", po::value<double>(&dup_rate)->default_value(0.001), "duplication rate")
     ("del_rate", po::value<double>(&del_rate)->default_value(0.001), "deletion rate")
@@ -1337,26 +1393,49 @@ int main(int argc, char** const argv){
     }
     cout << endl;
 
+    print_desc(cons, estmu, correct_bias, use_repeat, optim, model, is_total, age, cn_type);
+
+    INPUT_PROPERTY input_property{Ns, cn_max, model, is_total, is_rcn, is_bin, incl_all};
+    print_input_property(input_property);
+
+    INPUT_DATA input_data{num_invar_bins, num_total_bins, Nchar, sample_num_wgd, sample_change_chr, sample_change_site, chr_max_change, site_max_change, sample_max_cn, sample_avg_cn, sample_chr_cn};
+    if(debug > 1) cout << "Input data before reading files: " << input_data << std::endl;
+
+
     map<int, vector<vector<int>>> data;
+    map<int, vector<vector<int>>> data_change;  // for copy number changes
+
     cout << "\nReading input copy numbers" << endl;
     if(is_bin){  // site as segment
-        cout << "   Merging consecutive bins in the input" << endl;
+        cout << "Merging consecutive bins in the input" << endl;
     }else{
         if(incl_all){
-            cout << "   Using all input segments " << endl;
+            cout << "Using all input segments " << endl;    // no need to correct acquisition bias
             correct_bias = 0;   // normal site is treated as a site pattern in the computation
         }else{
-            cout << "   Using variable input segments " << endl;
+            cout << "Using only variable input segments " << endl;
         }
     }
 
-    print_desc(cons, maxj, correct_bias, use_repeat, optim, model, is_total, age, cn_type);
+    cout << "\nReading copy number profiles for tree inference" << endl;
+    if(model == DECOMP){
+        read_data_var_regions_by_chr_change(data_change, datafile, input_property, input_data, seg_file, debug);
+        if(debug) print_data_map<int>(data_change);
+        // convert observed copy numbers into decomposition format
+        cout << "\nBuilding decomposition table for observed copy numbers" << endl;        
+        get_obs_vector_by_chr_change(data_change, vobs_change, Ns);
+        if (debug){
+            print_data_map<CN_CHANGE>(vobs_change);
+        }       
+    }else{       
+        read_data_var_regions_by_chr_state(data, datafile, input_property, input_data, seg_file, debug);
+        get_obs_vector_by_chr_state(data, vobs, Ns);
+    }
 
-    INPUT_PROPERTY input_prop{Ns, cn_max, model, is_total, is_rcn, is_bin, incl_all};
-    INPUT_DATA input_data{num_invar_bins, num_total_bins, Nchar, obs_num_wgd, obs_change_chr, sample_max_cn};
-    data = read_data_var_regions_by_chr(datafile, input_prop, input_data, seg_file, debug);
-
+    if(debug > 1) cout << "Input data after reading files: " << input_data << std::endl;
+ 
     if(mode == 5){
+        cout << "Segment file has been generated: " << seg_file << endl;
         exit(EXIT_SUCCESS);
         gsl_rng_free(r);
     }
@@ -1365,8 +1444,10 @@ int main(int argc, char** const argv){
     num_invar_bins = input_data.num_invar_bins;
     num_total_bins = input_data.num_total_bins;
     Nchar = input_data.seg_size;
-    obs_num_wgd = input_data.obs_num_wgd;
-    obs_change_chr = input_data.obs_change_chr;
+    sample_num_wgd = input_data.sample_num_wgd;
+    sample_change_chr = input_data.sample_change_chr;
+    chr_max_change = input_data.chr_max_change;
+    site_max_change = input_data.site_max_change;
     sample_max_cn = input_data.sample_max_cn;
 
     cout << "\nNumber of invariant bins after reading input is: " << num_invar_bins << endl;
@@ -1375,28 +1456,13 @@ int main(int argc, char** const argv){
         exit(EXIT_FAILURE);
     }
 
-    vobs = get_obs_vector_by_chr(data, Ns);
-
-    if(model == MK)   mu = 1 / Nchar;
-
-    vector<double> rates{mu, dup_rate, del_rate, chr_gain_rate, chr_loss_rate, wgd_rate};
-
-    if(infer_wgd){
-        for(int i = 0; i < Ns; ++i){
-            cout << "Sample " << i+1 << " probably has " << obs_num_wgd[i] << " WGD events" << endl;
-        }
-    }
-
-    // Build the table after reading input file
-    if(model == DECOMP){
-        vector<vector<vector<int>>> s_info = read_cn(datafile, Ns, num_total_bins, cn_max, is_total, is_rcn, debug);
-
+    if(model == DECOMP){      
+        // vector<vector<vector<int>>> s_info = read_cn(datafile, Ns, num_total_bins, cn_max, is_total, is_rcn, debug);
         // adjust_m_max();
     
         // 1) WGD per sample and global max_wgd
-        if(cn_type != ONLY_SEG){
-            get_num_wgd(s_info, obs_num_wgd, cn_max, is_total, debug);
-            max_wgd = *max_element(obs_num_wgd.begin(), obs_num_wgd.end());
+        if(cn_type != ONLY_SEG && cn_type != EXCLUDE_WGD){
+            max_wgd = *max_element(sample_num_wgd.begin(), sample_num_wgd.end());
             if(max_wgd > 0){
                 infer_wgd = 1;
             }
@@ -1404,9 +1470,7 @@ int main(int argc, char** const argv){
 
         // 2) chromosome change per sample (gain and loss) and global max_chr_change
         if(cn_type == EXCLUDE_SEG || cn_type == ALL){ 
-            vector<int> chr_max_abs;
-            get_chr_change(s_info, chr_max_abs, cn_max, is_total, debug);
-            max_chr_change = *max_element(chr_max_abs.begin(), chr_max_abs.end());
+            max_chr_change = *max_element(chr_max_change.begin(), chr_max_change.end());
             if(max_chr_change > 0){
                 infer_chr = 1;
             }
@@ -1414,48 +1478,82 @@ int main(int argc, char** const argv){
 
         // 3) site change per sample and global max_site_change
         if(cn_type != EXCLUDE_SEG){ 
-            vector<int> sample_site_change;
-            get_site_change(s_info, sample_site_change, cn_max, is_total, debug);
-            max_site_change = *max_element(sample_site_change.begin(), sample_site_change.end());
+            max_site_change = *max_element(site_max_change.begin(), site_max_change.end());
+        }
+
+        if(cn_type == EXCLUDE_CHR){     // no need to consider number of site copies before chromosome gain/loss
+            m_max = 0;
         }
 
         cout << "maximum number of WGD events is " << max_wgd << endl;
         cout << "maximum number of chromosome gain/loss events on one chromosome is " << max_chr_change << endl;
         cout << "maximum number of site duplication/deletion events is " << max_site_change << endl;
+        cout << "maximum number of site duplication/deletion change before chromosome gain/loss is " << m_max << endl;
 
-        // TimePoint t_decomp_table_start = now();
+        // // TimePoint t_decomp_table_start = now();
+
+        // build_decomp_table_3d(decomp_table, comps, cn_max, max_wgd, max_chr_change, max_site_change, is_total);
+        // print_decomp_table(decomp_table);
+        // print_comps(comps);
+
         // build_decomp_table(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
-        // TimePoint t_decomp_table_end = now();
-        build_decomp_table_withm(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
-        // cout << "[TIME] build_decomp_table: "
-        //      << elapsed_seconds(t_decomp_table_start, t_decomp_table_end) << " s" << endl;
-        cout << "\tNumber of states is " << comps.size() << endl;
-        // TimePoint t_print_decomp_start = now();
-        print_decomp_table(decomp_table);
-        print_comps(comps);
+        // print_decomp_table(decomp_table);
+        // print_comps(comps);
+
+
+        // build_decomp_table_withm(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
+        // // cout << "[TIME] build_decomp_table: "
+        // //      << elapsed_seconds(t_decomp_table_start, t_decomp_table_end) << " s" << endl;
+        // cout << "\n Total number of copy number states is " << comps.size() << endl;
+        // print_decomp_table(decomp_table);
+        // print_comps(comps);
+
         // TimePoint t_print_decomp_end = now();
         // cout << "[TIME] print_decomp_table: "
         //      << elapsed_seconds(t_print_decomp_start, t_print_decomp_end) << " s" << endl;
+    }
+    
+    if(model == MK)   mu = 1 / Nchar;
+
+    // TODO: may add arm-level rates later
+    vector<double> rates{mu, dup_rate, del_rate, chr_gain_rate, chr_loss_rate, wgd_rate};
+
+    if(infer_wgd){
+        for(int i = 0; i < Ns; ++i){
+            cout << "Sample " << i+1 << " probably has " << sample_num_wgd[i] << " WGD events" << endl;
+        }
     }
 
     max_tobs = *max_element(tobs.begin(), tobs.end());
     // a list of nodes to loop over for bottom-up likelihood computation, and the root is last
     vector<int> knodes(Ns, 0);
     lnl_type = {model, cn_max, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, cn_type, infer_wgd, infer_chr, knodes};
-
-    obs_decomp = {m_max, max_wgd, max_chr_change, max_site_change, obs_num_wgd, obs_change_chr};
+    // important variables for independent Markov chains model
+    obs_decomp = {m_max, max_wgd, max_chr_change, max_site_change, sample_num_wgd, sample_change_chr};
 
     int opt_one_branch = 0; // optimize all branches by default
-    opt_type = {maxj, tolerance, miter, opt_one_branch, tobs, scale_tobs};
+    opt_type = {estmu, tolerance, miter, opt_one_branch, tobs, scale_tobs};
 
     if(bootstrap){
         cout << "\nDoing bootstapping " << endl;
-        get_bootstrap_vector_by_chr(data, vobs, r);
-        if(debug){
-            cout << " Copy number matrix after bootstapping" << endl;
-            for(auto it : vobs){
-                cout << it.first << "\t" << it.second.size() << endl;
+        if(model == DECOMP){
+            cout << "   Using decomposition format for bootstrapping " << endl;
+            get_bootstrap_vector_by_chr<CN_CHANGE>(data_change, vobs_change, r);
+            if(debug){
+                cout << " Copy number change matrix after bootstapping" << endl;
+                for(auto it : vobs_change){
+                    cout << it.first << "\t" << it.second.size() << endl;
+                }
             }
+        }else{
+            cout << "   Using copy number values for bootstrapping " << endl;
+            get_bootstrap_vector_by_chr<int>(data, vobs, r);
+            if(debug){
+                cout << " Copy number matrix after bootstapping" << endl;
+                for(auto it : vobs){
+                    cout << it.first << "\t" << it.second.size() << endl;
+                }
+            }            
         }
     }
 
@@ -1473,30 +1571,30 @@ int main(int argc, char** const argv){
           cout << " Assuming the input tree is real" << endl;
           evo_tree real_tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
           real_tstring = order_tree_string_uniq(create_tree_string_uniq(real_tree));
-        //   cout << " the string representation is " << real_tstring << endl;
+          // cout << " the string representation is " << real_tstring << endl;
 
-          double lnl = compute_tree_likelihood(real_tree, vobs, obs_decomp, comps, lnl_type, debug);
+          double lnl = compute_tree_likelihood(real_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, debug);
           cout << "   The log likelihood of the real tree is " << lnl << endl;
       }
 
       // nodes are in an order suitable for dynamic programming (lower nodes at first, which may be changed after topolgy change)
       initialize_knodes(lnl_type.knodes, Ns);
       ITREE_PARAM itree_param{Ne, beta, gtime};
-      find_ML_tree(real_tstring, num_total_bins, ofile, tree_search, Ns, Npop, Ngen, init_tree, dir_itrees, max_static, ssize, optim, rates, itree_param, vobs, obs_decomp, comps, lnl_type, opt_type, loglh_epsilon, speed_nni, debug);
+      find_ML_tree(real_tstring, num_total_bins, ofile, tree_search, Ns, Npop, Ngen, init_tree, dir_itrees, max_static, ssize, optim, rates, itree_param, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, loglh_epsilon, speed_nni, debug);
 
-    }else if(mode == 1){
+    }else if(mode == 1){   // test mode
         if(tree_file == ""){
           cout << "An input tree must be provided!" << endl;
           exit(EXIT_FAILURE);
         }
-        cout << "Running test on tree " << tree_file << endl;
+        cout << "Running test on input tree " << tree_file << endl;
         TimePoint t_mode1_start = now();
 
         input_data.num_invar_bins = 0;
         input_data.num_total_bins = 0;
         input_data.seg_size = 0;
         cout << "Running data without grouping by chromosome" << endl;
-        vector<vector<int>> data0 = read_data_var_regions(datafile, input_prop, input_data, debug);
+        vector<vector<int>> data0 = read_data_var_regions(datafile, input_property, input_data, debug);
         // Construct the CN matrix
         // cout << "The number of sites used in vobs0: " << data0.size() << endl;
         vector<vector<int>> vobs0;
@@ -1508,7 +1606,7 @@ int main(int argc, char** const argv){
           vobs0.push_back(obs);
         }
 
-        run_test(tree_file, Ns, num_total_bins, Nchar, vobs0, input_data.seg_size, rates, ssize, tolerance, miter, vobs, obs_decomp, comps, lnl_type, opt_type, debug);
+        run_test(tree_file, Ns, num_total_bins, Nchar, vobs0, input_data.seg_size, rates, ssize, tolerance, miter, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, debug);
 
         TimePoint t_mode1_end = now();
         cout << "[TIME] mode 1 total: "
@@ -1520,7 +1618,7 @@ int main(int argc, char** const argv){
 
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
 
-        double lnl = compute_tree_likelihood(tree, vobs, obs_decomp, comps, lnl_type, debug);
+        double lnl = compute_tree_likelihood(tree, vobs, vobs_change, obs_decomp, comps, lnl_type, debug);
 
         TimePoint t_mode2_end = now();
         cout << "The log likelihood of the input tree is " << lnl << endl;
@@ -1534,7 +1632,7 @@ int main(int argc, char** const argv){
 
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
 
-        maximize_tree_likelihood(tree, num_total_bins, ofile, vobs, obs_decomp, comps, lnl_type, opt_type, optim, ssize, debug);
+        maximize_tree_likelihood(tree, num_total_bins, ofile, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, optim, ssize, debug);
 
         TimePoint t_mode3_end = now();
         cout << "[TIME] mode 3 total: "
@@ -1555,9 +1653,10 @@ int main(int argc, char** const argv){
         MAX_DECOMP max_decomp = {m_max, max_wgd, max_chr_change, max_site_change};
 
         if(infer_marginal_state){
-            cout << "\tInferring marginal ancestral states" << endl;
+            cout << "\nInferring marginal ancestral states" << endl;
             double lnl = 0.0;
             if(model == DECOMP){
+                // TODO: update
                lnl = reconstruct_marginal_ancestral_state_decomp(tree, vobs, inodes, comps, obs_decomp, use_repeat, infer_wgd, infer_chr, cn_max, ofile, is_total);
             }else{
                lnl = reconstruct_marginal_ancestral_state(tree, vobs, inodes, model, cn_max, use_repeat, is_total, ofile);
@@ -1568,6 +1667,7 @@ int main(int argc, char** const argv){
         if(infer_joint_state){
             cout << "\tInferring joint ancestral states" << endl;
             if(model == DECOMP){
+                // TODO: update
                reconstruct_joint_ancestral_state_decomp(tree, vobs, inodes, comps, max_decomp, use_repeat, cn_max, ofile, is_total);
             }else{
                reconstruct_joint_ancestral_state(tree, vobs, inodes, model, cn_max, use_repeat, is_total, m_max, ofile);

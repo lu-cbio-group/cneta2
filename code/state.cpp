@@ -542,6 +542,18 @@ void get_ancestral_states_site_decomp(vector<vector<double>>& L_sk_k, vector<vec
 
 
 
+/** 
+ * @brief Set the transition probability matrices for each branch length
+ * @param rtree The evolutionary tree
+ * @param Ns Number of internal nodes
+ * @param nstate Number of states
+ * @param model The model type
+ * @param cn_max Maximum copy number
+ * @param knodes The list of internal node indices
+ * @param blens The list of unique branch lengths
+ * @param pmat_per_blen The list of transition probability matrices corresponding to each branch length
+ * @param fout The output file stream for logging
+ */
 void set_pmat(const evo_tree& rtree, int Ns, int nstate, int model, int cn_max, const vector<int>& knodes, vector<double>& blens, vector<double*>& pmat_per_blen, ofstream& fout){
   int debug = 0;
 
@@ -816,7 +828,7 @@ void print_node_cnp(ofstream& fout, const copy_number& cnp, int nid, int cn_max,
 
 
 // Infer the copy number of the MRCA given a tree at a site, assuming independent Markov chains
-double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, map<int, vector<vector<int>>>& vobs, const vector<int>& knodes, const set<vector<int>>& comps, OBS_DECOMP& obs_decomp, int use_repeat, int infer_wgd, int infer_chr, int cn_max, string ofile, int is_total){
+double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const vector<int>& knodes, const set<vector<int>>& comps, OBS_DECOMP& obs_decomp, int use_repeat, int infer_wgd, int infer_chr, int cn_max, string ofile, int is_total){
     int debug = 0;
     if(debug) cout << "\treconstruct marginal ancestral state with independent chain model" << endl;
 
@@ -843,10 +855,10 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, map<in
       int nchr = vcn.first;
       if(debug) cout << "Computing likelihood on Chr " << nchr << endl;
       double site_logL = 0.0;   // log likelihood for all sites on a chromosome
-      for(int nc = 0; nc < vobs[nchr].size(); nc++){    // for each segment on the chromosome
-          // cout << "Number of sites for this chr " << vobs[nchr].size() << endl;
+      for(int nc = 0; nc < vobs.at(nchr).size(); nc++){    // for each segment on the chromosome
+          // cout << "Number of sites for this chr " << vobs.at(nchr).size() << endl;
           // for each site of the chromosome (may be repeated)
-          vector<int> obs = vobs[nchr][nc];
+          vector<int> obs = vobs.at(nchr).at(nc);
           vector<vector<double>> L_sk_k;
           if(use_repeat){
               if(sites_lnl_map.find(obs) == sites_lnl_map.end()){
@@ -914,7 +926,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, map<in
 }
 
 
-double reconstruct_marginal_ancestral_state(const evo_tree& rtree, map<int, vector<vector<int>>>& vobs, const vector<int>& knodes, int model, int cn_max, int use_repeat, int is_total, string ofile){
+double reconstruct_marginal_ancestral_state(const evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const vector<int>& knodes, int model, int cn_max, int use_repeat, int is_total, string ofile){
     int debug = 0;
     if(debug) cout << "\treconstruct marginal ancestral state" << endl;
 
@@ -955,12 +967,12 @@ double reconstruct_marginal_ancestral_state(const evo_tree& rtree, map<int, vect
     // for each chromosome
     for(auto vcn : vobs){
       int nchr = vcn.first;
-      if(debug) cout << "Computing likelihood for chr " << nchr << " with  " << vobs[nchr].size() << " sites" << endl;
+      if(debug) cout << "Computing likelihood for chr " << nchr << " with  " << vobs.at(nchr).size() << " sites" << endl;
       double site_logL = 0.0;   // log likelihood for all sites on a chromosome
 
-      for(int nc = 0; nc < vobs[nchr].size(); nc++){    // for each segment on the chromosome
+      for(int nc = 0; nc < vobs.at(nchr).size(); nc++){    // for each segment on the chromosome
           // for each site of the chromosome (may be repeated)
-          vector<int> obs = vobs[nchr][nc];
+          vector<int> obs = vobs.at(nchr).at(nc);
           vector<vector<double>> L_sk_k(2 * rtree.nleaf - 1, vector<double>(nstate, 0.0));
           bool is_repeated = false;
 
@@ -1019,7 +1031,7 @@ double reconstruct_marginal_ancestral_state(const evo_tree& rtree, map<int, vect
 
 
 // Infer the copy number of all internal nodes given a tree at a site, assuming independent Markov chains
-void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, map<int, vector<vector<int>>>& vobs,  vector<int>& knodes, const set<vector<int>>& comps, MAX_DECOMP& max_decomp, int use_repeat, int cn_max, string ofile, int is_total){
+void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<int>>>& vobs,  vector<int>& knodes, const set<vector<int>>& comps, MAX_DECOMP& max_decomp, int use_repeat, int cn_max, string ofile, int is_total){
     int debug = 0;
     if(debug) cout << "\treconstruct joint ancestral state with independent chain model" << endl;
 
@@ -1042,12 +1054,12 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, map<int, ve
     // for(int nchr = 1; nchr <= vobs.size(); nchr++){     // for each chromosome
     for(auto vcn : vobs){
       int nchr = vcn.first;
-      if(debug) cout << "Computing likelihood on Chr " << nchr << " with " << vobs[nchr].size() << " sites " << endl;
+      if(debug) cout << "Computing likelihood on Chr " << nchr << " with " << vobs.at(nchr).size() << " sites " << endl;
 
-      for(int nc = 0; nc < vobs[nchr].size(); nc++){    // for each segment on the chromosome
+      for(int nc = 0; nc < vobs.at(nchr).size(); nc++){    // for each segment on the chromosome
           if(debug) cout << "\tfor site " << nc << " on chromosome " << nchr << endl;
           // for each site of the chromosome (may be repeated)
-          vector<int> obs = vobs[nchr][nc];
+          vector<int> obs = vobs.at(nchr).at(nc);
           vector<vector<double>> L_sk_k(ntotn, vector<double>(nstate, 0.0));
           vector<vector<int>> S_sk_k(ntotn, vector<int>(nstate, 0));
           if(use_repeat){
@@ -1107,7 +1119,7 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, map<int, ve
 
 
 // Infer the copy number of all internal nodes given a tree at a site, assuming only site duplication/deletion
-void reconstruct_joint_ancestral_state(const evo_tree& rtree, map<int, vector<vector<int>>>& vobs, vector<int>& knodes, int model, int cn_max, int use_repeat, int is_total, int m_max, string ofile){
+void reconstruct_joint_ancestral_state(const evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, vector<int>& knodes, int model, int cn_max, int use_repeat, int is_total, int m_max, string ofile){
     int debug = 0;
     if(debug) cout << "\treconstruct joint ancestral state" << endl;
 
@@ -1154,12 +1166,12 @@ void reconstruct_joint_ancestral_state(const evo_tree& rtree, map<int, vector<ve
     // for each chromosome
     for(auto vcn : vobs){
       int nchr = vcn.first;
-      if(debug) cout << "Computing likelihood on Chr " << nchr << " with " << vobs[nchr].size() << " sites" << endl;
+      if(debug) cout << "Computing likelihood on Chr " << nchr << " with " << vobs.at(nchr).size() << " sites" << endl;
 
-      for(int nc = 0; nc < vobs[nchr].size(); nc++){    // for each segment on the chromosome
+      for(int nc = 0; nc < vobs.at(nchr).size(); nc++){    // for each segment on the chromosome
           if(debug) cout << "\tfor site " << nc << " on chromosome " << nchr << endl;
           // for each site of the chromosome (may be repeated)
-          vector<int> obs = vobs[nchr][nc];
+          vector<int> obs = vobs.at(nchr).at(nc);
           vector<vector<double>> L_sk_k(ntotn, vector<double>(nstate, 0.0));
           vector<vector<int>> S_sk_k(ntotn, vector<int>(nstate, 0));
           bool is_repeated = false;
@@ -1254,9 +1266,9 @@ void reconstruct_joint_ancestral_state(const evo_tree& rtree, map<int, vector<ve
             // for each chromosome
             for(auto vcn : vobs){
                 int nchr = vcn.first;
-                for(int nc = 0; nc < vobs[nchr].size(); nc++){    // for each segment on the chromosome
+                for(int nc = 0; nc < vobs.at(nchr).size(); nc++){    // for each segment on the chromosome
                     // for each site of the chromosome (may be repeated)
-                    vector<int> obs = vobs[nchr][nc];
+                    vector<int> obs = vobs.at(nchr).at(nc);
                     for(auto c : obs){
                         fout3 << "\t" << c;
                     }

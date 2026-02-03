@@ -1,6 +1,9 @@
 #include "model.hpp"
 
 
+// This file implements models of copy number evolution
+
+
 bool check_matrix_row_sum(double *mat, int nstate){
     for(int i = 0; i < nstate; i++){
         double sum = 0;
@@ -66,6 +69,7 @@ void check_pmats_blen2(int nstate, const vector<double>& blens, const vector<dou
 // }
 
 
+// rate matrix for total copy number 
 void get_rate_matrix_bounded(double* m, const double& dup_rate, const double& del_rate, const int& cn_max){
     int debug = 0;   // for debugging internally
     int ncol = cn_max + 1;
@@ -212,7 +216,7 @@ void get_rate_matrix_site_change(double* m, const double& dup_rate, const double
 }
 
 
-//
+// rate matrix for chr-level CNAs using independent Markov chain model
 void get_rate_matrix_chr_change(double* m, const double& chr_gain_rate, const double& chr_loss_rate, const int& chr_change_max){
     int debug = 0;
     int ncol = 2 * chr_change_max + 1;
@@ -277,6 +281,13 @@ void get_rate_matrix_wgd(double* m, const double& wgd_rate, const int& wgd_max){
 //     return p(sk, sj);
 // }
 // n = cn_max + 1 for model 1 (total copy number)
+/**  
+ * @brief Compute transition probability matrix from rate matrix          
+ * @param q: rate matrix
+ * @param p: transition probability matrix
+ * @param t: branch length
+ * @param n: dimension of the matrix
+*/
 void get_transition_matrix_bounded(double* q, double* p, const double& t, const int& n){
     int debug = 0;
 
@@ -323,31 +334,53 @@ double get_transition_prob_bounded(double* p, const int& sk, const int& sj, cons
 }
 
 
-// a tuple of copy number changes with 3 parameters indicating WGD, chromosome gain/loss, and segment duplication/deletion
+/******************** building decomposition table for each possible copy number *********************/
+
+// Insert a tuple of copy number changes with 3 parameters indicating WGD, chromosome gain/loss, and segment duplication/deletion
+// not used due to too much simplification
 void insert_tuple(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int i, int j, int k){
     int sum = pow(2, i + 1) + j + k;
     // cout << i << "\t" << j << "\t" << k << "\t" << sum << endl;
     if(sum >= 0 && sum <= cn_max){
-        vector<int> c{i,j,k};
+        vector<int> c{i, j, k};
         decomp_table[sum].insert(c);
         comps.insert(c);
     }
 }
+
+
+// Insert a tuple of copy number changes with 3 parameters indicating changes WGD, chromosome gain/loss, and segment duplication/deletion
+// Ignoring event order and only considering the change relative to normal copy number
+void insert_tuple_change(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int i, int j, int k){
+    int cn_change = pow(2, i + 1) + j + k;     // not as the observed total copy number, but change relative to normal copy number 2
+    // cout << i << "\t" << j << "\t" << k << "\t" << sum << endl;
+    if(cn_change + NORM_PLOIDY >= 0 && cn_change + NORM_PLOIDY <= cn_max){
+        vector<int> c{i, j, k};
+        decomp_table[cn_change + NORM_PLOIDY].insert(c);
+        comps.insert(c);
+    }else{
+        cout << "Warning: observed copy number " << cn_change + NORM_PLOIDY << " is out of range [0, " << cn_max << "]" << endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
 
 
 // Get possible combinations for a total copy number with ordering of different types of events considered (at most 1 WGD)
 // Assuming at most 1 WGD event
-void insert_tuple_order_withm(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int m1, int m2, int i, int j, int k, int j0, int k0){
-    int sum = pow(2, i + 1) + m1 * j + k + 2 * m2 * j0 + 2 * k0;
-    // cout << i << "\t" << j << "\t" << k << "\t" << sum << endl;
-    if(sum >= 0 && sum <= cn_max){
-        vector<int> c{i, j, k, j0, k0, m1, m2};
+void insert_tuple_order_withm(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int m1, int m2, int alpha, int beta, int gamma, int beta_before, int gamma_before){
+    int sum = pow(2, alpha + 1) + m1 * beta + gamma + 2 * m2 * beta_before + 2 * gamma_before;
+    // cout << alpha << "\t" << beta << "\t" << gamma << "\t" << sum << endl;
+    if(sum >= 0 && sum <= cn_max){  // state out of range not considered
+        // m1, m2 at the end to facilitate compability with other functions
+        vector<int> c{alpha, beta, gamma, beta_before, gamma_before, m1, m2};
         decomp_table[sum].insert(c);
         comps.insert(c);
     }
 }
 
 
+// same to insert_tuple_order_withm when m_max = 1
 void insert_tuple_order(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int i, int j, int k, int j0, int k0){
     // for(int m = 0; m <= m_max; m++){
     //     for(int m = 0; m <= m_max; m++){
@@ -406,12 +439,13 @@ void insert_tuple_allele_specific(map<int, set<vector<int>>>& decomp_table, set<
 }
 
 
-void adjust_m_max(const vector<int>& obs_num_wgd, const vector<int>& sample_max_cn, int m_max, int max_chr_change, int max_site_change){
+// not used for now for simplicity
+void adjust_m_max(const vector<int>& sample_num_wgd, const vector<int>& sample_max_cn, int m_max, int max_chr_change, int max_site_change){
     // For samples with WGD but with larger copy number
     // max_sum = pow(2, 2) + 2 * m_max * max_chr_change + 2 * max_site_change;
     // m_max = m_max;
     // for(int i = 0; i < sample_max_cn.size(); i++){
-    //     if(obs_num_wgd[i] < 1) continue;
+    //     if(sample_num_wgd[i] < 1) continue;
     //     int cn = sample_max_cn[i];
     //     if(cn > max_sum){
     //         m_max = m_max + (cn - max_sum);
@@ -423,7 +457,7 @@ void adjust_m_max(const vector<int>& obs_num_wgd, const vector<int>& sample_max_
     int orig_m_max = m_max;
     int max_cn = max_sum;
     for(int i = 0; i < sample_max_cn.size(); i++){
-        if(obs_num_wgd[i] > 0) continue;
+        if(sample_num_wgd[i] > 0) continue;
         int cn = sample_max_cn[i];
         if(cn > max_cn){
             max_cn = cn;
@@ -438,8 +472,29 @@ void adjust_m_max(const vector<int>& obs_num_wgd, const vector<int>& sample_max_
 }
 
 
+// list all the possible decomposition of a copy number, tuples with 3 elements: (num_WGD, chr_gain/loss, site_dup/del)
+void build_decomp_table_3d(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int max_wgd, int max_chr_change, int max_site_change, int is_total){
+    for(int i = 0; i <= cn_max; i++){
+        set<vector<int>> comp;
+        decomp_table[i] = comp;
+    }
+    if(is_total){
+        // For 3D decomposition
+        for(int i = 0; i <= max_wgd; i++){
+            for(int j = 0; j <= max_chr_change; j++){
+                for(int k = 0; k <= max_site_change; k++){
+                    insert_tuple(decomp_table, comps, cn_max, 1, i, j, k);
+                    insert_tuple(decomp_table, comps, cn_max, 1, i, -j, k);
+                    insert_tuple(decomp_table, comps, cn_max, 1, i, j, -k);
+                    insert_tuple(decomp_table, comps, cn_max, 1, i, -j, -k);
+                }
+            }
+        }
+    }
+}
 
-// list all the possible decomposition of a copy number
+
+// list all the possible decomposition of a copy number, tuples with 5 elements: (num_WGD, chr_gain/loss, site_dup/del, chr_gain/loss_before_WGD, site_dup/del_before_WGD)
 void build_decomp_table(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int max_wgd, int max_chr_change, int max_site_change, int is_total){
     for(int i = 0; i <= cn_max; i++){
         set<vector<int>> comp;
@@ -458,7 +513,7 @@ void build_decomp_table(map<int, set<vector<int>>>& decomp_table, set<vector<int
         //     }
         // }
         // For 5D decomposition
-        // No need to consider addtional terms when no WGD occurs
+        // No need to consider additional terms when no WGD occurs
         for(int j = 0; j <= max_chr_change; j++){
             for(int k = 0; k <= max_site_change; k++){
                 insert_tuple_order(decomp_table, comps, cn_max, m_max, 0, j, k, 0, 0);
@@ -473,7 +528,7 @@ void build_decomp_table(map<int, set<vector<int>>>& decomp_table, set<vector<int
             for(int j = 0; j <= max_chr_change; j++){
                 for(int k = 0; k <= max_site_change; k++){
                     for(int j0 = 0; j0 <= max_chr_change - j; j0++){
-                        for(int k0 = 0; k0 <= max_site_change - k; k0++){
+                        for(int k0 = 0; k0 < max_site_change - k; k0++){    // remove = to disallow 0 copy before WGD
                             insert_tuple_order(decomp_table, comps, cn_max, m_max, i, j, k, j0, k0);
                             insert_tuple_order(decomp_table, comps, cn_max, m_max, i, j, k, -j0, k0);
                             insert_tuple_order(decomp_table, comps, cn_max, m_max, i, j, k, j0, -k0);
@@ -495,7 +550,7 @@ void build_decomp_table(map<int, set<vector<int>>>& decomp_table, set<vector<int
                 }
             }
         }
-    }else{  // TO REVISE
+    }else{  // TO REVISE for haplotype-specific copy number
         for(int i = 0; i <= max_wgd; i++){
             for(int j1 = 0; j1 <= max_chr_change; j1++){
                 for(int j2 = 0; j2 <= max_chr_change; j2++){
@@ -526,6 +581,7 @@ void build_decomp_table(map<int, set<vector<int>>>& decomp_table, set<vector<int
 }
 
 
+// list all the possible decomposition of a copy number, tuples with 7 elements: (num_WGD, chr_gain/loss, site_dup/del, chr_gain/loss_before_WGD, site_dup/del_before_WGD, num_chr_copies_before_dup/del)
 void build_decomp_table_withm(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int max_wgd, int max_chr_change, int max_site_change, int is_total){
     for(int i = 0; i <= cn_max; i++){
         set<vector<int>> comp;
@@ -533,26 +589,38 @@ void build_decomp_table_withm(map<int, set<vector<int>>>& decomp_table, set<vect
     }
     if(is_total){
         int m1_max, m2_max;  // No need to consider m_max when there is no chromosome change
-        // No need to consider additional terms when no WGD occurs.
+        // No need to consider additional terms when no WGD occurs
         for(int j = 0; j <= max_chr_change; j++){
             for(int k = 0; k <= max_site_change; k++){
-                if(j == 0) m1_max = 0; else m1_max = m_max;
+                if(j == 0)  // no chromosome change, no need to consider segment copy number before change
+                    m1_max = 0; 
+                else 
+                    m1_max = m_max;
+
                 for(int m1 = 0; m1 <= m1_max; m1++){
-                        insert_tuple_order_withm(decomp_table, comps, cn_max, m_max, m1, 0, 0, j, k, 0, 0);
-                        insert_tuple_order_withm(decomp_table, comps, cn_max, m_max, m1, 0, 0, -j, k, 0, 0);
-                        insert_tuple_order_withm(decomp_table, comps, cn_max, m_max, m1, 0, 0, j, -k, 0, 0);
-                        insert_tuple_order_withm(decomp_table, comps, cn_max, m_max, m1, 0, 0, -j, -k, 0, 0);
+                    // all possible combinations of chromosome change and segment change
+                    insert_tuple_order_withm(decomp_table, comps, cn_max, m_max, m1, 0, 0, j, k, 0, 0);
+                    insert_tuple_order_withm(decomp_table, comps, cn_max, m_max, m1, 0, 0, -j, k, 0, 0);
+                    insert_tuple_order_withm(decomp_table, comps, cn_max, m_max, m1, 0, 0, j, -k, 0, 0);
+                    insert_tuple_order_withm(decomp_table, comps, cn_max, m_max, m1, 0, 0, -j, -k, 0, 0);
                 }
             }
         }
 
+        // With WGD
         for(int i = 1; i <= max_wgd; i++){
             for(int j = 0; j <= max_chr_change; j++){
-                for(int j0 = 0; j0 <= max_chr_change - j; j0++){
+                for(int j0 = 0; j0 <= max_chr_change - j; j0++){    // -j to ensure total chromosome change within limit??
                     for(int k = 0; k <= max_site_change; k++){
-                        for(int k0 = 0; k0 <= max_site_change - k; k0++){
-                            if(j == 0) m1_max = 0; else m1_max = m_max;
-                            if(j0 == 0) m2_max = 0; else m2_max = m_max;
+                        for(int k0 = 0; k0 < max_site_change - k; k0++){
+                            if(j == 0) 
+                                m1_max = 0; 
+                            else 
+                                m1_max = m_max;
+                            if(j0 == 0) 
+                                m2_max = 0; 
+                            else 
+                                m2_max = m_max;
                             for(int m1 = 0; m1 <= m1_max; m1++){
                                 for(int m2 = 0; m2 <= m2_max; m2++){
                                     insert_tuple_order_withm(decomp_table, comps, cn_max, m_max, m1, m2, i, j, k, j0, k0);
@@ -579,6 +647,7 @@ void build_decomp_table_withm(map<int, set<vector<int>>>& decomp_table, set<vect
             }
         }
     }else{
+        // TODO: to revise for haplotype-specific copy number
         for(int i = 0; i <= max_wgd; i++){
             for(int j1 = 0; j1 <= max_chr_change; j1++){
                 for(int j2 = 0; j2 <= max_chr_change; j2++){

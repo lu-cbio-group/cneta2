@@ -53,7 +53,7 @@ void change_NNI_Brans(evo_tree& rtree, NNIMove& nnimove, bool nni5);
 
 
 // Simultaneously apply all NNIs, assigning new branch lengths to related branches
-// Mutation rates are estimated at the same time if maxj = 1
+// Mutation rates are estimated at the same time if estmu = 1
 void do_all_NNIs(evo_tree& rtree, vector<NNIMove> &compatibleNNIs, bool changeBran, bool nni5, int cons);
 
 
@@ -74,16 +74,15 @@ void do_random_NNIs(evo_tree& rtree, gsl_rng* r, int cons);
    adapted from IQ-TREE package, phylotree.cpp
    need to compute likelihood
  */
-NNIMove get_best_NNI_for_bran(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, NNIMove* nniMoves = NULL, bool nni5 = true);
+NNIMove get_best_NNI_for_bran(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, NNIMove* nniMoves = NULL, bool nni5 = true);
 
 // Find NNI increasing likelihood of current tree
-void evaluate_NNIs(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, Branches &nniBranches, vector<NNIMove> &positiveNNIs, double curScore);
-
+void evaluate_NNIs(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, Branches &nniBranches, vector<NNIMove> &positiveNNIs, double curScore);
 
 // Apply hill climbing perturbation to obtain a locally optimal tree (by NNI)
 // score used in this function is log likelihood, the larger the better
 // need to compute likelihood
-void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, bool nni5 = false);
+void do_hill_climbing_NNI(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, bool nni5 = false);
 
 
 

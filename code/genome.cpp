@@ -669,7 +669,7 @@ double get_site_rates(const vector<double>& rate_consts, int model, int stateA, 
             site_del_rate = 2 * state * del_rate;
         }
         rate = site_dup_rate + site_del_rate;
-    }else if(model == BOUNDA){   // bounded allele specific
+    }else if(model == BOUNDA){   // bounded haplotype specific
         double dup_rate = rate_consts[0];
         double del_rate = rate_consts[1];
 

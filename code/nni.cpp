@@ -362,7 +362,7 @@ void change_NNI_Brans(evo_tree& rtree, NNIMove& nnimove, bool nni5){
 
 
 // Simultaneously apply all NNIs, assigning new branch lengths to related branches
-// Mutation rates are estimated at the same time if maxj = 1
+// Mutation rates are estimated at the same time if estmu = 1
 void do_all_NNIs(evo_tree& rtree, vector<NNIMove>& compatibleNNIs, bool changeBran, bool nni5, int cons){
     int debug = 0;
     if(debug) cout << "\nSimultaneously apply all NNIs (" << compatibleNNIs.size() << ")" << endl;
@@ -476,7 +476,7 @@ void do_random_NNIs(evo_tree& rtree, gsl_rng* r, int cons){
    @param nniMoves (IN/OUT) detailed information of the 2 NNIs
    adapted from IQ-TREE package, phylotree.cpp
  */
-NNIMove get_best_NNI_for_bran(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, 
+NNIMove get_best_NNI_for_bran(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, 
     LNL_TYPE& lnl_type, OPT_TYPE& opt_type, NNIMove* nniMoves, bool nni5){
     int debug = 0;
 
@@ -559,7 +559,7 @@ NNIMove get_best_NNI_for_bran(evo_tree& rtree, map<int, vector<vector<int>>>& vo
     vector<evo_tree*> trees{&rtree1, &rtree2};
 
     int cons = lnl_type.cons;
-    int maxj = opt_type.maxj;
+    int estmu = opt_type.estmu;
     double tolerance = opt_type.tolerance;
    
     // 2 moves associated with the same branch (corresponding to rtree1 and rtree2 respectively)
@@ -685,10 +685,10 @@ NNIMove get_best_NNI_for_bran(evo_tree& rtree, map<int, vector<vector<int>>>& vo
                     }
                     if(cons){
                         if(is_inner_branch(node1, (Node* )(*it)->node))
-                            score = optimize_one_branch_BFGS(*trees[cnt], vobs, obs_decomp, comps, lnl_type, opt_type, node1, (Node* )(*it)->node);
+                            score = optimize_one_branch_BFGS(*trees[cnt], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, node1, (Node* )(*it)->node);
                     }else{
                         if(!(node1->id == trees[cnt]->nleaf - 1 || ((Node* )(*it)->node)->id == trees[cnt]->nleaf - 1))
-                            score = optimize_one_branch(*trees[cnt], vobs, obs_decomp, comps, lnl_type, tolerance, node1, (Node* )(*it)->node);
+                            score = optimize_one_branch(*trees[cnt], vobs, vobs_change, obs_decomp, comps, lnl_type, tolerance, node1, (Node* )(*it)->node);
                     }
 
                     // if(cons && !is_tip_age_valid(trees[cnt]->get_node_ages(), opt_type.tobs)){
@@ -710,9 +710,9 @@ NNIMove get_best_NNI_for_bran(evo_tree& rtree, map<int, vector<vector<int>>>& vo
 
             if(cons){
                 assert(is_inner_branch(node1, node2));
-                score = optimize_one_branch_BFGS(*trees[cnt], vobs, obs_decomp, comps, lnl_type, opt_type, node1, node2);
+                score = optimize_one_branch_BFGS(*trees[cnt], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, node1, node2);
             }else{
-                score = optimize_one_branch(*trees[cnt], vobs, obs_decomp, comps, lnl_type, tolerance, node1, node2);
+                score = optimize_one_branch(*trees[cnt], vobs, vobs_change, obs_decomp, comps, lnl_type, tolerance, node1, node2);
             }
 
             // if(cons && !is_tip_age_valid(trees[cnt]->get_node_ages(), opt_type.tobs)){
@@ -730,10 +730,10 @@ NNIMove get_best_NNI_for_bran(evo_tree& rtree, map<int, vector<vector<int>>>& vo
                 FOR_NEIGHBOR(node2, node1, it){
                     if(cons){
                         if(is_inner_branch(node2, (Node* )(*it)->node))
-                            score = optimize_one_branch_BFGS(*trees[cnt], vobs, obs_decomp, comps, lnl_type, opt_type, node2, (Node* )(*it)->node);
+                            score = optimize_one_branch_BFGS(*trees[cnt], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, node2, (Node* )(*it)->node);
                     }else{
                         if(!(node2->id == trees[cnt]->nleaf - 1 || ((Node* )(*it)->node)->id == trees[cnt]->nleaf - 1))
-                            score = optimize_one_branch(*trees[cnt], vobs, obs_decomp, comps, lnl_type, tolerance, node2, (Node* )(*it)->node);
+                            score = optimize_one_branch(*trees[cnt], vobs, vobs_change, obs_decomp, comps, lnl_type, tolerance, node2, (Node* )(*it)->node);
                     }
 
                     // if(cons && !is_tip_age_valid(trees[cnt]->get_node_ages(), opt_type.tobs)){
@@ -792,13 +792,13 @@ NNIMove get_best_NNI_for_bran(evo_tree& rtree, map<int, vector<vector<int>>>& vo
 
 
 // Find NNI increasing likelihood of current tree
-void evaluate_NNIs(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, Branches& nniBranches, vector<NNIMove>& positiveNNIs, double curScore){
+void evaluate_NNIs(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, Branches& nniBranches, vector<NNIMove>& positiveNNIs, double curScore){
     int debug = 0;
 
     for(Branches::iterator it = nniBranches.begin(); it != nniBranches.end(); it++){
         rtree.node1 = (Node* )it->second.first;
         rtree.node2 = (Node* )it->second.second;
-        NNIMove nni = get_best_NNI_for_bran(rtree, vobs, obs_decomp, comps, lnl_type, opt_type);
+        NNIMove nni = get_best_NNI_for_bran(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type);
 
         if(debug) cout << "\n   evaluating NNI: " << nni.node1->id + 1 << ", " << nni.node2->id + 1 <<" with score " << nni.newloglh << endl;
 
@@ -819,14 +819,14 @@ void evaluate_NNIs(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DEC
 
 // Apply hill climbing perturbation to obtain a locally optimal tree (by NNI)
 // score used in this function is log likelihood, the larger the better
-void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, bool nni5){
+void do_hill_climbing_NNI(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs,const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, bool nni5){
     int debug = 0;
 
     int totalNNIApplied = 0;
     int numSteps = 0;
     int max_steps = rtree.nleaf - 1;
     int cons = lnl_type.cons;
-    int maxj = opt_type.maxj;  // original maxj
+    int estmu = opt_type.estmu;  // original estmu
     int miter = opt_type.miter;
     double tolerance = opt_type.tolerance;
 
@@ -890,7 +890,7 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
 
         // Only consider NNIs that increase the likelihood of current tree
         positiveNNIs.clear();
-        evaluate_NNIs(rtree, vobs, obs_decomp, comps, lnl_type, opt_type, nniBranches, positiveNNIs, curScore);
+        evaluate_NNIs(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nniBranches, positiveNNIs, curScore);
 
         if(debug){
             cout << "\nSearching NNIs increasing likelihood of current tree with score " << curScore << endl;
@@ -931,7 +931,7 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
         DoubleVector lenvec;
         save_branch_lengths(rtree, lenvec);    // both edges and neighbors      
         DoubleVector muvec;
-        if(maxj){
+        if(estmu){
           save_mutation_rates(rtree, muvec);
         }
 
@@ -946,7 +946,8 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
         if(debug){
             double tscore = 0.0;
             if(lnl_type.model == DECOMP){
-                tscore = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+                // tscore = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+                tscore = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
             }else{
                 tscore = get_likelihood_revised(rtree, vobs, lnl_type);
             }           
@@ -958,12 +959,12 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
         if(cons){  // optimization of all branches under time constraints
             if(debug) cout << "\n1st global optimization" << endl;
             double min_nlnl = MAX_NLNL;
-            opt_type.maxj = 0;
+            opt_type.estmu = 0;
             while(-min_nlnl < curScore){
                 min_nlnl = MAX_NLNL;
-                max_likelihood_BFGS(rtree, vobs, obs_decomp, comps, lnl_type, opt_type, min_nlnl);
+                max_likelihood_BFGS(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, min_nlnl);
             } 
-            opt_type.maxj = maxj;           
+            opt_type.estmu = estmu;           
             curScore = -min_nlnl;
 
             // need to keep neighbours updated in NNI after updating lengths of all edges, which will be used in NNIs
@@ -979,11 +980,11 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
             // }             
         }else{
             // achieved by optimizing each branch in a specific order, 2 iterations by default
-            curScore = optimize_all_branches(rtree, vobs, obs_decomp, comps, lnl_type, 2, loglh_epsilon);
+            curScore = optimize_all_branches(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, 2, loglh_epsilon);
         }
 
-        if(maxj){
-            curScore = optimize_mutation_rates(rtree, vobs, obs_decomp, comps, lnl_type, tolerance);
+        if(estmu){
+            curScore = optimize_mutation_rates(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, tolerance);
         }
 
         if(debug){
@@ -1027,7 +1028,7 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
                     exit(EXIT_FAILURE);
                 }
          
-                if(maxj) restore_mutation_rates(rtree, muvec);
+                if(estmu) restore_mutation_rates(rtree, muvec);
 
                 // rtree.generate_neighbors();
                 // only do the best NNI
@@ -1046,7 +1047,8 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
                 if(debug){
                     double tscore = 0.0;
                     if(lnl_type.model == DECOMP){
-                        tscore = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+                        // tscore = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+                        tscore = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
                     }else{
                         tscore = get_likelihood_revised(rtree, vobs, lnl_type);
                     }                   
@@ -1061,12 +1063,12 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
                     if(cons){
                         if(debug) cout << "global optimization after reduced NNI of size 1" << endl;
                         double min_nlnl = MAX_NLNL;
-                        opt_type.maxj = 0;
+                        opt_type.estmu = 0;
                         while(-min_nlnl < appliedNNIs.at(0).newloglh){
                             min_nlnl = MAX_NLNL;
-                            max_likelihood_BFGS(rtree, vobs, obs_decomp, comps, lnl_type, opt_type, min_nlnl);
+                            max_likelihood_BFGS(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, min_nlnl);
                         }
-                        opt_type.maxj = maxj;
+                        opt_type.estmu = estmu;
                         curScore = -min_nlnl;
                         // if(debug){
                         //     cout << "current tree " << rtree.make_newick() << endl;
@@ -1079,11 +1081,11 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
                         //     rtree.print_neighbors();       
                         // }  
                     }else{
-                        curScore = optimize_all_branches(rtree, vobs, obs_decomp, comps, lnl_type, 2, loglh_epsilon);
+                        curScore = optimize_all_branches(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, 2, loglh_epsilon);
                     }
 
-                    if(maxj){
-                        curScore = optimize_mutation_rates(rtree, vobs, obs_decomp, comps, lnl_type, tolerance);
+                    if(estmu){
+                        curScore = optimize_mutation_rates(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, tolerance);
                     }                
 
                     isbetter = (curScore > appliedNNIs.at(0).newloglh - 0.1);
@@ -1107,12 +1109,12 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
                     if(cons){
                         if(debug) cout << "global optimization after original NNI of size 1" << endl;
                         double min_nlnl = MAX_NLNL;
-                        opt_type.maxj = 0;
+                        opt_type.estmu = 0;
                         while(-min_nlnl < appliedNNIs.at(0).newloglh){
                             min_nlnl = MAX_NLNL;
-                            max_likelihood_BFGS(rtree, vobs, obs_decomp, comps, lnl_type, opt_type, min_nlnl);
+                            max_likelihood_BFGS(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, min_nlnl);
                         }
-                        opt_type.maxj = maxj;
+                        opt_type.estmu = estmu;
                         curScore = -min_nlnl;
                         // if(debug){
                         //     cout << "current tree " << rtree.make_newick() << endl;
@@ -1125,11 +1127,11 @@ void do_hill_climbing_NNI(evo_tree& rtree, map<int, vector<vector<int>>>& vobs, 
                         //     rtree.print_neighbors();       
                         // }  
                     }else{
-                        curScore = optimize_all_branches(rtree, vobs, obs_decomp, comps, lnl_type, 2, loglh_epsilon);
+                        curScore = optimize_all_branches(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, 2, loglh_epsilon);
                     }
 
-                    if(maxj){
-                        curScore = optimize_mutation_rates(rtree, vobs, obs_decomp, comps, lnl_type, tolerance);
+                    if(estmu){
+                        curScore = optimize_mutation_rates(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, tolerance);
                     } 
 
                     isbetter = (curScore > appliedNNIs.at(0).newloglh - 0.1);

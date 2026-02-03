@@ -62,7 +62,7 @@ double get_transition_prob_bounded(double* p, const int& sk, const int& sj, cons
 
 /*************** DECOMP model *****************/
 
-// model which decompose copy numbers into different levels
+// model decomposing observed copy numbers into different levels
 
 // rate matrix for segment-level CNAs
 void get_rate_matrix_site_change(double* m, const double& dup_rate, const double& del_rate, const int& site_change_max);
@@ -87,9 +87,11 @@ void insert_tuple_order_withm(map<int, set<vector<int>>>& decomp_table, set<vect
 void insert_tuple_allele_specific(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int i, int j1, int j2, int k1, int k2);
 
 // Adjust the value of m_max based on the maximum copy number for a sample, not used for now
-void adjust_m_max(const vector<int>& obs_num_wgd, const vector<int>& sample_max_cn, int m_max, int max_chr_change, int max_site_change);
+void adjust_m_max(const vector<int>& sample_num_wgd, const vector<int>& sample_max_cn, int m_max, int max_chr_change, int max_site_change);
 
 // list all the possible decomposition of a copy number, treating m_j as part of the vector
+void build_decomp_table_3d(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int max_wgd, int max_chr_change, int max_site_change, int is_total = 1);
+
 void build_decomp_table(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int max_wgd, int max_chr_change, int max_site_change, int is_total = 1);
 
 // list all the possible decomposition of a copy number, treating m_j before and after WGD differently

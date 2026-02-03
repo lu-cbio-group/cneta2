@@ -8,6 +8,11 @@
 
 // collection of functions for reading/writing
 
+
+// https://github-pages.ucl.ac.uk/research-computing-with-cpp/04cpp3/sec03Templates.html 
+// Following the first approach in the link to define template function in header file
+
+
 // const int num_total_bins = 4401;
 
 // template <typename T>
@@ -45,22 +50,28 @@ int state_to_allele_cn(int state, int cn_max, int& cnA, int& cnB);
 // Change the allele specific copy number to the state used in substitution rate matrix
 int allele_cn_to_state(int cnA, int cnB);
 
+// Convert the copy number matrix to decomposition format
+void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vector<vector<CN_CHANGE>>>& s_info_change, const INPUT_DATA& input_data, int debug);
+
 
 // Find the potential number of WGDs for each sample
-void get_num_wgd(const vector<vector<vector<int>>>& s_info, vector<int>& obs_num_wgd, int cn_max, int is_total, int debug = 0);
+void get_num_wgd(const vector<vector<vector<int>>>& s_info, const vector<double>& sample_avg_cn, vector<int>& sample_num_wgd, int debug = 0);
 
 // Find the potential number of chromosome changes for each sample
-void get_chr_change(const vector<vector<vector<int>>>& s_info, vector<int>& chr_max_abs, int cn_max, int is_total, int debug = 0);
+void get_chr_change(const vector<vector<vector<int>>>& s_info, const vector<double>& sample_avg_cn, const vector<map<int, vector<int>>>& sample_chr_cn, vector<vector<int>>& sample_change_chr, vector<int>& chr_max_change, int cn_max, int is_total, int debug);
+
 
 // Find the potential number of site changes for each sample
-void get_site_change(const vector<vector<vector<int>>>& s_info, vector<int>&sample_site_change, int cn_max, int is_total, int debug = 0);
+void get_site_change(const vector<vector<vector<int>>>& s_info, const vector<double>& sample_avg_cn, vector<vector<int>>& sample_change_site, vector<int>& site_max_change, vector<int>& sample_max_cn, int cn_max, int is_total, int debug = 0);
 
 // Compute the average copy number of a sample
 double compute_sample_avg_cn(const vector<vector<int>>& s_cn, map<int, vector<int>>& chr_cn, int cn_max, int is_total);
 
+// Compute the average copy number of all samples
+void get_sample_ploidy(const vector<vector<vector<int>>>& s_info, vector<double>& sample_avg_cn, vector<map<int, vector<int>>>& sample_chr_cn, int cn_max, int is_total, int debug);
+
 // Find the largest copy number in a sample
 void get_sample_mcn(const vector<vector<vector<int>>>& s_info, vector<int>& sample_max_cn, int cn_max, int is_total, int debug = 0);
-
 
 // Find the number of invariable sites for each character (state)
 // Loop over and output only the regions that have varied, which provide information for tree building
@@ -74,25 +85,61 @@ vector<vector<int>> get_invar_segs(const vector<vector<vector<int>>>& s_info, in
 vector<vector<int>> get_all_segs(const vector<vector<vector<int>>>& s_info, int Ns, int num_total_bins, int& num_invar_bins, int incl_all, int is_total = 1, int debug = 0);
 
 // read segments and copy numbers into different data structures for further processing
-int get_segs_cn(vector<vector<vector<int>>>& s_info, vector<vector<int>>& segs, const string& filename, const INPUT_PROPERTY& input_prop, INPUT_DATA& input_data, int debug);
+int get_segs_cn(vector<vector<vector<int>>>& s_info, vector<vector<int>>& segs, const string& filename, const INPUT_PROPERTY& input_property, INPUT_DATA& input_data, int debug);
 
 
 // Compute the average copy number of a segment
-vector<double> compute_segment_cn(int i, const vector<vector<int>>& segs, const vector<vector<vector<int>>>& s_info, int Ns, int cn_max, int debug);
+
+void compute_segment_cn_state(vector<int>& seg_cn, const vector<int>& segs_curr, const vector<vector<vector<int>>>& s_info, int Ns, int cn_max, int debug);
+
+void compute_segment_cn_change(vector<CN_CHANGE>& seg_cn, const vector<int>& segs_curr, const vector<vector<vector<CN_CHANGE>>>& s_info, int Ns, int cn_max, int debug);
 
 
-map<int, vector<vector<int>>>  group_segs_by_chr(const vector<vector<int>>& segs, const vector<vector<vector<int>>>& s_info, int Ns, int cn_max, const string& seg_file, int debug = 0);
+void group_segs_by_chr_state(const vector<vector<int>>& segs, const vector<vector<vector<int>>>& s_info, map<int, vector<vector<int>>>& data, int Ns, int cn_max, const string& seg_file, int debug);
+
+void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vector<vector<CN_CHANGE>>>& s_info, map<int, vector<vector<int>>>& data_change, int Ns, int cn_max, const string& seg_file, int debug);
+
 
 vector<vector<int>> group_segs(const vector<vector<int>>& segs, const vector<vector<vector<int>>>& s_info, int Ns, int cn_max, int debug = 0);
 
 // Get the input matrix of copy numbers by chromosome
-map<int, vector<vector<int>>> get_obs_vector_by_chr(map<int, vector<vector<int>>>& data, const int& Ns);
 
-void get_bootstrap_vector_by_chr(map<int, vector<vector<int>>>& data, map<int, vector<vector<int>>>& vobs, gsl_rng* r);
+void get_obs_vector_by_chr_state(const map<int, vector<vector<int>>>& data,  map<int, vector<vector<int>>>& vobs, int Ns);
 
+void get_obs_vector_by_chr_change(const map<int, vector<vector<int>>>& data_change,  map<int, vector<vector<CN_CHANGE>>>& vobs_change, int Ns);
+
+
+/** 
+ * @brief Generate bootstrap resampled copy number observations by chromosome for tree inference
+ * @param data Input data map where each key is a chromosome number and the value is a vector of vectors containing copy number information.
+ * @param vobs Output parameter to store bootstrap resampled copy number observations.
+ * @param r GSL random number generator.
+ * @tparam T Type of the copy number data (e.g., int, CN_CHANGE), i.e. vector<vector<CN_CHANGE>> or vector<vector<int> 
+ */
+template <typename T>
+void get_bootstrap_vector_by_chr(map<int, vector<vector<int>>>& data, map<int, vector<vector<T>>>& vobs, gsl_rng* r){
+    // create a copy of vobs to resample
+    map<int, vector<vector<T>>> vobs_copy = vobs;
+    vobs.clear();
+
+    // cout << "Total number of chromosomes " << total_chr << endl;
+    for(auto dcn : data){
+        int nchr = dcn.first;
+        // cout << "Chr " << nchr << "\t";
+        vector<vector<T>> obs_chr;
+        for(size_t nc = 0; nc < data[nchr].size(); ++nc){
+            // randomly select a site
+            size_t i = gsl_rng_uniform_int(r, data[nchr].size());
+            // cout << i << ":" << vobs_copy[nchr][i].size() << "\t" ;
+            obs_chr.push_back(vobs_copy[nchr][i]);
+        }
+        // cout << obs_chr.size() << endl;
+        vobs[nchr] = obs_chr;
+    }
+}
 
 /******************* read input file ***********************/
-// Read the samping time and patient age of each sample
+// Read the sampling time and patient age of each sample
 // Ns: number of samples
 // age: age at earliest sample
 // Assume samples are ordered by ID from 1 to Ns
@@ -104,12 +151,69 @@ vector<double> read_time_info(const string& filename, const int& Ns, int& age, i
 vector<vector<vector<int>>> read_cn(const string& filename, int Ns, int &num_total_bins, int cn_max, int is_total = 1, int is_rcn = 0, int debug = 0);
 
 
+template <typename T>
+void print_vector(const vector<T>& data) {
+    cout << "vector:" << endl;
+
+    for (size_t j = 0; j < data.size(); ++j) {
+        cout << data[j] << " ";
+    }
+    cout << endl;
+    
+}
+
+
+template <typename T>
+void print_nested_vector(const vector<vector<T>>& data) {
+    cout << "nested vector:" << endl;
+
+    for (size_t i = 0; i < data.size(); ++i) {
+        cout << "\t[" << i << "]: ";
+        print_vector(data[i]);
+        cout << endl;
+    }
+}
+
+
+template <typename T>
+void print_nested_vector2(const vector<vector<vector<T>>>& data) {
+    cout << "nested vector:" << endl;
+
+    for (size_t i = 0; i < data.size(); ++i) {
+        cout << "\t[" << i << "]: ";
+        print_nested_vector<T>(data[i]);
+        cout << endl;
+    }
+}
+
+
+
+template <typename T>
+void print_data_map(const map<int, vector<vector<T>>>& data) {
+    cout << "Observed copy number data:" << endl;
+
+    for (auto it = data.begin(); it != data.end(); ++it) {
+        int key = it->first;
+        const vector<vector<T>>& mat = it->second;
+
+        cout << "Key = " << key << endl;
+
+        print_nested_vector<T>(mat);
+    }
+}
+
+
+
+
+/******************* read input all in one ***********************/
+
 // Read the input copy numbers
-vector<vector<int>> read_data_var_regions(const string& filename, const INPUT_PROPERTY& input_prop, INPUT_DATA& input_data, int debug = 0);
+vector<vector<int>> read_data_var_regions(const string& filename, const INPUT_PROPERTY& input_property, INPUT_DATA& input_data, int debug = 0);
 
 
-// Read the input copy numbers and group them by chromosome
-map<int, vector<vector<int>>> read_data_var_regions_by_chr(const string& filename, const INPUT_PROPERTY& input_prop, INPUT_DATA& input_data, const string& seg_file, int debug = 0);
+void read_data_var_regions_by_chr_state(map<int, vector<vector<int>>>& data, const string& filename, const INPUT_PROPERTY& input_property, INPUT_DATA& input_data, const string& seg_file, int debug);
+
+void read_data_var_regions_by_chr_change(map<int, vector<vector<int>>>& data_change, const string& filename, const INPUT_PROPERTY& input_property, INPUT_DATA& input_data, const string& seg_file, int debug);
 
 
 #endif

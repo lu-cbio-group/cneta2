@@ -35,7 +35,7 @@ int is_total; // whether or not the input is total copy number
 
 int model;
 int cons;
-int maxj;
+int estmu;
 
 int use_repeat;   // whether or not to use repeated site patterns, used in get_likelihood_chr*
 int correct_bias; // Whether or not to correct acquisition bias, used in get_likelihood_*
@@ -57,8 +57,8 @@ double max_tobs;
 int Nchar;  // number of sites
 
 
-vector<int> obs_num_wgd;  // possible number of WGD events
-vector<vector<int>> obs_change_chr;
+vector<int> sample_num_wgd;  // possible number of WGD events
+vector<vector<int>> sample_change_chr;
 vector<int> sample_max_cn;
 
 map<int, set<vector<int>>> decomp_table;  // possible state combinations for observed copy numbers
@@ -1560,7 +1560,7 @@ void update_wgd_rates_lnormal(evo_tree& rtree, int model, double& log_likelihood
 
 
 // Given a tree, find the MAP estimation of the branch lengths (and optionally mu) assuming branch lengths are independent or constrained in time
-void run_mcmc(evo_tree& rtree, int model, const int n_draws, const int n_burnin, const int n_gap, vector<double> proposal_parameters, vector<double> prior_parameters_blen, vector<double> prior_parameters_height, vector<double> alphas, vector<double> prior_parameters_mut, double lambda_topl, string ofile, string tfile, const ITREE_PARAM& itree_param, int sample_prior=0, int fix_topology=0, int cons=0, int maxj=0, int cn_max = 4, int cn_type = 1, int correct_bias=0, int is_total=1){
+void run_mcmc(evo_tree& rtree, int model, const int n_draws, const int n_burnin, const int n_gap, vector<double> proposal_parameters, vector<double> prior_parameters_blen, vector<double> prior_parameters_height, vector<double> alphas, vector<double> prior_parameters_mut, double lambda_topl, string ofile, string tfile, const ITREE_PARAM& itree_param, int sample_prior=0, int fix_topology=0, int cons=0, int estmu=0, int cn_max = 4, int cn_type = 1, int correct_bias=0, int is_total=1){
         ofstream fout_trace(ofile);
         ofstream fout_tree(tfile);
 
@@ -1632,13 +1632,13 @@ void run_mcmc(evo_tree& rtree, int model, const int n_draws, const int n_burnin,
 
         if(model == 0){
             header = "state\tlnl";
-            if(maxj == 1){
+            if(estmu == 1){
                 header += "\tmu";
             }
         }
         else{
             header = "state\tlnl";
-            if(maxj == 1){
+            if(estmu == 1){
                 header += "\tdup_rate\tdel_rate\tgain_rate\tloss_rate\twgd_rate";
             }
         }
@@ -1670,7 +1670,7 @@ void run_mcmc(evo_tree& rtree, int model, const int n_draws, const int n_burnin,
         double prob_move_rate = 0;
         for(int i = 1; i <= n_draws; ++i){
             // Randomly choose one type of operator: topology, branch length, mutation rate
-            if(maxj){
+            if(estmu){
                 if(fix_topology){
                     prob_move_topol = 0;
                     prob_move_blen = 0.5;
@@ -1854,7 +1854,7 @@ void run_mcmc(evo_tree& rtree, int model, const int n_draws, const int n_burnin,
                 // fout_trace << (i - n_burnin)/n_gap << "\t"  << log_likelihood;
                 fout_trace << i << "\t"  << log_likelihood;
 
-                if(maxj){
+                if(estmu){
                     if(model == MK){
                         fout_trace << "\t" << rtree.mu ;
                     }else{
@@ -1923,7 +1923,7 @@ void run_mcmc(evo_tree& rtree, int model, const int n_draws, const int n_burnin,
             }
         }
 
-        if(maxj){
+        if(estmu){
             if(model == MK){
                 double accept_rate_mrate = (double) naccepts_mrate / (nrejects_mrate + naccepts_mrate);
                 double sel_rate_mrate = (double) nsel_mrate / n_draws;
@@ -2031,7 +2031,7 @@ void revise_init_tree(evo_tree& rtree, const vector<double> rates, const vector<
 }
 
 
-void run_with_reference_tree(string rtreefile, int Ns, int Nchar, int num_invar_bins, int fix_topology, int model, int cons, int maxj, int cn_max, int cn_type, int correct_bias, int is_total, const vector<double>& ref_rates, const vector<double>& tobs, const vector<double>& rates, int n_draws, int n_burnin, int n_gap, const vector<double>& proposal_parameters, const vector<double>& prior_parameters_blen, const vector<double>& prior_parameters_height, const vector<double>& alphas, const vector<double>& prior_parameters_mut, double lambda_topl, string trace_param_file, string trace_tree_file, int sample_prior, const ITREE_PARAM& itree_param){
+void run_with_reference_tree(string rtreefile, int Ns, int Nchar, int num_invar_bins, int fix_topology, int model, int cons, int estmu, int cn_max, int cn_type, int correct_bias, int is_total, const vector<double>& ref_rates, const vector<double>& tobs, const vector<double>& rates, int n_draws, int n_burnin, int n_gap, const vector<double>& proposal_parameters, const vector<double>& prior_parameters_blen, const vector<double>& prior_parameters_height, const vector<double>& alphas, const vector<double>& prior_parameters_mut, double lambda_topl, string trace_param_file, string trace_tree_file, int sample_prior, const ITREE_PARAM& itree_param){
     // MLE testing
     // read in true tree
     evo_tree test_tree = read_reference_tree(rtreefile, Ns, ref_rates, tobs);
@@ -2076,7 +2076,7 @@ void run_with_reference_tree(string rtreefile, int Ns, int Nchar, int num_invar_
     }
     revise_init_tree(rtree, rates, tobs, cons);
 
-    // sstm << "./test1/sim-data-" << cons << maxj << "-mcmc-tree-start.txt";
+    // sstm << "./test1/sim-data-" << cons << estmu << "-mcmc-tree-start.txt";
     // out_tree.open(sstm.str());
     // rtree.write(out_tree);
     // out_tree.close();
@@ -2088,7 +2088,7 @@ void run_with_reference_tree(string rtreefile, int Ns, int Nchar, int num_invar_
 
     // Estimate branch length with MCMC
     cout << "\n\n### Running MCMC" << endl;
-    run_mcmc(rtree, model, n_draws, n_burnin, n_gap, proposal_parameters, prior_parameters_blen, prior_parameters_height, alphas, prior_parameters_mut, lambda_topl, trace_param_file, trace_tree_file, itree_param, sample_prior, fix_topology, cons, maxj, cn_max, cn_type, correct_bias, is_total);
+    run_mcmc(rtree, model, n_draws, n_burnin, n_gap, proposal_parameters, prior_parameters_blen, prior_parameters_height, alphas, prior_parameters_mut, lambda_topl, trace_param_file, trace_tree_file, itree_param, sample_prior, fix_topology, cons, estmu, cn_max, cn_type, correct_bias, is_total);
     // cout << "\nMinimised tree likelihood by MCMC / mu : " << Lf << "\t" << min_tree.mu*Nchar <<  endl;
 }
 
@@ -2112,6 +2112,16 @@ int main (int argc, char ** const argv) {
     // int is_stochastic;
     int init_tree;
     string file_itree;
+
+    vector<int> sample_num_wgd;  // estimated number of WGD events from observed copy numbers for each sample
+    vector<vector<int>> sample_change_chr;  // estimated change of chromosome gain/loss from observed copy numbers for each sample
+    vector<int> chr_max_change;  
+    vector<vector<int>> sample_change_site;  // estimated change of site duplication/deletion from observed copy numbers for each sample    
+    vector<int> site_max_change;
+    vector<int> sample_max_cn;
+    vector<double> sample_avg_cn;  // estimated sample ploidy
+    vector<map<int, vector<int>>> sample_chr_cn; // chromosome copy numbers grouped by chr for each sample
+
 
     namespace po = boost::program_options;
     po::options_description generic("Generic options");
@@ -2150,7 +2160,7 @@ int main (int argc, char ** const argv) {
             ("clock", po::value<int>(&clock)->default_value(0), "model of molecular clock (0: strict global, 1: random local clock)")
             ("fix_topology", po::value<int>(&fix_topology)->default_value(0), "whether or not to fix the topology of the tree")
             ("cons", po::value<int>(&cons)->default_value(1), "constraints on branch length (0: none, 1: fixed total time)")
-            ("maxj", po::value<int>(&maxj)->default_value(1), "estimation of mutation rate (0: mutation rate fixed to be the given value, 1: estimating mutation rate)")
+            ("estmu", po::value<int>(&estmu)->default_value(1), "estimation of mutation rate (0: mutation rate fixed to be the given value, 1: estimating mutation rate)")
             ("correct_bias", po::value<int>(&correct_bias)->default_value(1), "correct ascertainment bias")
 
             ("init_tree", po::value<int>(&init_tree)->default_value(0), "method of building inital tree for MCMC sampling (0: Random coalescence tree, 1: Provided tree, 2: Tree with the same topology as the true tree)")
@@ -2262,7 +2272,7 @@ int main (int argc, char ** const argv) {
         cout << "Assuming the tree is constrained by age at sampling time" << endl;
     }
 
-    if(!maxj){
+    if(!estmu){
         cout << "Assuming mutation rate is fixed " << endl;
     }else{
         cout << "Estimating mutation rate" << endl;
@@ -2274,7 +2284,7 @@ int main (int argc, char ** const argv) {
         cout << "Correcting acquisition bias in likelihood computation " << endl;
     }
 
-    if(maxj){
+    if(estmu){
         if(cn_type == ALL){
             cout << "Estimating mutation rates for site duplication/deletion, chromosome gain/loss, and whole genome doubling " << endl;
         }else{
@@ -2298,23 +2308,25 @@ int main (int argc, char ** const argv) {
         }
     }
 
-    INPUT_PROPERTY input_prop{Ns, cn_max, model, is_total, 0, is_bin, incl_all};
-    INPUT_DATA input_data{num_invar_bins, num_total_bins, Nchar, obs_num_wgd, obs_change_chr, sample_max_cn};
-    data = read_data_var_regions_by_chr(datafile, input_prop, input_data, seg_file, debug);
+    INPUT_PROPERTY input_property{Ns, cn_max, model, is_total, 0, is_bin, incl_all};
+    INPUT_DATA input_data{num_invar_bins, num_total_bins, Nchar, sample_num_wgd, sample_change_chr, sample_change_site, chr_max_change, site_max_change, sample_max_cn, sample_avg_cn, sample_chr_cn};
+
+    read_data_var_regions_by_chr_state(data, datafile, input_property, input_data, seg_file, debug);
+    // input vector for tree building
+    get_obs_vector_by_chr_state(data, vobs, Ns);
 
     // assign variables back for those changed during input parsing
     num_invar_bins = input_data.num_invar_bins;
     num_total_bins = input_data.num_total_bins;
     Nchar = input_data.seg_size;
-    obs_num_wgd = input_data.obs_num_wgd;
-    obs_change_chr = input_data.obs_change_chr;
+    sample_num_wgd = input_data.sample_num_wgd;
+    sample_change_chr = input_data.sample_change_chr;
     sample_max_cn = input_data.sample_max_cn;
 
-    vobs = get_obs_vector_by_chr(data, Ns);
-
+    // internal node indices for likelihood calculation
     int nleaf = Ns + 1;
     for(int k= (nleaf + 1); k < (2 * nleaf - 1); ++k) knodes.push_back(k);
-    knodes.push_back(nleaf);
+    knodes.push_back(nleaf);    // root node
 
     // tobs already defined globally
     tobs = read_time_info(timefile, Ns, age);
@@ -2325,7 +2337,6 @@ int main (int argc, char ** const argv) {
         age = MAX_AGE;
         tobs = vector<double>(Ns, 0);
     }
-
 
     // parameters for proposal distribution
     vector<double> proposal_parameters({lambda, lambda_all, sigma_blen});
@@ -2413,7 +2424,7 @@ int main (int argc, char ** const argv) {
     max_tobs = *max_element(tobs.begin(), tobs.end());
     lnl_type = {model, cn_max, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, cn_type, infer_wgd, infer_chr, knodes};
 
-    obs_decomp = {m_max, max_wgd, max_chr_change, max_site_change, obs_num_wgd, obs_change_chr};
+    obs_decomp = {m_max, max_wgd, max_chr_change, max_site_change, sample_num_wgd, sample_change_chr};
 
     vector<double> ref_rates;
     if(model == MK){
@@ -2427,7 +2438,7 @@ int main (int argc, char ** const argv) {
     }
 
     if(rtreefile != "") {
-        run_with_reference_tree(rtreefile, Ns, Nchar, num_invar_bins, fix_topology, model, cons, maxj, cn_max, cn_type, correct_bias, is_total, ref_rates, tobs, rates, n_draws,  n_burnin,  n_gap, proposal_parameters, prior_parameters_blen, prior_parameters_height, alphas, prior_parameters_mut, lambda_topl, trace_param_file, trace_tree_file, sample_prior, itree_param);
+        run_with_reference_tree(rtreefile, Ns, Nchar, num_invar_bins, fix_topology, model, cons, estmu, cn_max, cn_type, correct_bias, is_total, ref_rates, tobs, rates, n_draws,  n_burnin,  n_gap, proposal_parameters, prior_parameters_blen, prior_parameters_height, alphas, prior_parameters_mut, lambda_topl, trace_param_file, trace_tree_file, sample_prior, itree_param);
     }
     else{
         cout << "\nGenerate the start tree" << endl;
@@ -2465,6 +2476,6 @@ int main (int argc, char ** const argv) {
 
         // Estimate branch length with MCMC
         cout << "\n\n### Running MCMC" << endl;
-        run_mcmc(rtree, model, n_draws, n_burnin, n_gap, proposal_parameters, prior_parameters_blen, prior_parameters_height, alphas, prior_parameters_mut, lambda_topl, trace_param_file, trace_tree_file, itree_param, sample_prior, fix_topology, cons, maxj, cn_max, cn_type, correct_bias, is_total);
+        run_mcmc(rtree, model, n_draws, n_burnin, n_gap, proposal_parameters, prior_parameters_blen, prior_parameters_height, alphas, prior_parameters_mut, lambda_topl, trace_param_file, trace_tree_file, itree_param, sample_prior, fix_topology, cons, estmu, cn_max, cn_type, correct_bias, is_total);
     }
 }
