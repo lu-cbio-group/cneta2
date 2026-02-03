@@ -93,12 +93,11 @@ int allele_cn_to_state(int cnA, int cnB){
  * @param is_total Indicator whether the copy numbers are total (1) or haplotype-specific (0). Only for total copy number decomposition for now.
  * @param debug Debug flag for verbose output.
  */
-void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vector<vector<CN_CHANGE>>>& s_info_change, const INPUT_DATA& input_data, int debug){
+void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vector<CN_CHANGE>>& s_info_change, const INPUT_DATA& input_data, int debug){
     if(debug) cout << "\tChanging copy number to multiple level changes" << endl;
     vector<int> sample_num_wgd = input_data.sample_num_wgd;
     vector<vector<int>> sample_change_chr = input_data.sample_change_chr;   
     vector<vector<int>> sample_change_site = input_data.sample_change_site;   
-
 
     if(debug > 1){
         for(size_t i = 0; i < s_info.size(); i++){
@@ -113,8 +112,8 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vect
         }
     }
 
-    s_info_change.resize(s_info.size());
-    for (size_t i = 0; i < s_info.size(); i++) {
+    s_info_change.resize(s_info.size());    // for samples
+    for (size_t i = 0; i < s_info.size(); i++) {     // for all segments
         s_info_change[i].resize(s_info[i].size());
     }
 
@@ -134,7 +133,7 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vect
             cc.cn_change_chr = sample_change_chr[i][chr];
             cc.cn_change_site = sample_change_site[i][j];
 
-            s_info_change[i][j].push_back(cc);
+            s_info_change[i][j] = cc;
         }
     }
 
@@ -142,11 +141,7 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vect
         for(size_t i = 0; i < s_info_change.size(); i++){
             cout << "\nSample " << (i+1) << " decomposed copy number changes:" << endl;
             for(size_t j = 0; j < s_info_change[i].size(); j++){
-                cout << "\tSegment " << (j+1) << ": ";
-                for(size_t k = 0; k < s_info_change[i][j].size(); k++){
-                    cout << "\t" << s_info_change[i][j][k];
-                }
-                cout << endl;
+                cout << "\tSegment " << (j+1) << ": " << s_info_change[i][j] << endl;
             }
         }
     }
@@ -753,25 +748,25 @@ void compute_segment_cn_state(vector<int>& seg_cn, const vector<int>& segs_curr,
 
 /** 
  * @brief Compute average copy number for a given segment across all samples at site i
- * @param i Index of the segment across all the sites
- * @param segs Vector of segments represented by: {chr, id_start, id_end, seg_start, seg_end}, indicating segment locations
+ * @param seg_cn  A vector of average copy numbers for the segment across all samples
+ * @param segs_curr Vector of segments represented by: {chr, id_start, id_end, seg_start, seg_end}, indicating segment locations
  * @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample
  * @param Ns Number of samples.
- * @param cn_max Maximum copy number state, different from maximum copy number value in the input when the input is haplotype-specific copy number.
  * @param debug Debug flag for verbose output
- * @return A vector of average copy numbers for the segment across all samples
  */
-void compute_segment_cn_change(vector<CN_CHANGE>& seg_cn, const vector<int>& segs_curr, const vector<vector<vector<CN_CHANGE>>>& s_info, int Ns, int cn_max, int debug){
+void compute_segment_cn_change(vector<CN_CHANGE>& seg_cn, const vector<int>& segs_curr, const vector<vector<CN_CHANGE>>& s_info_change, int Ns, int Nsite, int debug){
     if(debug > 1){
         cout << "\nComputing segment copy number for segment on chr " << segs_curr[0] << ":" << segs_curr[1] + 1 << "\t" << segs_curr[2] + 1 << "\t" << segs_curr[3] << "\t" << segs_curr[4] << endl;
     }
-    assert(s_info.size() == Ns);
+    assert(s_info_change.size() == Ns);
 
     // TODO: need to check consistency of CN_CHANGE across all bins in the segment
     for(int j = 0; j < Ns; ++j){
-        CN_CHANGE bin_cn = s_info[j][segs_curr[1]][2];  // copy number of the/total first bin in the segment
+        assert(s_info_change[j].size() == Nsite);  // all sites for a sample
+        CN_CHANGE bin_cn = s_info_change[j][segs_curr[1]];  // copy number of the/total first bin in the segment
 
         if(debug > 1){
+            // print_vector<CN_CHANGE>(s_info[j][segs_curr[1]]);
             cout << "\tSample " << j + 1 << " with CN : " << bin_cn << endl;
 
         }        
@@ -935,7 +930,7 @@ void group_segs_by_chr_state(const vector<vector<int>>& segs, const vector<vecto
  * @param debug Debug flag for verbose output.
  * @return A map where each key is a chromosome number and the value is a vector of segments with their copy numbers for each sample.
  */
-void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vector<vector<CN_CHANGE>>>& s_info, map<int, vector<vector<int>>>& data_change, int Ns, int cn_max, const string& seg_file, int debug){
+void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vector<CN_CHANGE>>& s_info_change, map<int, vector<vector<int>>>& data_change, int Ns, int Nsite, const string& seg_file, int debug){
     if(debug) cout << "\nGrouping segments by chromosome with CN_CHANGE type" << endl;
     int Nchar = 0;
 
@@ -951,28 +946,33 @@ void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vect
     for(size_t i = 0; i < segs.size(); ++i){
         vector<CN_CHANGE> seg_cn;
         vector<int> segs_curr = segs[i];
-        compute_segment_cn_change(seg_cn, segs_curr, s_info, Ns, cn_max, debug);
+        compute_segment_cn_change(seg_cn, segs_curr, s_info_change, Ns, Nsite, debug);
+        assert(seg_cn.size() == Ns);
 
         if(seg_file != "") fcn << segs_curr[0] << "\t" << segs_curr[1] + 1 << "\t" << segs_curr[2] + 1 << "\t" << segs_curr[3] << "\t" << segs_curr[4];
 
         vector<int> vals{segs_curr[0], segs_curr[1], segs_curr[2]};   // chr, start, end
+        print_vector<int>(vals);
 
         for(int j = 0; j < Ns; ++j){
             // for copy number changes
             CN_CHANGE cn = seg_cn[j];
             vector<int> cn_change = cn.to_vector();
+            vals.insert(vals.end(), cn_change.begin(), cn_change.end());
+            
             if(debug){
                 cout << "Segment " << i + 1 << ", Sample " << j + 1 << ": " << cn << endl;
-                print_vector<int>(cn_change);
-                print_nested_vector<CN_CHANGE>(s_info[j]);
+                print_vector<int>(cn_change);       
             }            
-            vals.insert(vals.end(), cn_change.begin(), cn_change.end());
-
+            
             if(seg_file != "") fcn << "\t" << cn;
         }
         if(seg_file != "") fcn << endl;
 
-        data_change[segs[i][0]].push_back(vals);
+        print_vector<int>(vals);
+        assert(vals.size() == 3 + 4 * Ns);
+        
+        data_change[segs_curr[0]].push_back(vals);
         Nchar += 1;
     }
 
@@ -1201,7 +1201,7 @@ void read_data_var_regions_by_chr_change(map<int, vector<vector<int>>>& data_cha
     get_chr_change(s_info, input_data.sample_avg_cn, input_data.sample_chr_cn, input_data.sample_change_chr, input_data.chr_max_change, input_property.cn_max, input_property.is_total, debug);
 
     // convert copy numbers to copy number changes for decomposition model
-    vector<vector<vector<CN_CHANGE>>> s_info_change;  
+    vector<vector<CN_CHANGE>> s_info_change;  
 
     if(input_property.is_total){
         cout << "Converting total copy numbers to copy number changes for decomposition model" << endl;
@@ -1210,7 +1210,7 @@ void read_data_var_regions_by_chr_change(map<int, vector<vector<int>>>& data_cha
         cout << "TODO: Converting haplotype-specific copy numbers to copy number changes for decomposition model" << endl;
     }
     
-    group_segs_by_chr_change(segs, s_info_change, data_change, input_property.Ns, max_cn_state, seg_file, debug);
+    group_segs_by_chr_change(segs, s_info_change, data_change, input_property.Ns, input_data.num_total_bins, seg_file, debug);
 
     
     cout << "=============Reading input copy number change finished==============\n" << endl;

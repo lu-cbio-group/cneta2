@@ -51,7 +51,7 @@ int state_to_allele_cn(int state, int cn_max, int& cnA, int& cnB);
 int allele_cn_to_state(int cnA, int cnB);
 
 // Convert the copy number matrix to decomposition format
-void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vector<vector<CN_CHANGE>>>& s_info_change, const INPUT_DATA& input_data, int debug);
+void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vector<CN_CHANGE>>& s_info_change, const INPUT_DATA& input_data, int debug);
 
 
 // Find the potential number of WGDs for each sample
@@ -92,12 +92,12 @@ int get_segs_cn(vector<vector<vector<int>>>& s_info, vector<vector<int>>& segs, 
 
 void compute_segment_cn_state(vector<int>& seg_cn, const vector<int>& segs_curr, const vector<vector<vector<int>>>& s_info, int Ns, int cn_max, int debug);
 
-void compute_segment_cn_change(vector<CN_CHANGE>& seg_cn, const vector<int>& segs_curr, const vector<vector<vector<CN_CHANGE>>>& s_info, int Ns, int cn_max, int debug);
+void compute_segment_cn_change(vector<CN_CHANGE>& seg_cn, const vector<int>& segs_curr, const vector<vector<CN_CHANGE>>& s_info_change, int Ns, int Nseg, int debug);
 
 
 void group_segs_by_chr_state(const vector<vector<int>>& segs, const vector<vector<vector<int>>>& s_info, map<int, vector<vector<int>>>& data, int Ns, int cn_max, const string& seg_file, int debug);
 
-void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vector<vector<CN_CHANGE>>>& s_info, map<int, vector<vector<int>>>& data_change, int Ns, int cn_max, const string& seg_file, int debug);
+void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vector<CN_CHANGE>>& s_info_change, map<int, vector<vector<int>>>& data_change, int Ns, int cn_max, const string& seg_file, int debug);
 
 
 vector<vector<int>> group_segs(const vector<vector<int>>& segs, const vector<vector<vector<int>>>& s_info, int Ns, int cn_max, int debug = 0);
