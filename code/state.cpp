@@ -738,7 +738,9 @@ void set_pmat_decomp(const evo_tree& rtree, MAX_DECOMP& max_decomp, int nstate, 
         }
     }
 
-    pmat_decomp = {pmats_wgd, pmats_chr, pmats_seg};
+    pmat_decomp.pmats_wgd = pmats_wgd;
+    pmat_decomp.pmats_chr = pmats_chr;
+    pmat_decomp.pmats_seg = pmats_seg;
 
     if(max_wgd > 0){
         delete [] qmat_wgd;

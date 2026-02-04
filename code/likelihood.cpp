@@ -784,9 +784,7 @@ void initialize_lnl_table_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const
  * @param dim_decomp: dimensions of different levels    
  * @return QMAT_DECOMP: rate matrices for different levels 
  */
-QMAT_DECOMP build_rate_matrices(const evo_tree& rtree, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int debug){
-    if(debug) cout << "\tbuild Q rate matrices for multiple levels" << endl;
-
+void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int debug){
     int max_wgd = obs_decomp.max_wgd;
     int max_chr_change = obs_decomp.max_chr_change;
     int max_site_change = obs_decomp.max_site_change;
@@ -799,7 +797,7 @@ QMAT_DECOMP build_rate_matrices(const evo_tree& rtree, const OBS_DECOMP& obs_dec
     int dim_mat_chr = dim_chr * dim_chr;
     int dim_mat_seg = dim_seg * dim_seg;
 
-    QMAT_DECOMP qmat;
+    
     double *qmat_wgd = nullptr;
     double *qmat_chr = nullptr;
     double *qmat_seg = nullptr;
@@ -822,23 +820,24 @@ QMAT_DECOMP build_rate_matrices(const evo_tree& rtree, const OBS_DECOMP& obs_dec
         get_rate_matrix_site_change(qmat_seg, rtree.dup_rate, rtree.del_rate, max_site_change);
     }
 
-    qmat.qmat_wgd = qmat_wgd;
-    qmat.qmat_chr = qmat_chr;
-    qmat.qmat_seg = qmat_seg;
-
+    qmat_decomp.free_all();
+    qmat_decomp.qmat_wgd = qmat_wgd;
+    qmat_decomp.qmat_chr = qmat_chr;
+    qmat_decomp.qmat_seg = qmat_seg;
 
     if(debug){
-        cout << "Dimension of Q matrix at genome, chromosome, and segment level: " << dim_wgd << "\t" << dim_chr << "\t" << dim_seg << "\n";
+        r8mat_print(dim_wgd, dim_wgd, qmat_wgd, "  Q-WGD matrix:");
+        r8mat_print(dim_chr, dim_chr, qmat_chr, "  Q-CHR matrix:");
+        r8mat_print(dim_seg, dim_seg, qmat_seg, "  Q-SEG matrix:");
     }
 
-    return qmat;
 }
 
 
 
 /**
  * @brief Build transition probability matrices for different levels of copy number changes.
- * 
+ * @param PMAT_DECOMP: transition probability matrices for different levels 
  * @param rtree: the evolutionary tree 
  * @param knodes: list of internal nodes in post-order traversal
  * @param qmat: rate matrices for different levels 
@@ -846,11 +845,9 @@ QMAT_DECOMP build_rate_matrices(const evo_tree& rtree, const OBS_DECOMP& obs_dec
  * @param max_wgd: maximum number of WGD events 
  * @param max_chr_change: maximum number of chromosome gain/loss events 
  * @param max_site_change: maximum number of site duplication/deletion events 
- * @return PMAT_DECOMP: transition probability matrices for different levels 
- */
-PMAT_DECOMP build_transition_matrices( const evo_tree& rtree, const vector<int>& knodes, const QMAT_DECOMP& qmat_decomp, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug){
-    if(debug) cout << "\tbuild P transition matrices for multiple levels" << endl;
 
+ */
+void build_transition_matrices(PMAT_DECOMP& pmat, const evo_tree& rtree, const vector<int>& knodes, const QMAT_DECOMP& qmat_decomp, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug){
     double *qmat_wgd = qmat_decomp.qmat_wgd; 
     double *qmat_chr = qmat_decomp.qmat_chr; 
     double *qmat_seg = qmat_decomp.qmat_seg;
@@ -863,7 +860,7 @@ PMAT_DECOMP build_transition_matrices( const evo_tree& rtree, const vector<int>&
     int dim_mat_chr = dim_chr * dim_chr;
     int dim_mat_seg = dim_seg * dim_seg;    
 
-    PMAT_DECOMP pmat;
+    
     // Find the transition probability matrix for each branch, indexed by branch length
     map<double, double*> pmats_wgd;
     map<double, double*> pmats_chr;
@@ -927,9 +924,10 @@ PMAT_DECOMP build_transition_matrices( const evo_tree& rtree, const vector<int>&
         }
    }
 
-    pmat.pmats_wgd = pmats_wgd;
-    pmat.pmats_chr = pmats_chr;
-    pmat.pmats_seg = pmats_seg;
+    pmat.free_all();  // or equivalent manual loop
+    pmat.pmats_wgd = std::move(pmats_wgd);
+    pmat.pmats_chr = std::move(pmats_chr);
+    pmat.pmats_seg = std::move(pmats_seg);
 
     if(debug){
       for(auto it = pmats_wgd.begin(); it != pmats_wgd.end(); ++it){
@@ -948,8 +946,6 @@ PMAT_DECOMP build_transition_matrices( const evo_tree& rtree, const vector<int>&
           r8mat_print(dim_seg, dim_seg, it->second, "  P-SEG matrix:");
       }
     }
-
-    return pmat;
 }
 
 
@@ -1336,124 +1332,14 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
 
     cout << "Dimensions of rate/transition matrices for WGD, chr gain/loss, site gain/loss: " << dim_wgd << "\t" << dim_chr << "\t" << dim_seg << endl;
 
-    // QMAT_DECOMP qmat_decomp = build_rate_matrices(rtree, obs_decomp, dim_decomp, debug);
+    if(debug) cout << "\tBuilding Q rate matrices for multiple levels" << endl;
+    QMAT_DECOMP qmat_decomp;
+    build_rate_matrices(qmat_decomp, rtree, obs_decomp, dim_decomp, debug);
 
-    if(debug) cout << "\tbuild Q rate matrices for multiple levels" << endl;
-    // QMAT_DECOMP qmat_decomp;
-    double *qmat_wgd = nullptr;
-    double *qmat_chr = nullptr;
-    double *qmat_seg = nullptr;
 
-    if(max_wgd > 0){
-        qmat_wgd = new double[dim_mat_wgd];  // WGD
-        memset(qmat_wgd, 0.0, dim_mat_wgd * sizeof(double));
-        get_rate_matrix_wgd(qmat_wgd, rtree.wgd_rate, max_wgd);
-    }
-
-    if(max_chr_change > 0){
-        qmat_chr = new double[dim_mat_chr];   // chromosome gain/loss
-        memset(qmat_chr, 0.0, dim_mat_chr * sizeof(double));
-        get_rate_matrix_chr_change(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate, max_chr_change);
-    }
-
-    if(max_site_change > 0){
-        qmat_seg = new double[dim_mat_seg];  // site duplication/deletion
-        memset(qmat_seg, 0.0, dim_mat_seg * sizeof(double));
-        get_rate_matrix_site_change(qmat_seg, rtree.dup_rate, rtree.del_rate, max_site_change);
-    }
-
-    // qmat_decomp.qmat_wgd = qmat_wgd;
-    // qmat_decomp.qmat_chr = qmat_chr;
-    // qmat_decomp.qmat_seg = qmat_seg;
-
-    // PMAT_DECOMP pmat_decomp = build_transition_matrices(rtree, lnl_type.knodes, qmat_decomp, dim_decomp, obs_decomp, debug);
-    if(debug) cout << "\tbuild P transition matrices for multiple levels" << endl;
-    
-    // Find the transition probability matrix for each branch, indexed by branch length
-    map<double, double*> pmats_wgd;
-    map<double, double*> pmats_chr;
-    map<double, double*> pmats_seg;
-
-    double *pmati_wgd, *pmatj_wgd;
-    double *pmati_chr, *pmatj_chr;
-    double *pmati_seg, *pmatj_seg;
-
-    for(size_t kn = 0; kn < lnl_type.knodes.size(); ++kn){
-         int k = lnl_type.knodes[kn];
-         double bli = rtree.edges[rtree.nodes[k].e_ot[0]].length;
-         double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
-
-         // For WGD
-         if(obs_decomp.max_wgd > 0){
-             if(pmats_wgd.find(bli) == pmats_wgd.end()){
-                pmati_wgd = new double[dim_mat_wgd];
-                memset(pmati_wgd, 0.0, dim_mat_wgd*sizeof(double));
-                get_transition_matrix_bounded(qmat_wgd, pmati_wgd, bli, dim_wgd);
-                pmats_wgd[bli] = pmati_wgd;
-             }
-             if(pmats_wgd.find(blj) == pmats_wgd.end()){
-                pmatj_wgd = new double[dim_mat_wgd];
-                memset(pmatj_wgd, 0.0, dim_mat_wgd*sizeof(double));
-                get_transition_matrix_bounded(qmat_wgd, pmatj_wgd, blj, dim_wgd);
-                pmats_wgd[blj] = pmatj_wgd;
-             }
-         }
-
-         // For chr gain/loss
-         if(obs_decomp.max_chr_change > 0){
-             if(pmats_chr.find(bli) == pmats_chr.end()){
-                 pmati_chr = new double[dim_mat_chr];
-                 memset(pmati_chr, 0.0, dim_mat_chr*sizeof(double));
-                 get_transition_matrix_bounded(qmat_chr, pmati_chr, bli, dim_chr);
-                 pmats_chr[bli] = pmati_chr;
-             }
-             if(pmats_chr.find(blj) == pmats_chr.end()){
-                 pmatj_chr = new double[dim_mat_chr];
-                 memset(pmatj_chr, 0.0, dim_mat_chr*sizeof(double));
-                 get_transition_matrix_bounded(qmat_chr, pmatj_chr, blj, dim_chr);
-                 pmats_chr[blj] = pmatj_chr;
-             }
-         }
-
-         // For site duplication/deletion
-         if(obs_decomp.max_site_change > 0){
-             if(pmats_seg.find(bli) == pmats_seg.end()){
-                 pmati_seg = new double[dim_mat_seg];
-                 memset(pmati_seg, 0.0, dim_mat_seg*sizeof(double));
-                 get_transition_matrix_bounded(qmat_seg, pmati_seg, bli, dim_seg);
-                 pmats_seg[bli] = pmati_seg;
-             }
-             if(pmats_seg.find(blj) == pmats_seg.end()){
-                 pmatj_seg = new double[dim_mat_seg];
-                 memset(pmatj_seg, 0.0, dim_mat_seg*sizeof(double));
-                 get_transition_matrix_bounded(qmat_seg, pmatj_seg, blj, dim_seg);
-                 pmats_seg[blj] = pmatj_seg;
-            }
-        }
-   }
-
-    if(debug){
-      for(auto it = pmats_wgd.begin(); it != pmats_wgd.end(); ++it){
-          double key = it->first;
-          cout << "Get P matrix for branch length " << key << endl;
-          r8mat_print(dim_wgd, dim_wgd, it->second, "  P-WGD matrix:");
-      }
-      for(auto it = pmats_chr.begin(); it != pmats_chr.end(); ++it){
-          double key = it->first;
-          cout << "Get P matrix for branch length " << key << endl;
-          r8mat_print(dim_chr, dim_chr, it->second, "  P-CHR matrix:");
-      }
-      for(auto it = pmats_seg.begin(); it != pmats_seg.end(); ++it){
-          double key = it->first;
-          cout << "Get P matrix for branch length " << key << endl;
-          r8mat_print(dim_seg, dim_seg, it->second, "  P-SEG matrix:");
-      }
-    }
-
+    if(debug) cout << "\tBuilding P transition matrices for multiple levels" << endl;
     PMAT_DECOMP pmat_decomp;
-    pmat_decomp.pmats_wgd = pmats_wgd;
-    pmat_decomp.pmats_chr = pmats_chr;
-    pmat_decomp.pmats_seg = pmats_seg;
+    build_transition_matrices(pmat_decomp, rtree, lnl_type.knodes, qmat_decomp, dim_decomp, obs_decomp, debug);
 
     double logL = get_likelihood_chr_change(rtree, vobs_change, lnl_type.knodes, pmat_decomp, dim_decomp, obs_decomp, lnl_type, is_total, debug);
 
@@ -1481,25 +1367,6 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
     if(debug){
         cout << "Final likelihood: " << logL << endl;
         cout << "Free memory" << endl;
-    }
-
-    if(max_wgd > 0){
-        delete [] qmat_wgd;
-        for(auto m : pmats_wgd){
-            delete [] m.second;
-        }
-    }
-    if(max_chr_change > 0){
-        delete [] qmat_chr;
-        for(auto m : pmats_chr){
-            delete [] m.second;
-        }
-    }
-    if(max_site_change > 0){
-        delete [] qmat_seg;
-        for(auto m : pmats_seg){
-            delete [] m.second;
-        }
     }
 
     TimePoint end_all_valid = now();
@@ -2103,8 +1970,6 @@ double get_likelihood_decomp(evo_tree& rtree, const map<int, vector<vector<int>>
       }
   }
 
-  double logL = 0.0;
-
   PMAT_DECOMP pmat_decomp;
   pmat_decomp.pmats_wgd = pmats_wgd;
   pmat_decomp.pmats_chr = pmats_chr;
@@ -2116,7 +1981,7 @@ double get_likelihood_decomp(evo_tree& rtree, const map<int, vector<vector<int>>
   dim_decomp.dim_seg = dim_seg;
 
   // cout << "Number of states is " << nstate << endl;
-  logL = get_likelihood_chr_decomp(vobs, obs_decomp, rtree, comps, knodes, pmat_decomp, dim_decomp, lnl_type.infer_wgd, lnl_type.infer_chr, lnl_type.use_repeat, cn_max, is_total);
+  double logL = get_likelihood_chr_decomp(vobs, obs_decomp, rtree, comps, knodes, pmat_decomp, dim_decomp, lnl_type.infer_wgd, lnl_type.infer_chr, lnl_type.use_repeat, cn_max, is_total);
 
   if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;
   if(lnl_type.correct_bias){

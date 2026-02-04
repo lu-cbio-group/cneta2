@@ -62,7 +62,8 @@ struct OBS_DECOMP{
 };
 
 
-// information derived from input data
+// TODO: merged duplicated data structures
+// information derived from input data, used in ancestral state reconstruction
 struct MAX_DECOMP{
   int m_max;   // maximum copy of a segment before chr-level events, used in likelihood table initialization
 
@@ -110,6 +111,56 @@ struct QMAT_DECOMP{
   double* qmat_wgd;
   double* qmat_chr;
   double* qmat_seg;
+
+  // Ensure pointers are initialised
+  QMAT_DECOMP() noexcept
+      : qmat_wgd(nullptr),
+        qmat_chr(nullptr),
+        qmat_seg(nullptr)
+  {}
+
+  // forbid copying (owning raw memory)
+  QMAT_DECOMP(const QMAT_DECOMP&) = delete;
+  QMAT_DECOMP& operator=(const QMAT_DECOMP&) = delete;
+
+  // move constructor
+  QMAT_DECOMP(QMAT_DECOMP&& other) noexcept
+      : qmat_wgd(other.qmat_wgd),
+        qmat_chr(other.qmat_chr),
+        qmat_seg(other.qmat_seg)
+  {
+      other.qmat_wgd = nullptr;
+      other.qmat_chr = nullptr;
+      other.qmat_seg = nullptr;
+  }
+
+  // move assignment
+  QMAT_DECOMP& operator=(QMAT_DECOMP&& other) noexcept {
+      if (this != &other) {
+          delete [] qmat_wgd;
+          delete [] qmat_chr;
+          delete [] qmat_seg;
+
+          qmat_wgd = other.qmat_wgd;
+          qmat_chr = other.qmat_chr;
+          qmat_seg = other.qmat_seg;
+
+          other.qmat_wgd = nullptr;
+          other.qmat_chr = nullptr;
+          other.qmat_seg = nullptr;
+      }
+      return *this;
+  }
+
+  void free_all() noexcept {
+      delete [] qmat_wgd;
+      delete [] qmat_chr;
+      delete [] qmat_seg;    
+  }
+
+  ~QMAT_DECOMP() {
+    free_all();
+  }
 };
 
 
@@ -117,6 +168,60 @@ struct PMAT_DECOMP{
   map<double, double*> pmats_wgd;
   map<double, double*> pmats_chr;
   map<double, double*> pmats_seg;
+
+  PMAT_DECOMP() = default;
+  // forbid copying (owning raw memory)
+  PMAT_DECOMP(const PMAT_DECOMP&) = delete;
+  PMAT_DECOMP& operator=(const PMAT_DECOMP&) = delete;
+
+  // move constructor (transfer ownership)
+  PMAT_DECOMP(PMAT_DECOMP&& other) noexcept
+      : pmats_wgd(std::move(other.pmats_wgd)),
+        pmats_chr(std::move(other.pmats_chr)),
+        pmats_seg(std::move(other.pmats_seg))
+  {
+      // other maps are left in a valid but unspecified state (usually empty)
+      // we do NOT delete pointers in 'other' because we stole them
+      other.pmats_wgd.clear();
+      other.pmats_chr.clear();
+      other.pmats_seg.clear();
+  }
+
+  // delete all owned pointers and clear maps
+  void free_all() noexcept {
+      auto free_map = [](std::map<double, double*>& m) noexcept {
+          for (auto& kv : m) {
+              delete [] kv.second;   // assumes allocation with new[]
+              kv.second = nullptr;
+          }
+          m.clear();
+      };
+
+      free_map(pmats_wgd);
+      free_map(pmats_chr);
+      free_map(pmats_seg);
+  }
+
+  // move assignment
+  PMAT_DECOMP& operator=(PMAT_DECOMP&& other) noexcept {
+      if (this != &other) {
+          free_all();  // free currently owned memory
+
+          pmats_wgd = std::move(other.pmats_wgd);
+          pmats_chr = std::move(other.pmats_chr);
+          pmats_seg = std::move(other.pmats_seg);
+
+          other.pmats_wgd.clear();
+          other.pmats_chr.clear();
+          other.pmats_seg.clear();
+      }
+      return *this;
+  }
+
+
+  ~PMAT_DECOMP() {
+      free_all();
+  }
 };
 
 
@@ -130,6 +235,10 @@ struct PROB_DECOMP{
 
   double* pbli_seg;
   double* pblj_seg;
+
+  
+  PROB_DECOMP() = default;
+  PROB_DECOMP(const PROB_DECOMP&) = delete;
 };
 
 // separated for function refactoring
@@ -137,6 +246,10 @@ struct PROB_DECOMP1{
   double* pbl_wgd;
   double* pbl_chr;
   double* pbl_seg;
+
+
+  PROB_DECOMP1() = default;
+  PROB_DECOMP1(const PROB_DECOMP1&) = delete;
 };
 
 
@@ -310,8 +423,8 @@ double extract_tree_lnl(vector<vector<double>>& L_sk_k, int Ns, int model);
 void initialize_lnl_table_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const vector<CN_CHANGE>& obs_change, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug);
 
 // not used for now due to pointer issues
-QMAT_DECOMP build_rate_matrices(const evo_tree& rtree, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int debug);
-PMAT_DECOMP build_transition_matrices( const evo_tree& rtree, const vector<int>& knodes, const QMAT_DECOMP& qmat_decomp, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug); 
+void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int debug);
+void build_transition_matrices(PMAT_DECOMP& pmat, const evo_tree& rtree, const vector<int>& knodes, const QMAT_DECOMP& qmat_decomp, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug); 
 
 
 LNL_VAL compute_child_likelihood(int node, const CN_CHANGE& sk, const LNL_TABLE& L_sk_k, const PROB_DECOMP1& prob_decomp, const DIM_DECOMP& dim_decomp, int debug);
