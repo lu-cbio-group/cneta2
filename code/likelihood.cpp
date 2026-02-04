@@ -785,7 +785,7 @@ void initialize_lnl_table_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const
  * @return QMAT_DECOMP: rate matrices for different levels 
  */
 QMAT_DECOMP build_rate_matrices(const evo_tree& rtree, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int debug){
-    if(debug) cout << "\tbuild rate matrices for multiple levels" << endl;
+    if(debug) cout << "\tbuild Q rate matrices for multiple levels" << endl;
 
     int max_wgd = obs_decomp.max_wgd;
     int max_chr_change = obs_decomp.max_chr_change;
@@ -848,12 +848,12 @@ QMAT_DECOMP build_rate_matrices(const evo_tree& rtree, const OBS_DECOMP& obs_dec
  * @param max_site_change: maximum number of site duplication/deletion events 
  * @return PMAT_DECOMP: transition probability matrices for different levels 
  */
-PMAT_DECOMP build_transition_matrices( const evo_tree& rtree, const vector<int>& knodes, const QMAT_DECOMP& qmat, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug){
-    if(debug) cout << "\tbuild transition matrices for multiple levels" << endl;
+PMAT_DECOMP build_transition_matrices( const evo_tree& rtree, const vector<int>& knodes, const QMAT_DECOMP& qmat_decomp, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug){
+    if(debug) cout << "\tbuild P transition matrices for multiple levels" << endl;
 
-    double *qmat_wgd = qmat.qmat_wgd; 
-    double *qmat_chr = qmat.qmat_chr; 
-    double *qmat_seg = qmat.qmat_seg;
+    double *qmat_wgd = qmat_decomp.qmat_wgd; 
+    double *qmat_chr = qmat_decomp.qmat_chr; 
+    double *qmat_seg = qmat_decomp.qmat_seg;
 
     int dim_wgd = dim_decomp.dim_wgd;
     int dim_chr = dim_decomp.dim_chr;
@@ -1290,109 +1290,228 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
  * @param debug: debug flag
  */
 double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, int debug){
-  if(debug) cout << "\tget likelihood using multiple chains based on copy number changes" << endl;
+    if(debug) cout << "\tget likelihood using multiple chains based on copy number changes" << endl;
 
-  // start calculating time
-  TimePoint start_time = now();
-  ++cnt_decomp_all;
+    // start calculating time
+    TimePoint start_time = now();
+    ++cnt_decomp_all;
 
-  if(!is_tree_valid(rtree, lnl_type.max_tobs, lnl_type.patient_age, lnl_type.cons)){
-       // invalid tree only count toward "all" calls
-       TimePoint end_all_invalid = now();
-       time_decomp_all += elapsed_seconds(start_time, end_all_invalid);
+    if(!is_tree_valid(rtree, lnl_type.max_tobs, lnl_type.patient_age, lnl_type.cons)){
+        // invalid tree only count toward "all" calls
+        TimePoint end_all_invalid = now();
+        time_decomp_all += elapsed_seconds(start_time, end_all_invalid);
 
-       return SMALL_LNL;
+        return SMALL_LNL;
+    }
+
+    int model = lnl_type.model;
+    int cn_max = lnl_type.cn_max;
+    int is_total = lnl_type.is_total;
+
+    int max_wgd = obs_decomp.max_wgd;
+    // TODO: may consider gain/loss separately and arm-level changes in the future
+    int max_chr_change = obs_decomp.max_chr_change;
+    int max_site_change = obs_decomp.max_site_change;
+
+    //   // use obs_decomp to avoid new parameters
+    //   MAX_CHANGE max_change = {max_wgd, max_chr_change, max_site_change};
+
+    int dim_wgd = 0;
+    int dim_chr = 0;
+    int dim_seg = 0;
+
+    // only consider states that can reach observed changes
+    if(max_wgd > 0) dim_wgd = max_wgd + 1;
+    if(max_chr_change > 0) dim_chr = 2 * max_chr_change + 1;
+    if(max_site_change > 0) dim_seg = 2 * max_site_change + 1;
+
+    int dim_mat_wgd = dim_wgd * dim_wgd;
+    int dim_mat_chr = dim_chr * dim_chr;
+    int dim_mat_seg = dim_seg * dim_seg;  
+
+    DIM_DECOMP dim_decomp;
+    dim_decomp.dim_wgd = dim_wgd;
+    dim_decomp.dim_chr = dim_chr;
+    dim_decomp.dim_seg = dim_seg;
+
+    cout << "Dimensions of rate/transition matrices for WGD, chr gain/loss, site gain/loss: " << dim_wgd << "\t" << dim_chr << "\t" << dim_seg << endl;
+
+    // QMAT_DECOMP qmat_decomp = build_rate_matrices(rtree, obs_decomp, dim_decomp, debug);
+
+    if(debug) cout << "\tbuild Q rate matrices for multiple levels" << endl;
+    // QMAT_DECOMP qmat_decomp;
+    double *qmat_wgd = nullptr;
+    double *qmat_chr = nullptr;
+    double *qmat_seg = nullptr;
+
+    if(max_wgd > 0){
+        qmat_wgd = new double[dim_mat_wgd];  // WGD
+        memset(qmat_wgd, 0.0, dim_mat_wgd * sizeof(double));
+        get_rate_matrix_wgd(qmat_wgd, rtree.wgd_rate, max_wgd);
+    }
+
+    if(max_chr_change > 0){
+        qmat_chr = new double[dim_mat_chr];   // chromosome gain/loss
+        memset(qmat_chr, 0.0, dim_mat_chr * sizeof(double));
+        get_rate_matrix_chr_change(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate, max_chr_change);
+    }
+
+    if(max_site_change > 0){
+        qmat_seg = new double[dim_mat_seg];  // site duplication/deletion
+        memset(qmat_seg, 0.0, dim_mat_seg * sizeof(double));
+        get_rate_matrix_site_change(qmat_seg, rtree.dup_rate, rtree.del_rate, max_site_change);
+    }
+
+    // qmat_decomp.qmat_wgd = qmat_wgd;
+    // qmat_decomp.qmat_chr = qmat_chr;
+    // qmat_decomp.qmat_seg = qmat_seg;
+
+    // PMAT_DECOMP pmat_decomp = build_transition_matrices(rtree, lnl_type.knodes, qmat_decomp, dim_decomp, obs_decomp, debug);
+    if(debug) cout << "\tbuild P transition matrices for multiple levels" << endl;
+    
+    // Find the transition probability matrix for each branch, indexed by branch length
+    map<double, double*> pmats_wgd;
+    map<double, double*> pmats_chr;
+    map<double, double*> pmats_seg;
+
+    double *pmati_wgd, *pmatj_wgd;
+    double *pmati_chr, *pmatj_chr;
+    double *pmati_seg, *pmatj_seg;
+
+    for(size_t kn = 0; kn < lnl_type.knodes.size(); ++kn){
+         int k = lnl_type.knodes[kn];
+         double bli = rtree.edges[rtree.nodes[k].e_ot[0]].length;
+         double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
+
+         // For WGD
+         if(obs_decomp.max_wgd > 0){
+             if(pmats_wgd.find(bli) == pmats_wgd.end()){
+                pmati_wgd = new double[dim_mat_wgd];
+                memset(pmati_wgd, 0.0, dim_mat_wgd*sizeof(double));
+                get_transition_matrix_bounded(qmat_wgd, pmati_wgd, bli, dim_wgd);
+                pmats_wgd[bli] = pmati_wgd;
+             }
+             if(pmats_wgd.find(blj) == pmats_wgd.end()){
+                pmatj_wgd = new double[dim_mat_wgd];
+                memset(pmatj_wgd, 0.0, dim_mat_wgd*sizeof(double));
+                get_transition_matrix_bounded(qmat_wgd, pmatj_wgd, blj, dim_wgd);
+                pmats_wgd[blj] = pmatj_wgd;
+             }
+         }
+
+         // For chr gain/loss
+         if(obs_decomp.max_chr_change > 0){
+             if(pmats_chr.find(bli) == pmats_chr.end()){
+                 pmati_chr = new double[dim_mat_chr];
+                 memset(pmati_chr, 0.0, dim_mat_chr*sizeof(double));
+                 get_transition_matrix_bounded(qmat_chr, pmati_chr, bli, dim_chr);
+                 pmats_chr[bli] = pmati_chr;
+             }
+             if(pmats_chr.find(blj) == pmats_chr.end()){
+                 pmatj_chr = new double[dim_mat_chr];
+                 memset(pmatj_chr, 0.0, dim_mat_chr*sizeof(double));
+                 get_transition_matrix_bounded(qmat_chr, pmatj_chr, blj, dim_chr);
+                 pmats_chr[blj] = pmatj_chr;
+             }
+         }
+
+         // For site duplication/deletion
+         if(obs_decomp.max_site_change > 0){
+             if(pmats_seg.find(bli) == pmats_seg.end()){
+                 pmati_seg = new double[dim_mat_seg];
+                 memset(pmati_seg, 0.0, dim_mat_seg*sizeof(double));
+                 get_transition_matrix_bounded(qmat_seg, pmati_seg, bli, dim_seg);
+                 pmats_seg[bli] = pmati_seg;
+             }
+             if(pmats_seg.find(blj) == pmats_seg.end()){
+                 pmatj_seg = new double[dim_mat_seg];
+                 memset(pmatj_seg, 0.0, dim_mat_seg*sizeof(double));
+                 get_transition_matrix_bounded(qmat_seg, pmatj_seg, blj, dim_seg);
+                 pmats_seg[blj] = pmatj_seg;
+            }
+        }
    }
 
-  int model = lnl_type.model;
-  int cn_max = lnl_type.cn_max;
-  int is_total = lnl_type.is_total;
-
-  int max_wgd = obs_decomp.max_wgd;
-  // TODO: may consider gain/loss separately and arm-level changes in the future
-  int max_chr_change = obs_decomp.max_chr_change;
-  int max_site_change = obs_decomp.max_site_change;
-
-//   MAX_CHANGE max_change = {max_wgd, max_chr_change, max_site_change};
-
-  int dim_wgd = 0;
-  int dim_chr = 0;
-  int dim_seg = 0;
-
-  // only consider states that can reach observed changes
-  if(max_wgd > 0) dim_wgd = max_wgd + 1;
-  if(max_chr_change > 0) dim_chr = 2 * max_chr_change + 1;
-  if(max_site_change > 0) dim_seg = 2 * max_site_change + 1;
-
-  DIM_DECOMP dim_decomp;
-  dim_decomp.dim_wgd = dim_wgd;
-  dim_decomp.dim_chr = dim_chr;
-  dim_decomp.dim_seg = dim_seg;
-
-  cout << "Dimensions of rate/transition matrices for WGD, chr gain/loss, site gain/loss: " << dim_wgd << "\t" << dim_chr << "\t" << dim_seg << endl;
-
-  QMAT_DECOMP qmat_decomp = build_rate_matrices(rtree, obs_decomp, dim_decomp, debug);
-  PMAT_DECOMP pmat_decomp = build_transition_matrices(rtree, lnl_type.knodes, qmat_decomp, dim_decomp, obs_decomp, debug);
-
-  double logL = 0.0;
-
-  // cout << "Number of states is " << nstate << endl;
-  logL = get_likelihood_chr_change(rtree, vobs_change, lnl_type.knodes, pmat_decomp, dim_decomp, obs_decomp, lnl_type, is_total, debug);
-
-  if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;
-  if(lnl_type.correct_bias){
-    if(debug) cout << "Correcting for the skip of invariant sites" << endl;
-    vector<CN_CHANGE> obs(rtree.nleaf - 1, {0, 0, 0});   // invariant site
-    LNL_TABLE L_sk_k;
-    initialize_lnl_table_change(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);   
-    get_likelihood_site_change(L_sk_k, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
-    double lnl_invar = extract_tree_lnl_change(L_sk_k, rtree.nleaf - 1, debug);
-
-    double bias = lnl_type.num_invar_bins * lnl_invar;
-    logL = logL + bias;
     if(debug){
-        cout << "Likelihood of an invariant bin " << lnl_invar << endl;
-        cout << "Number of invariant bins " << lnl_type.num_invar_bins << endl;
-        cout << "Bias to correct " << bias << endl;
-        cout << "Final likelihood after correcting acquisition bias: " << logL << endl;
+      for(auto it = pmats_wgd.begin(); it != pmats_wgd.end(); ++it){
+          double key = it->first;
+          cout << "Get P matrix for branch length " << key << endl;
+          r8mat_print(dim_wgd, dim_wgd, it->second, "  P-WGD matrix:");
+      }
+      for(auto it = pmats_chr.begin(); it != pmats_chr.end(); ++it){
+          double key = it->first;
+          cout << "Get P matrix for branch length " << key << endl;
+          r8mat_print(dim_chr, dim_chr, it->second, "  P-CHR matrix:");
+      }
+      for(auto it = pmats_seg.begin(); it != pmats_seg.end(); ++it){
+          double key = it->first;
+          cout << "Get P matrix for branch length " << key << endl;
+          r8mat_print(dim_seg, dim_seg, it->second, "  P-SEG matrix:");
+      }
     }
-  }
 
-  if(std::isnan(logL) || logL < SMALL_LNL) logL = SMALL_LNL;
-  if(debug){
-      cout << "Final likelihood: " << logL << endl;
-      cout << "Free memory" << endl;
-  }
+    PMAT_DECOMP pmat_decomp;
+    pmat_decomp.pmats_wgd = pmats_wgd;
+    pmat_decomp.pmats_chr = pmats_chr;
+    pmat_decomp.pmats_seg = pmats_seg;
 
-  if(max_wgd > 0){
-      delete [] qmat_decomp.qmat_wgd;
-      for(auto m : pmat_decomp.pmats_wgd){
-          delete [] m.second;
-      }
-  }
-  if(max_chr_change > 0){
-      delete [] qmat_decomp.qmat_chr;
-      for(auto m : pmat_decomp.pmats_chr){
-          delete [] m.second;
-      }
-  }
-  if(max_site_change > 0){
-      delete [] qmat_decomp.qmat_seg;
-      for(auto m : pmat_decomp.pmats_seg){
-          delete [] m.second;
-      }
-  }
+    double logL = get_likelihood_chr_change(rtree, vobs_change, lnl_type.knodes, pmat_decomp, dim_decomp, obs_decomp, lnl_type, is_total, debug);
 
-  TimePoint end_all_valid = now();
-  double dt_valid= elapsed_seconds(start_time, end_all_valid);
-  
-  time_decomp_all   += dt_valid; // valid also count toward all, so time for all is always updated
-  time_decomp_valid += dt_valid; // only update time for valid calls
-  ++cnt_decomp_valid; // only update count for valid calls
+    if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;
+    if(lnl_type.correct_bias){
+        if(debug) cout << "Correcting for the skip of invariant sites" << endl;
+        vector<CN_CHANGE> obs(rtree.nleaf - 1, {0, 0, 0});   // invariant site
+        LNL_TABLE L_sk_k;
+        initialize_lnl_table_change(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);   
+        get_likelihood_site_change(L_sk_k, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
+        double lnl_invar = extract_tree_lnl_change(L_sk_k, rtree.nleaf - 1, debug);
 
-  if(debug > 1)  cout << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
+        double bias = lnl_type.num_invar_bins * lnl_invar;
+        logL = logL + bias;
 
-  return logL;
+        if(debug){
+            cout << "Likelihood of an invariant bin " << lnl_invar << endl;
+            cout << "Number of invariant bins " << lnl_type.num_invar_bins << endl;
+            cout << "Bias to correct " << bias << endl;
+            cout << "Final likelihood after correcting acquisition bias: " << logL << endl;
+        }
+    }
+
+    if(std::isnan(logL) || logL < SMALL_LNL) logL = SMALL_LNL;
+    if(debug){
+        cout << "Final likelihood: " << logL << endl;
+        cout << "Free memory" << endl;
+    }
+
+    if(max_wgd > 0){
+        delete [] qmat_wgd;
+        for(auto m : pmats_wgd){
+            delete [] m.second;
+        }
+    }
+    if(max_chr_change > 0){
+        delete [] qmat_chr;
+        for(auto m : pmats_chr){
+            delete [] m.second;
+        }
+    }
+    if(max_site_change > 0){
+        delete [] qmat_seg;
+        for(auto m : pmats_seg){
+            delete [] m.second;
+        }
+    }
+
+    TimePoint end_all_valid = now();
+    double dt_valid= elapsed_seconds(start_time, end_all_valid);
+    
+    time_decomp_all   += dt_valid; // valid also count toward all, so time for all is always updated
+    time_decomp_valid += dt_valid; // only update time for valid calls
+    ++cnt_decomp_valid; // only update count for valid calls
+
+    if(debug > 1)  cout << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
+
+    return logL;
 }
 
 
@@ -1415,7 +1534,7 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
 // L_sk_k has one row for each tree node and one column for each possible state; chr starting from 1
 // This function is critical in obtaining correct likelihood. 
 // If one tip is not initialized, the final likelihood will be 0.
-vector<vector<double>> initialize_lnl_table_decomp(vector<int>& obs, OBS_DECOMP& obs_decomp, int chr, const evo_tree& rtree, const set<vector<int>>& comps, int infer_wgd, int infer_chr, int cn_max, int is_total){
+vector<vector<double>> initialize_lnl_table_decomp(vector<int>& obs, const OBS_DECOMP& obs_decomp, int chr, const evo_tree& rtree, const set<vector<int>>& comps, int infer_wgd, int infer_chr, int cn_max, int is_total){
     int debug = 0;
     // construct a table for each state of each node
     int ntotn = 2 * rtree.nleaf - 1;
@@ -1785,7 +1904,7 @@ void get_likelihood_site_decomp(vector<vector<double>>& L_sk_k, const evo_tree& 
 
 
 // Compute likelihood by chromosome, assuming each observed copy number is decomposed into three types of events
-double get_likelihood_chr_decomp(const map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const evo_tree& rtree, const set<vector<int>>& comps, const vector<int>& knodes, PMAT_DECOMP& pmat_decomp, DIM_DECOMP& dim_decomp, int infer_wgd, int infer_chr, int use_repeat, int cn_max, int is_total){
+double get_likelihood_chr_decomp(const map<int, vector<vector<int>>>& vobs, const OBS_DECOMP& obs_decomp, const evo_tree& rtree, const set<vector<int>>& comps, const vector<int>& knodes, PMAT_DECOMP& pmat_decomp, DIM_DECOMP& dim_decomp, int infer_wgd, int infer_chr, int use_repeat, int cn_max, int is_total){
     int debug = 0;
     double logL = 0.0;    // for all chromosmes
     int nstate = comps.size();
@@ -1847,7 +1966,7 @@ double get_likelihood_chr_decomp(const map<int, vector<vector<int>>>& vobs, OBS_
 // Additional parameters are included for decomposition-based likelihood calculation: 
 // obs_decomp: observed decomposition information
 // comps: set of all possible component vectors
-double get_likelihood_decomp(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int debug){
+double get_likelihood_decomp(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int debug){
   if(debug) cout << "\tget likelihood using multiple chains based on copy number decomposition" << endl;
 
   // start calculating time
@@ -1874,6 +1993,7 @@ double get_likelihood_decomp(evo_tree& rtree, const map<int, vector<vector<int>>
   int dim_wgd = max_wgd + 1;
   int dim_chr = 2 * max_chr_change + 1;
   int dim_seg = 2 * max_site_change + 1;
+
   int dim_mat_wgd = dim_wgd * dim_wgd;
   int dim_mat_chr = dim_chr * dim_chr;
   int dim_mat_seg = dim_seg * dim_seg;

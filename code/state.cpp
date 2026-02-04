@@ -828,7 +828,7 @@ void print_node_cnp(ofstream& fout, const copy_number& cnp, int nid, int cn_max,
 
 
 // Infer the copy number of the MRCA given a tree at a site, assuming independent Markov chains
-double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const vector<int>& knodes, const set<vector<int>>& comps, OBS_DECOMP& obs_decomp, int use_repeat, int infer_wgd, int infer_chr, int cn_max, string ofile, int is_total){
+double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const vector<int>& knodes, const set<vector<int>>& comps, const OBS_DECOMP& obs_decomp, int use_repeat, int infer_wgd, int infer_chr, int cn_max, string ofile, int is_total){
     int debug = 0;
     if(debug) cout << "\treconstruct marginal ancestral state with independent chain model" << endl;
 

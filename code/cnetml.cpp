@@ -280,7 +280,7 @@ vector<evo_tree> find_best_trees(const vector<evo_tree>& trees, const vector<dou
  */
 // Only feasible for trees with fewer than 12 samples
 // Do maximization multiple times (determined by Ngen), since numerical optimizations are local hill-climbing algorithms and may converge to a local peak
-void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, int max_static, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
+void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, int max_static, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
     // initialize candidate tree set
     if(Ns > LARGE_TREE){
         cout << "\nFor data with larger than " << LARGE_TREE << " samples, it is very slow!" << endl;
@@ -390,7 +390,7 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
 // Npop determines the maximum number of unique trees to try
 // assume nni5 = true
 // have to update knodes when topolgy is changed
-void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, int debug){
+void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, int debug){
     // int debug = 0;
     double max_tobs = lnl_type.max_tobs;
     int age = lnl_type.patient_age;
@@ -565,7 +565,7 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
 
 
 // Using genetic algorithm to search tree space (TODO: optimize)
-void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, int max_static, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
+void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int init_tree, const string& dir_itrees, const vector<double>& rates, double ssize, int optim, int max_static, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
   //cout << "Running evolutionary algorithm" << endl;
   // create initial population of trees. Sample from coalescent trees
   double max_tobs = lnl_type.max_tobs;
@@ -745,7 +745,7 @@ vector<int> compute_mutation_rates(evo_tree& tree, int cn_type, int num_total_bi
 
 
 // Run the program on a given tree with different modes of estimation (branch length constrained or not, mutation rate estimated or not)
-void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, const vector<vector<int>>& vobs0, int Nchar0, const vector<double>& rates, double ssize, double tolerance, double miter, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
+void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, const vector<vector<int>>& vobs0, int Nchar0, const vector<double>& rates, double ssize, double tolerance, double miter, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int debug){
     // MLE testing
     //static const int arr1[] = {8,5, 8,1, 9,2, 9,3, 10,9, 10,8, 11,4, 11,10, 7,11, 7,6 };
     //vector<int> e (arr1, arr1 + sizeof(arr1) / sizeof(arr1[0]) );
@@ -938,7 +938,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
 
 
 // Compute the likelihood of a tree given the observed copy number profile
-double compute_tree_likelihood(evo_tree& tree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int debug){
+double compute_tree_likelihood(evo_tree& tree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int debug){
     lnl_type.knodes = get_inodes_bottom_up(tree, debug);
 
     double Ls = 0.0;
@@ -955,7 +955,7 @@ double compute_tree_likelihood(evo_tree& tree, const map<int, vector<vector<int>
 }
 
 
-void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofile, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int estmu, int debug){
+void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofile, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int estmu, int debug){
     int cn_type = lnl_type.cn_type;
     int model = lnl_type.model;
 
@@ -1028,7 +1028,7 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
 
 
 // Given a tree, compute its maximum likelihood
-void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& ofile, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int optim, double ssize, int debug){
+void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& ofile, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int optim, double ssize, int debug){
     TimePoint t_max_start = now();
     int outer_iter = 0;
     lnl_type.knodes = get_inodes_bottom_up(tree, debug);
@@ -1074,7 +1074,7 @@ void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& 
 
 
 // Build ML tree from given CNPs
-void find_ML_tree(string real_tstring, int num_total_bins, string ofile, int tree_search, int Ns, int Npop, int Ngen, int init_tree, string dir_itrees, int max_static, double ssize, int optim, const vector<double>& rates, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, int debug){
+void find_ML_tree(string real_tstring, int num_total_bins, string ofile, int tree_search, int Ns, int Npop, int Ngen, int init_tree, string dir_itrees, int max_static, double ssize, int optim, const vector<double>& rates, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, int debug){
     evo_tree min_nlnl_tree;
     int cn_type = lnl_type.cn_type;
     int age = lnl_type.patient_age;
@@ -1459,7 +1459,9 @@ int main(int argc, char** const argv){
     if(model == DECOMP){      
         // vector<vector<vector<int>>> s_info = read_cn(datafile, Ns, num_total_bins, cn_max, is_total, is_rcn, debug);
         // adjust_m_max();
-    
+        // The estimated values may be non-zero even when no certain events, such as chr gain/loss
+        // Using CN type tag to control the max_* values instead
+
         // 1) WGD per sample and global max_wgd
         if(cn_type != ONLY_SEG && cn_type != EXCLUDE_WGD){
             max_wgd = *max_element(sample_num_wgd.begin(), sample_num_wgd.end());

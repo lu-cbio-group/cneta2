@@ -387,7 +387,7 @@ void max_likelihood(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, 
  *  @return the negative likelihood value
  * TODO: to be extended to arm-level events
  */
-double computeFunction(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, double value, int type){
+double computeFunction(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, double value, int type){
     // Update the branch
     switch(type){
         case -1:{
@@ -448,7 +448,7 @@ double computeFunction(evo_tree& rtree, const map<int, vector<vector<int>>>& vob
 #define SIGN(a,b)((b) >= 0.0 ? fabs(a) : -fabs(a))
 
 /* Brents method in one dimension */
-double brent_opt(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int type, double ax, double bx, double cx, double tol, double *foptx, double *f2optx, double fax, double fbx, double fcx){
+double brent_opt(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int type, double ax, double bx, double cx, double tol, double *foptx, double *f2optx, double fax, double fbx, double fcx){
 	int iter;
 	double a,b,d = 0,etemp,fu,fv,fw,fx,p,q,r,tol1,tol2,u,v,w,x,xm;
 	double xw,wv,vx;
@@ -552,7 +552,7 @@ double brent_opt(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, con
 #undef TINY
 
 
-double minimizeOneDimen(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int type, double xmin, double xguess, double xmax, double tolerance, double *fx, double *f2x){
+double minimizeOneDimen(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int type, double xmin, double xguess, double xmax, double tolerance, double *fx, double *f2x){
 	double eps, optx, ax, bx, cx, fa, fb, fc;
 	//int    converged;	/* not converged error flag */
 
@@ -609,7 +609,7 @@ double minimizeOneDimen(evo_tree& rtree, const map<int, vector<vector<int>>>& vo
 
 
 // return log likelihood
-double optimize_mutation_rates(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, double tolerance){
+double optimize_mutation_rates(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, double tolerance){
     int debug = 0;
 
     if(debug){
@@ -677,7 +677,7 @@ double optimize_mutation_rates(evo_tree& rtree, const map<int, vector<vector<int
 
 
 // return log likelihood
-double optimize_one_branch(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
+double optimize_one_branch(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
 LNL_TYPE& lnl_type, double tolerance, Node* node1, Node* node2){
     int debug = 0;
     if(debug){
@@ -727,7 +727,7 @@ void compute_best_traversal(evo_tree& rtree, NodeVector &nodes, NodeVector &node
 }
 
 
-double optimize_all_branches(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
+double optimize_all_branches(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
 LNL_TYPE& lnl_type, int my_iterations, double tolerance){
     int debug = 0;
 
@@ -1172,7 +1172,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
     @param x the input vector x
     @return the function value at x (negative log likelihood)
 */
-// double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
+// double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
 // LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double x[]){
 //     update_variables_transformed(rtree, x, lnl_type, opt_type);
 
@@ -1182,7 +1182,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
 //         return -1.0 * get_likelihood_revised(rtree, vobs, lnl_type);
 //     }
 // }
-double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double x[]){
+double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double x[]){
   update_variables_transformed(rtree, x, lnl_type, opt_type);
 
   double nlnl;
@@ -1219,7 +1219,7 @@ double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, co
 	@param dfx the derivative at x
 	@return the function value at x
 */
-double derivativeFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int ndim, double x[], double dfx[]){
+double derivativeFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int ndim, double x[], double dfx[]){
   int debug = 0;
 
 	double *h = new double[ndim + 1];
@@ -1252,17 +1252,17 @@ double derivativeFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs
 }
 
 
-double optimFunc(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int nvar, double *vars){
+double optimFunc(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int nvar, double *vars){
     return targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, vars-1);
 }
 
-double optimGradient(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change,OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int nvar, double *x, double *dfx){
+double optimGradient(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int nvar, double *x, double *dfx){
     return derivativeFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nvar, x - 1, dfx - 1);
 }
 
 
 // internal function to interface with L-BFGS-B
-void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, int m, double *x, double *l, double *u, int *nbd,
+void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, int m, double *x, double *l, double *u, int *nbd,
 		double *Fmin, int *fail,
 		double factr, double pgtol,
 		int *fncount, int *grcount, int maxit, char *msg,
@@ -1367,7 +1367,7 @@ void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const ma
  @return minimized function value
  After the function is invoked, the values of x will be updated
 */
-double L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, double* x, double* l, double* u){
+double L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, double* x, double* l, double* u){
   int debug = 0;
 
   int i;
@@ -1435,10 +1435,7 @@ double L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, cons
 }
 
 
-
-
-
-void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change,  OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
+void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
     LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double &min_nlnl, int debug){
     // initialize variables for L-BFGS-B optimization
     int model = lnl_type.model;
@@ -1622,7 +1619,7 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
 // Optimizing the branch length of(node1, node2) with BFGS to incorporate constraints imposed by patient age and tip timings.
 // When any branch length is updated, the neighbour length needs to be updated
 // Optimize mutation rates if necessary
-double optimize_one_branch_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, Node* node1, Node* node2){
+double optimize_one_branch_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, Node* node1, Node* node2){
     int debug = 0;
     if(debug){
         cout << "\tOptimizing the branch " << node1->id + 1 << ", " << node2->id + 1 << endl;
