@@ -330,7 +330,13 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
                 max_likelihood(init_trees[i], vobs, lnl_type, opt_type, nlnl, ssize);
             }else{
                 // init_trees[i] has already been the same as best_tree
-                max_likelihood_BFGS(init_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
+                if(debug > 1){
+                    cout << "Optimising using BFGS" << endl;
+                    // cout << "vobs_change before " << endl;
+                    // print_data_map<CN_CHANGE>(vobs_change);
+                }
+                max_likelihood_BFGS(init_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl, debug);
+                // cout << "vobs_change after " << endl;
             }
             // —— DEBUG, check if nlnl is NaN or inf ——
             if(!std::isfinite(nlnl)){
@@ -426,7 +432,7 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
         }else{
             while(!(nlnl < MAX_NLNL)){
               nlnl = MAX_NLNL;
-              max_likelihood_BFGS(trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
+              max_likelihood_BFGS(trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl, debug);
             }
         }
         trees[i].score = -nlnl;
@@ -1487,10 +1493,11 @@ int main(int argc, char** const argv){
             m_max = 0;
         }
 
-        cout << "maximum number of WGD events is " << max_wgd << endl;
-        cout << "maximum number of chromosome gain/loss events on one chromosome is " << max_chr_change << endl;
-        cout << "maximum number of site duplication/deletion events is " << max_site_change << endl;
-        cout << "maximum number of site duplication/deletion change before chromosome gain/loss is " << m_max << endl;
+        cout << "Paramters used for copy number decomposition model:" << endl;
+        cout << "\tmaximum number of WGD events is " << max_wgd << endl;
+        cout << "\tmaximum number of chromosome gain/loss events on one chromosome is " << max_chr_change << endl;
+        cout << "\tmaximum number of site duplication/deletion events is " << max_site_change << endl;
+        // cout << "\tmaximum number of site duplication/deletion change before chromosome gain/loss is " << m_max << endl;
 
         // // TimePoint t_decomp_table_start = now();
 

@@ -182,29 +182,30 @@ inline std::ostream& operator<<(std::ostream& os, const INPUT_DATA& d) {
 // to store observed decomposition information for an observed copy number
 // store all values for convenience of access and adaption
 struct CN_CHANGE{
-  // copy number values
-  int cn_state;
-  // int cnA;
-  // int cnB;
+    // copy number values
+    int cn_state;
+    // int cnA;
+    // int cnB;
 
-  // decomposed changes
-  // TODO: may extend to store haplotype-specific information in the future
-  int num_wgd;
-  int cn_change_chr;
-  int cn_change_site; 
+    // decomposed changes
+    // TODO: may extend to store haplotype-specific information in the future
+    int num_wgd;
+    int cn_change_chr;
+    int cn_change_site; 
 
-  bool operator<(const CN_CHANGE& other) const {
-      return cn_state < other.cn_state;  // or whatever logic defines ordering
-  }
 
-  vector<int> to_vector() const {
-    return {
-        cn_state,
-        num_wgd,
-        cn_change_chr,
-        cn_change_site
-    };
-}
+    vector<int> to_vector() const {
+        return {
+            cn_state,
+            num_wgd,
+            cn_change_chr,
+            cn_change_site
+        };
+    }    
+
+    bool operator<(const CN_CHANGE& other) const {
+        return to_vector() < other.to_vector();
+    }
 };
 
 

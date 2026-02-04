@@ -1183,11 +1183,13 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
 //     }
 // }
 double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double x[]){
+  int debug = 0;
   update_variables_transformed(rtree, x, lnl_type, opt_type);
 
   double nlnl;
   if(lnl_type.model == DECOMP){
     // nlnl = -1.0 * get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+    if(debug) cout << "checking targetFunk" << endl;
     nlnl = -1.0 * get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, 0);  // debug = 0
   }else{
     nlnl = -1.0 * get_likelihood_revised(rtree, vobs, lnl_type);
@@ -1435,8 +1437,7 @@ double L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, cons
 }
 
 
-void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
-    LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double &min_nlnl, int debug){
+void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double &min_nlnl, int debug){
     // initialize variables for L-BFGS-B optimization
     int model = lnl_type.model;
     int cn_max = lnl_type.cn_max;
@@ -1453,7 +1454,7 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
 
     if(opt_one_branch){
       if(debug){
-        cout << "update only one branch " << rtree.current_eid + 1 << endl;
+        cout << "Updating only one branch " << rtree.current_eid + 1 << endl;
       }
       nparams_est = 1;
     }else{
@@ -1464,12 +1465,13 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
       }
     }
 
-    if(debug){
-      cout << "\nThere are " << nparams_est << " parameters to estimate " << endl;
-    }
-
     // total number of variables to optimize depending on whether mutation rates are estimated
     int ndim = get_ndim(estmu, nparams_est, model, cn_type); 
+
+    if(debug){
+      cout << "\nThere are " << ndim << " parameters to optimise " << endl;
+    }
+
     double* variables = new double[ndim + 1];
     memset(variables, 0.0, (ndim + 1) * sizeof(double));
     double* upper_bound = new double[ndim + 1];

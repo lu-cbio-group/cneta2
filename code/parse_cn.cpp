@@ -952,7 +952,7 @@ void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vect
         if(seg_file != "") fcn << segs_curr[0] << "\t" << segs_curr[1] + 1 << "\t" << segs_curr[2] + 1 << "\t" << segs_curr[3] << "\t" << segs_curr[4];
 
         vector<int> vals{segs_curr[0], segs_curr[1], segs_curr[2]};   // chr, start, end
-        print_vector<int>(vals);
+        // if(debug > 1) print_vector<int>(vals);
 
         for(int j = 0; j < Ns; ++j){
             // for copy number changes
@@ -960,7 +960,7 @@ void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vect
             vector<int> cn_change = cn.to_vector();
             vals.insert(vals.end(), cn_change.begin(), cn_change.end());
             
-            if(debug){
+            if(debug > 1){
                 cout << "Segment " << i + 1 << ", Sample " << j + 1 << ": " << cn << endl;
                 print_vector<int>(cn_change);       
             }            
@@ -969,7 +969,7 @@ void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vect
         }
         if(seg_file != "") fcn << endl;
 
-        print_vector<int>(vals);
+         if(debug > 1) print_vector<int>(vals);
         assert(vals.size() == 3 + 4 * Ns);
         
         data_change[segs_curr[0]].push_back(vals);
@@ -1114,9 +1114,6 @@ void get_obs_vector_by_chr_state(const map<int, vector<vector<int>>>& data,  map
 void get_obs_vector_by_chr_change(const map<int, vector<vector<int>>>& data_change,  map<int, vector<vector<CN_CHANGE>>>& vobs_change, int Ns){
     // Construct the CN matrix by chromosome
     // Assume chromosomes in data are ordered numerically
-    // int total_chr = data.rbegin()->first;  // Some chromosomes got lost in the segment merging, so total_chr may not equal to data.size()
-    // int nchr = data.begin()->first;
-    // for(; nchr <= total_chr; nchr++){
     for(auto dcn : data_change){
         int nchr = dcn.first;
         vector<vector<CN_CHANGE>> obs_chr;
