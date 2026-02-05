@@ -190,7 +190,7 @@ void get_rate_matrix_allele_specific(double* m, const double& dup_rate, const do
 void get_rate_matrix_site_change(double* m, const double& dup_rate, const double& del_rate, const int& site_change_max){
     int debug = 0;
     int ncol = 2 * site_change_max + 1;
-    int lcol = ncol - 1;
+    int lcol = ncol - 1;    // last column
 
     for(unsigned i = 0; i < ncol; ++ i){
         for (unsigned j = 0; j < ncol; ++ j){
@@ -198,13 +198,13 @@ void get_rate_matrix_site_change(double* m, const double& dup_rate, const double
         }
     }
     for(unsigned i = 1; i < ncol - 1; i++){
-        m[i+(i-1)*ncol] = del_rate;
+        m[i+(i - 1)*ncol] = del_rate;
         m[i+(i + 1)*ncol] = dup_rate;
         m[i+i*ncol] = 0 - m[i+(i-1)*ncol] - m[i+(i + 1)*ncol];
     }
-
-    m[ncol] = dup_rate;
-    m[0] = - dup_rate;
+    // stored by column
+    m[ncol] = 0;
+    m[0] = 0;
 
     m[lcol + (lcol - 1)*ncol] = del_rate;
     m[lcol + lcol*ncol] = 0 - del_rate;
@@ -233,8 +233,9 @@ void get_rate_matrix_chr_change(double* m, const double& chr_gain_rate, const do
         m[i+i*ncol] = 0 - m[i+(i-1)*ncol] - m[i+(i + 1)*ncol];
     }
 
-    m[ncol] = chr_gain_rate;
-    m[0] = - chr_gain_rate;
+    // once lost all copies, cannot be regained
+    m[ncol] = 0;
+    m[0] = 0;
 
     m[lcol + (lcol - 1)*ncol] = chr_loss_rate;
     m[lcol + lcol*ncol] = 0 - chr_loss_rate;
