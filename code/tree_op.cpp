@@ -352,7 +352,7 @@ void test_evo_tree(const evo_tree& tree){
 // generate neutral coalescent trees
 // here nsample is the number of cancer samples (not including germline node)
 // here we directly calculate the edges in the tree
-void generate_coal_tree(const int& nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), vector<int>& edges, vector<double>& lengths, vector<double>& epoch_times, vector<double>& times, const ITREE_PARAM& itree_param){
+void generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), vector<int>& edges, vector<double>& lengths, vector<double>& epoch_times, vector<double>& times, const ITREE_PARAM& itree_param){
   vector<int> nodes;
 
   int Ne = itree_param.Ne;
@@ -458,7 +458,7 @@ void generate_coal_tree(const int& nsample, gsl_rng* r, long unsigned (*fp_myrng
 
 
 // Scale the total time by given time
-evo_tree generate_coal_tree(const int& nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), const ITREE_PARAM& itree_param){
+evo_tree generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), const ITREE_PARAM& itree_param){
    int debug = 0;
    if(debug) cout << "GENERATING COALESCENCE TREE" << endl;
    vector<int> edges;
@@ -832,7 +832,7 @@ evo_tree generate_time_tree(int nsample, gsl_rng* r, long unsigned (*fp_myrng)(l
 
 
 // Create a new tree with the same topology as input tree but different branch lengths
-evo_tree create_new_tree(gsl_vector* blens, evo_tree& rtree, const double& max_tobs, int cons){
+evo_tree create_new_tree(gsl_vector* blens, evo_tree& rtree, const double max_tobs, int cons){
     int nedge = 2 * rtree.nleaf - 2;
 
     vector<edge> enew;
@@ -926,7 +926,7 @@ void adjust_one_tip(evo_tree& rtree, const vector<double>& tobs, int i, int samp
 
 
 // Adjust all tips recursively so that tree height is smaller than age
-void adjust_all_tips(evo_tree& rtree, const double& max_tobs, int age){
+void adjust_all_tips(evo_tree& rtree, const double max_tobs, int age){
     assert(is_blen_valid(rtree));
 
     double ttime = get_total_time(rtree.get_node_times(), max_tobs);
@@ -1204,7 +1204,7 @@ void adjust_tree_height(evo_tree& rtree, gsl_rng* r, double min_height, double m
 
 
 // Check whether the set of branch lengths is valid under the time constraints
-bool is_tree_valid(evo_tree& rtree, const double& max_tobs, int age, int cons){
+bool is_tree_valid(evo_tree& rtree, const double max_tobs, int age, int cons){
     for(int i = 0; i < rtree.edges.size(); ++i){
         if(rtree.edges[i].length < 0){
             cout << "Negative branch length!" << endl;
@@ -1320,7 +1320,7 @@ evo_tree build_parsimony_tree(int Ns, vector<vector<int>>& data){
 }
 
 
-evo_tree read_tree_info(const string& filename, const int& Ns, int debug){
+evo_tree read_tree_info(const string& filename, const int Ns, int debug){
   if(debug) cout << "\tread_tree_info" << endl;
 
   vector<edge> edges;
@@ -1404,7 +1404,7 @@ void adjust_tip_time(evo_tree& rtree, const vector<double>& tobs, int Ns, int sa
 
 
 // Read parsimony trees built by other tools as starting trees, assign timings to tip nodes and initialize mutation rates
-evo_tree read_parsimony_tree(const string& tree_file, const int& Ns, const vector<double>& rates, const vector<double>& tobs, gsl_rng* r, int age, int cons){
+evo_tree read_parsimony_tree(const string& tree_file, const int Ns, const vector<double>& rates, const vector<double>& tobs, gsl_rng* r, int age, int cons){
     int debug = 0;
     if(debug)   cout << "reading from file " << tree_file << endl;
 

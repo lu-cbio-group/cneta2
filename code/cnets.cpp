@@ -139,7 +139,7 @@ void introduce_error(gsl_rng* r, copy_number& curr_cn, int num_seg, int nerr, in
 
 // Evolving sequences along the tree (available for bounded model, implemented according to approach in book Yang, 2004, P437)
 // only support site duplication and deletion
-void evolve_sequences(gsl_rng* r, map<int, copy_number>& cn_matrix, const int& node_id, const evo_tree& tree, double* qmat, int nstate, int num_seg, const vector<double>& rate_consts, map<int, int>& num_muts, int debug){
+void evolve_sequences(gsl_rng* r, map<int, copy_number>& cn_matrix, const int node_id, const evo_tree& tree, double* qmat, int nstate, int num_seg, const vector<double>& rate_consts, map<int, int>& num_muts, int debug){
     if(!tree.nodes[node_id].isRoot){
         double rate = rate_consts[0] + rate_consts[1];
         int edge_id = tree.nodes[node_id].e_in;
@@ -452,7 +452,7 @@ void print_sequences(map<int, copy_number>& cn_matrix, int cn_max, int model, in
 
 // Simulate mutations under different models by simulating waiting times of a Markov chain
 // Each mutation occur at some sites on one chromosome 
-vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int& edge_id, const double& blength, const double& node_time, const vector<int>& chr_lengths, const vector<double>& rate_consts, const SV_SIZE& sv_size, int model, int cn_max, int& num_fail, int debug){
+vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edge_id, const double blength, const double node_time, const vector<int>& chr_lengths, const vector<double>& rate_consts, const SV_SIZE& sv_size, int model, int cn_max, int& num_fail, int debug){
     if(debug){
         cout << "\tGenerate_mutations at node ID " << g.node_id + 1 << " (time " << node_time << "), edge ID " << edge_id + 1 << " with branch length:" << "\t" << blength << endl;
     }
@@ -612,7 +612,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int& ed
 
 
 // simulate mutations under infinite sites model
-vector<mutation> generate_mutation_times(gsl_rng* r, const int& edge_id, const double& blength, const double& node_time, const vector<double>& rate_consts, int debug){
+vector<mutation> generate_mutation_times(gsl_rng* r, const int edge_id, const double blength, const double node_time, const vector<double>& rate_consts, int debug){
   if(debug) cout << "\tgenerate_mutations, blength:" << "\t" << blength << endl;
 
   vector<mutation> ret;
@@ -759,7 +759,7 @@ void apply_mutations(gsl_rng* r, const vector<mutation>& muts, genome& g, const 
 }
 
 
-void traverse_tree_mutating(gsl_rng* r, const int& node_id, const evo_tree& tree, const vector<int>& chr_lengths, const vector<double>& rate_consts, const SV_SIZE& sv_size, map<int, vector<mutation>>& all_muts, map<int, int>& failed_muts, vector<genome>& genomes, int model, int cn_max, int debug){
+void traverse_tree_mutating(gsl_rng* r, const int node_id, const evo_tree& tree, const vector<int>& chr_lengths, const vector<double>& rate_consts, const SV_SIZE& sv_size, map<int, vector<mutation>>& all_muts, map<int, int>& failed_muts, vector<genome>& genomes, int model, int cn_max, int debug){
   //cout << "\ttraverse_tree: " << node_id + 1 << endl;
   if(!tree.nodes[node_id].isRoot){
     // copy the parent

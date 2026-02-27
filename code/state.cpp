@@ -592,7 +592,7 @@ void set_pmat(const evo_tree& rtree, int Ns, int nstate, int model, int cn_max, 
     }
   }
 
-  auto p = sort_permutation(blens, [&](const double& a, const double& b){ return a < b; });
+  auto p = sort_permutation(blens, [&](const double a, const double b){ return a < b; });
   blens = apply_permutation(blens, p);
   pmat_per_blen = apply_permutation(pmat_per_blen, p);
 

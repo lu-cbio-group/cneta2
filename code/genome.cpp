@@ -3,7 +3,7 @@
 
 
 /****************** mutation *********************/
-mutation::mutation(const int& _eid, const int& _type, const double& _btime, const double& _gtime, int _chr, int _seg):
+mutation::mutation(const int _eid, const int _type, const double _btime, const double _gtime, int _chr, int _seg):
 type(_type), btime(_btime), gtime(_gtime), edge_id(_eid), chr(_chr), seg(_seg){
 }
 
@@ -15,7 +15,7 @@ void mutation::print() const{
 /****************** segment *********************/
 segment::segment(){};
 
-segment::segment(const int& _chr, const int& _seg_id):
+segment::segment(const int _chr, const int _seg_id):
 chr(_chr), seg_id(_seg_id){
   chr    = _chr;
   seg_id = _seg_id;
@@ -31,7 +31,7 @@ segment::segment(const segment& _s2){
 genome::genome(): node_id(-1), num_site(0){};
 
 
-genome::genome(const int& _nchr, const int& _nseg): node_id(-1){
+genome::genome(const int _nchr, const int _nseg): node_id(-1){
   int k = 0; // make segment ID unique across the whole genome
   num_site = 0;
   for(int i = 0; i < _nchr; ++i){
@@ -50,7 +50,7 @@ genome::genome(const int& _nchr, const int& _nseg): node_id(-1){
 }
 
 
-genome::genome(const int& _nchr, const vector<int>& _nsegs, const int& ploidy): node_id(-1){ 
+genome::genome(const int _nchr, const vector<int>& _nsegs, const int ploidy): node_id(-1){ 
   for(int p = 0; p < ploidy; ++p){
       int k = 0;     
       for(int i = 0; i < _nchr; ++i){
@@ -69,7 +69,7 @@ genome::genome(const int& _nchr, const vector<int>& _nsegs, const int& ploidy): 
 }
 
 
-genome::genome(const vector<int>& _chr_lens, const int& ploidy): node_id(-1){ 
+genome::genome(const vector<int>& _chr_lens, const int ploidy): node_id(-1){ 
   int _nchr = _chr_lens.size();
   for(int p = 0; p < ploidy; ++p){
     int k = 0;

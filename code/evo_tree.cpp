@@ -59,7 +59,7 @@ void Neighbor::getLength(DoubleVector& vec, int start_pos){
     vec[start_pos] = length;
 }
 
-void Neighbor::setLength(const double& blen){
+void Neighbor::setLength(const double blen){
     length = blen;
 }
 
@@ -80,12 +80,12 @@ void Neighbor::setLength(Neighbor* nei){
 
 
 
-Node::Node(const int& _id):
+Node::Node(const int _id):
 id(_id), isRoot(0), isLeaf(0), parent(-1), e_in(-1), height(0), time(0.0), age(0.0){
 }
 
 
-Node::Node(const int& _id, const int& _isRoot, const int& _isLeaf):
+Node::Node(const int _id, const int _isRoot, const int _isLeaf):
 id(_id), isRoot(_isRoot), isLeaf(_isLeaf), parent(-1), e_in(-1), height(0), time(0.0), age(0.0){
 }
 
@@ -228,7 +228,7 @@ Node::~Node(){
 }
 
 
-edge::edge(const int& _id, const int& _start, const int& _end, const double& _length):
+edge::edge(const int _id, const int _start, const int _end, const double _length):
 id(_id), start(_start), end(_end), length(_length), parent(-1), nmuts(0){
 }
 
@@ -248,7 +248,7 @@ evo_tree::evo_tree():nleaf(0), current_eid(-1), mu(0.0), dup_rate(0.0), del_rate
 
 
 // used in generate_coal_tree
-evo_tree::evo_tree(const int& _nleaf, const vector<int>& _edges, const vector<double>& _lengths, int gen_node):
+evo_tree::evo_tree(const int _nleaf, const vector<int>& _edges, const vector<double>& _lengths, int gen_node):
 nleaf(_nleaf), current_eid(-1), mu(0.0), dup_rate(0.0), del_rate(0.0), chr_gain_rate(0.0), chr_loss_rate(0.0), wgd_rate(0.0), score(0.0){
   // create list of edges
   int count = 0;
@@ -267,7 +267,7 @@ nleaf(_nleaf), current_eid(-1), mu(0.0), dup_rate(0.0), del_rate(0.0), chr_gain_
 }
 
 
-evo_tree::evo_tree(const int& _nleaf, const vector<edge>& _edges, int gen_node):
+evo_tree::evo_tree(const int _nleaf, const vector<edge>& _edges, int gen_node):
 nleaf(_nleaf), current_eid(-1), mu(0.0), dup_rate(0.0), del_rate(0.0), chr_gain_rate(0.0), chr_loss_rate(0.0), wgd_rate(0.0), score(0.0){
   edges.assign(_edges.begin(), _edges.end());
 
@@ -282,7 +282,7 @@ nleaf(_nleaf), current_eid(-1), mu(0.0), dup_rate(0.0), del_rate(0.0), chr_gain_
 
 // update edge lengths by total_time and tobs
 // total_time: time to 1st sample
-evo_tree::evo_tree(const int& _nleaf, const vector<edge>& _edges, const vector<double>& tobs, const double& total_time):
+evo_tree::evo_tree(const int _nleaf, const vector<edge>& _edges, const vector<double>& tobs, const double total_time):
 nleaf(_nleaf), current_eid(-1), mu(0.0), dup_rate(0.0), del_rate(0.0), chr_gain_rate(0.0), chr_loss_rate(0.0), wgd_rate(0.0), score(0.0){
   int debug = 0;
 
@@ -537,7 +537,7 @@ void evo_tree::calculate_age_from_time(bool keep_tip){
 }
 
 
-vector<int> evo_tree::get_ancestral_nodes(const int& node_id) const{
+vector<int> evo_tree::get_ancestral_nodes(const int node_id) const{
   vector<int> ret;
   //cout << "\tnode_id " << node_id + 1 << " :";
 
@@ -553,7 +553,7 @@ vector<int> evo_tree::get_ancestral_nodes(const int& node_id) const{
 }
 
 
-vector<int> evo_tree::get_ancestral_edges(const int& node_id) const{
+vector<int> evo_tree::get_ancestral_edges(const int node_id) const{
   vector<int> ret;
   //cout << "\tnode_id " << node_id + 1 << " :";
 
@@ -1358,7 +1358,7 @@ void evo_tree::write_with_mut(ofstream& of, const vector<int>& nmuts) const{
 }
 
 
-void evo_tree::print_ancestral_edges(const int& node_id) const{
+void evo_tree::print_ancestral_edges(const int node_id) const{
   vector<int> aedges = get_ancestral_edges(node_id);
   reverse(aedges.begin(),aedges.end());
   for(int j = 0; j < aedges.size(); ++j) cout << "\t" << edges[aedges[j]].id + 1
@@ -1367,7 +1367,7 @@ void evo_tree::print_ancestral_edges(const int& node_id) const{
 }
 
 
-void evo_tree::print_ancestral_edges(const int& node_id, ostream& stream) const{
+void evo_tree::print_ancestral_edges(const int node_id, ostream& stream) const{
   stream << "ANCESTRY    (" << node_id + 1 << ")";
   vector<int> aedges = get_ancestral_edges(node_id);
   reverse(aedges.begin(),aedges.end());
@@ -1577,7 +1577,7 @@ void evo_tree::write_nexus(const string& newick, ofstream& fout) const{
 //
 
 // Compute the tree height until a certain tip node
-// double evo_tree::get_height2sample(const int& node_id){
+// double evo_tree::get_height2sample(const int node_id){
 //       // Find the ancestral edges of the node
 //       double height = 0;
 //       vector<int> aedges = get_ancestral_edges(node_id);

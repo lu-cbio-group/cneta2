@@ -19,7 +19,7 @@ public:
   int chr;  // chromosome on which the mutation occurs
   int seg; // segment on which the mutation occurs
 
-  mutation(const int& _eid, const int& _type, const double& _btime, const double& _gtime, int _chr, int _seg);
+  mutation(const int _eid, const int _type, const double _btime, const double _gtime, int _chr, int _seg);
 
   void print() const;
 };
@@ -32,7 +32,7 @@ public:
   int seg_id;
 
   segment();
-  segment(const int& _chr, const int& _seg_id);
+  segment(const int _chr, const int _seg_id);
 
   segment(const segment& _s2);
 };
@@ -71,11 +71,11 @@ public:
   */
   genome();
   // create a genome with nchr x nseg
-  genome(const int& _nchr, const int& _nseg);
+  genome(const int _nchr, const int _nseg);
   // create a genome with nchr x nseg_i, allowing different germline ploidy and different number of segs on different chromosomes
-  genome(const int& _nchr, const vector<int>& _nsegs, const int& ploidy);
+  genome(const int _nchr, const vector<int>& _nsegs, const int ploidy);
   // create a genome with varying chromosome sizes and allow different germline ploidy
-  genome(const vector<int>& _chr_lens, const int& ploidy = 1);
+  genome(const vector<int>& _chr_lens, const int ploidy = 1);
   genome(const genome& _g2);
 
   void initialize_cnp();    // initialize CNP at the beginning so that all positions are recorded

@@ -100,7 +100,7 @@ public:
 
     void setLength(DoubleVector &vec);
 
-    void setLength(const double& blen);
+    void setLength(const double blen);
 
     void setLength(DoubleVector &vec, int start_pos);
 
@@ -175,8 +175,8 @@ public:
   NeighborVec neighbors;   // vector of pointers, used in NNI
 
 
-  Node(const int& _id);
-  Node(const int& _id, const int& _isRoot, const int& _isLeaf);
+  Node(const int _id);
+  Node(const int _id, const int _isRoot, const int _isLeaf);
   Node(const Node& _n2);
 
   void deleteNeighbors();
@@ -222,7 +222,7 @@ public:
   int parent;
   int nmuts;
 
-  edge(const int& _id, const int& _start, const int& _end, const double& _length);
+  edge(const int _id, const int _start, const int _end, const double _length);
   edge(const edge& _e2);
 };
 
@@ -276,9 +276,9 @@ public:
   Node* node1, *node2;  // current branch involved in NNI
 
   evo_tree();
-  evo_tree(const int& _nleaf, const vector<int>& _edges, const vector<double>& _lengths, int gen_node = 1);
-  evo_tree(const int& _nleaf, const vector<edge>& _edges, int gen_node = 1);
-  evo_tree(const int& _nleaf, const vector<edge>& _edges, const vector<double>& tobs, const double& total_time); // reparameterized tree: expects terminal edges to all have length 0, not used
+  evo_tree(const int _nleaf, const vector<int>& _edges, const vector<double>& _lengths, int gen_node = 1);
+  evo_tree(const int _nleaf, const vector<edge>& _edges, int gen_node = 1);
+  evo_tree(const int _nleaf, const vector<edge>& _edges, const vector<double>& tobs, const double total_time); // reparameterized tree: expects terminal edges to all have length 0, not used
   evo_tree(const evo_tree& _t2);
   // ~evo_tree();
   evo_tree& operator=(const evo_tree& _t2);
@@ -317,8 +317,8 @@ public:
   void update_edges_from_ratios(const vector<double>& ratios, const vector<int>& knodes);
   void update_edge_from_ratio(double ratio, int eid);    // not used for now, issues remain on updating dependent edges
 
-  vector<int> get_ancestral_nodes(const int& node_id) const;   // used in testing and internal calling
-  vector<int> get_ancestral_edges(const int& node_id) const;   // used in testing and internal calling
+  vector<int> get_ancestral_nodes(const int node_id) const;   // used in testing and internal calling
+  vector<int> get_ancestral_edges(const int node_id) const;   // used in testing and internal calling
 
   inline bool is_blen_valid() const{
     for(auto e : this->edges){
@@ -331,8 +331,8 @@ public:
 
   void print();
   void print_neighbors() const;
-  void print_ancestral_edges(const int& node_id) const;
-  void print_ancestral_edges(const int& node_id, ostream& stream) const;
+  void print_ancestral_edges(const int node_id) const;
+  void print_ancestral_edges(const int node_id, ostream& stream) const;
   void print_mutation_rates(int model, int cn_type) const;
 
   void write(ofstream& of) const;

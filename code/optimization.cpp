@@ -139,7 +139,7 @@ double my_f_cons_mu(const gsl_vector *v, void *params){
 
 // given a tree, maximise the branch lengths (and optionally mu) assuming branch lengths are independent or constrained in time
 // use GSL simplex optimization, less used than BFGS version
-void max_likelihood(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double& min_nlnl, const double& ssize){
+void max_likelihood(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double& min_nlnl, const double ssize){
   int debug = 0;
   vector<double> tobs = opt_type.tobs;
 

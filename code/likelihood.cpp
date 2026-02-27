@@ -102,7 +102,7 @@ void initialize_lnl_table(vector<vector<double>>& L_sk_k, const vector<int>& obs
  *  @param model Evolutionary model used
  *  @param nstate Number of possible states
  */
-void get_likelihood_site(vector<vector<double>>& L_sk_k, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int& has_wgd, const int& z, const int& model, const int& nstate){
+void get_likelihood_site(vector<vector<double>>& L_sk_k, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int has_wgd, const int z, const int model, const int nstate){
   int debug = 0;
   if(debug){
       cout << "Computing likelihood for one site" << endl;
@@ -180,7 +180,7 @@ void get_likelihood_site(vector<vector<double>>& L_sk_k, const evo_tree& rtree, 
  * @param is_total Indicator for total copy number or haplotype-specific copy number
  * @return double Log likelihood on the tree
  */
-double get_likelihood_chr(const map<int, vector<vector<int>>>& vobs, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int& has_wgd, const int& cn_type, const int& use_repeat, const int& model, const int& nstate, const int& is_total){
+double get_likelihood_chr(const map<int, vector<vector<int>>>& vobs, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int has_wgd, const int cn_type, const int use_repeat, const int model, const int nstate, const int is_total){
     int debug = 0;
     double logL = 0.0;    // for all chromosomes
     double chr_gain = 0.0;
@@ -415,7 +415,7 @@ double get_likelihood_revised(evo_tree& rtree, const map<int, vector<vector<int>
   }
 
   // sort pmats according to branch lengths
-  auto p = sort_permutation(blens, [&](const double& a, const double& b){ return a < b; });
+  auto p = sort_permutation(blens, [&](const double a, const double b){ return a < b; });
   blens = apply_permutation(blens, p);
   pmat_per_blen = apply_permutation(pmat_per_blen, p);
 
@@ -750,18 +750,45 @@ void initialize_lnl_table_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const
         }
        
         // For chromosome gain/loss       
-        // chr state is likely -1, 0, 1
+        // chr state is likely -2, -1, 0, 1, -1 for total copy number, 
+        // and -1/-1	-1/0	0/-1	-1/+1	+1/-1	0/0	0/+1	+1/0	+1/+1 for haplotype-specific copy number
         if(nstate_chr > 0){
+            // total change observed
             int state_chr = obs_change[i].cn_change_chr + abs(obs_decomp.max_chr_change); // change value to positive index
             // compute index of the observed state        
-            L_sk_k.lnl_table_chr[i][state_chr] = 1.0; 
+            // L_sk_k.lnl_table_chr[i][state_chr] = 1.0; 
+            // TODO: As the matrix is indexed by haplotype-specific changes, all related state need to be set.
+            vector<int> n_states = make_peak_vector(obs_decomp.max_chr_change);   // assume 2 in total and 1 for each haplotype
+            if(is_total){   // only observed total copy number change
+                int si = 0;  // compute partial sum to get the index of the observed state
+                int ei = 0;
+                for(int k = 0; k < state_chr; k++){
+                    si += n_states[k];
+                }
+                ei = si + n_states[state_chr] - 1;
+                for(int k = si; k <= ei; k++){
+                    L_sk_k.lnl_table_chr[i][k] = 1.0;
+                }   
+            }
         }
         
         // For site gain/loss
         // site state is likely -2, -1, 0, 1, 2
         if(nstate_site > 0){
             int state_site = obs_change[i].cn_change_site + abs(obs_decomp.max_site_change); // change value to positive index
-            L_sk_k.lnl_table_seg[i][state_site] = 1.0; 
+            // L_sk_k.lnl_table_seg[i][state_site] = 1.0; 
+            vector<int> n_states = make_peak_vector(obs_decomp.max_site_change);   // assume 4 in total and 2 for each haplotype
+            if(is_total){   // only observed total copy number change
+                int si = 0;  // compute partial sum to get the index of the observed state
+                int ei = 0;
+                for(int k = 0; k < state_site; k++){
+                    si += n_states[k];
+                }
+                ei = si + n_states[state_site] - 1;
+                for(int k = si; k <= ei; k++){
+                    L_sk_k.lnl_table_seg[i][k] = 1.0;
+                }   
+            }            
         }
     }   
 
@@ -811,13 +838,15 @@ void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const 
     if(max_chr_change > 0){
         qmat_chr = new double[dim_mat_chr];   // chromosome gain/loss
         memset(qmat_chr, 0.0, dim_mat_chr * sizeof(double));
-        get_rate_matrix_chr_change(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate, max_chr_change);
+        // get_rate_matrix_chr_change(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate, max_chr_change);
+        get_rate_matrix_chr_change_haplotype(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate);
     }
 
     if(max_site_change > 0){
         qmat_seg = new double[dim_mat_seg];  // site duplication/deletion
         memset(qmat_seg, 0.0, dim_mat_seg * sizeof(double));
-        get_rate_matrix_site_change(qmat_seg, rtree.dup_rate, rtree.del_rate, max_site_change);
+        // get_rate_matrix_site_change(qmat_seg, rtree.dup_rate, rtree.del_rate, max_site_change);
+        get_rate_matrix_site_change_haplotype(qmat_seg, rtree.dup_rate, rtree.del_rate);
     }
 
     qmat_decomp.free_all();

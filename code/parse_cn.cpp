@@ -5,7 +5,7 @@
 
 
 /** 
- * @brief Convert a state (0-based index of copy number combinations) to total copy number.    
+ * @brief Convert a state (0-based index of copy number combinations used for rate matrix) to total copy number.    
  * @param state The state index representing a specific copy number combination.
  * @param cn_max The maximum copy number allowed by the program.
  * @return The total copy number corresponding to the given state.
@@ -26,6 +26,7 @@ int state_to_total_cn(int state, int cn_max){
 
     int i = 1;
     do{
+        // the start and end index of copy number i
         if(state >= sums[i - 1] && state < sums[i]) return i;
         i++;
     }while(i <= cn_max);
@@ -34,7 +35,7 @@ int state_to_total_cn(int state, int cn_max){
 }
 
 
-int state_to_allele_cn(int state, int cn_max, int& cnA, int& cnB){
+void state_to_allele_cn(int state, int cn_max, int& cnA, int& cnB){
     int cn = 0;
     vector<int> sums;
     // cout << "Sums of state: ";
@@ -45,20 +46,18 @@ int state_to_allele_cn(int state, int cn_max, int& cnA, int& cnB){
     }
     // cout << endl;
 
-    if(state < sums[0]) return 0;
+    if(state < sums[0]) return;
 
     int i = 1;
     do{
         if(state >= sums[i - 1] && state < sums[i]){
-             // total copy number is i;
+             // total copy number is i
              int diff = state - sums[i-1];
              cnA = diff;
              cnB = i - cnA;
         }
         i++;
     }while(i <= cn_max);
-
-    return 0;
 }
 
 
@@ -80,6 +79,151 @@ int allele_cn_to_state(int cnA, int cnB){
     }
     // cout << "State is " << s << endl;
     return s;
+}
+
+
+std::vector<int> make_peak_vector(int n) {
+    std::vector<int> v;
+    v.reserve(2 * n - 1);  // total length: 1..n..1
+
+    // Increasing part: 1, 2,..., n
+    for (int i = 1; i <= n; ++i) {
+        v.push_back(i);
+    }
+
+    // Decreasing part: n-1, n-2,..., 1
+    for (int i = n - 1; i >= 1; --i) {
+        v.push_back(i);
+    }
+
+    return v;
+}
+
+/** 
+ * @brief Convert a change state (0-based index of copy number combinations used for rate matrix) to total copy number.    
+ * @param state The state index representing a specific copy number combination.
+ * @param cn_max The maximum copy number allowed by the program.
+ * @return The total copy number corresponding to the given state.
+ * When max_haplotype_change = 1, 9 states
+ * 0	1	2	3	4	5	6	7	8
+// 0	1	1	2	2	2	3	3	4
+// 0/0	0/1	1/0	0/2	2/0	 1/1	 1/2	 2/1	 2/2
+// -2	-1	-1	0	0	0	+1	+1	+2
+// -1/-1	-1/0	0/-1	-1/+1	+1/-1	0/0	0/+1	+1/0	+1/+1
+ * When max_haplotype_change = 2, 16 states
+// 0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15
+// 0	1	1	2	2	2	3	3	3	3	4	4	4	5	5	6
+// 0/0	0/1	1/0	0/2	2/0	 1/1	 1/2	 2/1	0/3	3/0	  2/2	 1/3	 3/1	2/3	3/2	3/3
+// -1/-1	-1/0	0/-1	-1/+1	+1/-1	0/0	0/+1	+1/0	-1/+2	+1/+1	+1/+1	0/+2	+2/0	+1/+2	+2/+1	+2/+2
+ */
+int change_state_to_total_cn(int state, int max_haplotype_change){
+    int cn = 0;
+    vector<int> sums;
+    // cout << "Sums of state: ";
+    int cn_max = 4;
+    vector<int> n_states = make_peak_vector(3);   // the number of states corresponding to each copy number: 1,2,3,4,3,2,1 when +2 allowed
+    if(max_haplotype_change == 2){
+        cn_max = 6;
+        n_states = make_peak_vector(4); 
+    }
+
+    int s = 0;
+    for(int i = 0; i <= cn_max; i++){
+        s = s + n_states[i];
+        sums.push_back(s);
+        // cout << "\t" << s;
+    }
+    // cout << endl;
+
+    if(state < sums[0]) return 0;
+
+    int i = 1;
+    do{
+        if(state >= sums[i - 1] && state < sums[i]) return i;
+        i++;
+    }while(i <= cn_max);
+
+    return 0;
+}
+
+
+// only cn_max 4, 6 supported for now, can be extended to higher copy number if needed
+void change_state_to_allele_cn(int state, int max_haplotype_change, int& cnA, int& cnB){
+    int cn = 0;
+    vector<int> sums;
+    // cout << "Sums of state: ";
+    int cn_max = 4;
+    vector<int> n_states = make_peak_vector(3);   // the number of states corresponding to each copy number: 1,2,3,4,3,2,1 when +2 allowed
+    if(max_haplotype_change == 2){
+        cn_max = 6;
+        n_states = make_peak_vector(4); 
+    }
+
+    int s = 0;
+    for(int i = 0; i <= cn_max; i++){
+        s = s + n_states[i];
+        sums.push_back(s);
+        // cout << "\t" << s;
+    }
+    // cout << endl;
+
+    if(state < sums[0]) return;
+
+    int i = 1;
+    do{
+        // order of first element changed due to diagonal element grouping (not strictly increasing from 0)
+        // 2: 0, 2, 1; 3: 1, 2(, 0); 4: 2(, 1, 3); 5: 2, 3; 6: 3
+        if(state >= sums[i - 1] && state < sums[i]){
+            int diff = state - sums[i-1];
+            if(i <= 1){              
+                cnA = diff;
+                cnB = i - cnA;
+            }else if(i == 2){
+                int shift = 0;
+                switch (diff){
+                case 1:
+                    shift = 1;
+                    break;
+                case 2:
+                    shift = -1;
+                    break;
+                default:
+                    break;
+                }
+                cnA = diff + shift;
+                cnB = i - cnA;
+            }else if(i == 3){
+                if(cn_max > 4 && diff == 2){
+                    cnA = 0;
+                    cnB = 3;
+                }else{
+                    cnA = diff + 1;
+                    cnB = i - cnA;
+                }
+            }else if(i == 4){
+                if(cn_max == 4 || diff == 0){
+                    cnA = 2;
+                    cnB = 2;
+                }else{ 
+                    assert(diff > 0);
+                    int shift = 0;
+                    if(diff == 2){
+                        shift = 1;
+                    }
+                    cnA = diff + shift;
+                    cnB = i - cnA;
+                }
+            }
+            else if(i == 5){
+                cnA = diff + 2;
+                cnB = i - cnA;
+            }else if(i == 6){
+                cnA = 3;
+                cnB = 3;
+            }else{ }
+        }
+        i++;
+    }while(i <= cn_max);
 }
 
 
@@ -148,10 +292,69 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vect
 }
 
 
+// segment level using absolute copy numbers with larger level changes excluded
+/** 
+ * @brief Decompose haplotype-specific copy number into multi-level changes (WGD, chromosome, segment) given original data and computed changes.
+ * @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
+ * @param cn_change_info A vector of CN_CHANGE structs to store the decomposed copy number changes for each sample, same dimensions as s_info.
+ * @param input_data INPUT_DATA struct containing sample-level information needed for decomposition.
+ * @param cn_max Maximum copy number allowed by the program.
+ * @param is_total Indicator whether the copy numbers are total (1) or haplotype-specific (0). Only for total copy number decomposition for now.
+ * @param debug Debug flag for verbose output.
+ */
+void hcn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vector<CN_CHANGE>>& s_info_change, const INPUT_DATA& input_data, int debug){
+    if(debug) cout << "\tChanging copy number to multiple level changes" << endl;
+    vector<int> sample_num_wgd = input_data.sample_num_wgd;
+    vector<vector<int>> sample_change_chr = input_data.sample_change_chr;   
+    vector<vector<int>> sample_change_site = input_data.sample_change_site;   
 
-// TODO: decompose haplotype_specific copy number into multi-level changes (WGD, chromosome, segment)
-void hcn_to_decomposition(){
-    
+    if(debug > 1){
+        for(size_t i = 0; i < s_info.size(); i++){
+            cout << "\nSample " << (i+1) << " original copy number:" << endl;
+            for(size_t j = 0; j < s_info[i].size(); j++){
+                cout << "\tSegment " << (j+1) << ": ";
+                for(size_t k = 0; k < s_info[i][j].size(); k++){
+                    cout << "\t" << s_info[i][j][k];
+                }
+                cout << endl;
+            }
+        }
+    }
+
+    s_info_change.resize(s_info.size());    // for samples
+    for (size_t i = 0; i < s_info.size(); i++) {     // for all segments
+        s_info_change[i].resize(s_info[i].size());
+    }
+
+    for(size_t i = 0; i < s_info.size(); i++){
+        vector<vector<int>> s_cn = s_info[i];
+
+        // get multi-level CN changes for each sample    
+        for(size_t j = 0; j < s_cn.size(); j++){
+            int chr = s_cn[j][0];
+            int cn  = s_cn[j][2];
+
+            CN_CHANGE cc;
+            cc.cn_state = cn;
+            // cc.cnA = -1;
+            // cc.cnB = -1;
+            cc.num_wgd = sample_num_wgd[i];
+            cc.cn_change_chr = sample_change_chr[i][chr];
+            // state for copy number values 
+            cc.cn_change_site = sample_change_site[i][j];
+
+            s_info_change[i][j] = cc;
+        }
+    }
+
+    if(debug > 1){
+        for(size_t i = 0; i < s_info_change.size(); i++){
+            cout << "\nSample " << (i+1) << " decomposed copy number changes:" << endl;
+            for(size_t j = 0; j < s_info_change[i].size(); j++){
+                cout << "\tSegment " << (j+1) << ": " << s_info_change[i][j] << endl;
+            }
+        }
+    }    
 }
 
 
@@ -163,7 +366,7 @@ void hcn_to_decomposition(){
  * @param age A reference to an integer that will store the minimum age read from the file.
  * @param debug An integer flag for enabling debug output.  
  */
-vector<double> read_time_info(const string& filename, const int& Ns, int& age, int debug){
+vector<double> read_time_info(const string& filename, const int Ns, int& age, int debug){
   if(debug) cout << "\tread_time_info" << endl;
 
   vector<double> t_info;
@@ -294,6 +497,7 @@ vector<vector<vector<int>>> read_cn(const string& filename, int Ns, int& num_tot
               //   int diff = tcn - cn_max;
                 exit(EXIT_FAILURE);
             }
+            // It may include states not considered by the site change matrix due to constraints on the allowed number of changes at site level alone
             cn = allele_cn_to_state(cn1, cn2);  // convert haplotype-specific copy numbers into state directly while reading
         }
       }
@@ -332,7 +536,7 @@ double compute_sample_avg_cn(const vector<vector<int>>& s_cn, map<int, vector<in
     for(size_t j = 0; j < s_cn.size(); j++){
         int chr = s_cn[j][0];
         int cn = s_cn[j][2];
-        if(!is_total) cn = state_to_total_cn(cn, cn_max);
+        if(!is_total) cn = state_to_total_cn(cn, cn_max);   
         chr_cn[chr].push_back(cn);
         sum_cn += cn;
         num_seg++;
@@ -1050,7 +1254,7 @@ vector<vector<int>> read_data_var_regions(const string& filename, const INPUT_PR
 
 // // group observed copy numbers by chromosome for tree inference
 // // return type: vobs[chr] = { {cn_sample1, cn_sample2, ...}, ...} }
-// map<int, vector<vector<int>>> get_obs_vector_by_chr(map<int, vector<vector<int>>>& data, const int& Ns){
+// map<int, vector<vector<int>>> get_obs_vector_by_chr(map<int, vector<vector<int>>>& data, const int Ns){
 //     map<int, vector<vector<int>>> vobs;
 //     // Construct the CN matrix by chromosome
 //     // Assume chromosomes in data are ordered numerically

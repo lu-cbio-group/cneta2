@@ -25,7 +25,7 @@ const int HEIGHT_SCALE = 3;
 // const int HEIGHT_OFFSET = 10;
 
 // The time from beginning to the time of first sample
-inline double get_total_time(const vector<double>& node_times, const double& max_tobs){
+inline double get_total_time(const vector<double>& node_times, const double max_tobs){
   return *max_element(node_times.begin(), node_times.end()) - max_tobs;
 }
 
@@ -113,11 +113,11 @@ void test_evo_tree(const evo_tree& tree);
 // generate neutral coalescent trees
 // here nsample is the number of cancer samples (not including germline node)
 // here we directly calculate the edges in the tree
-void generate_coal_tree(const int& nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), vector<int>& edges, vector<double>& lengths, vector<double>& epoch_times, vector<double>& times, const ITREE_PARAM& itree_param);
+void generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), vector<int>& edges, vector<double>& lengths, vector<double>& epoch_times, vector<double>& times, const ITREE_PARAM& itree_param);
 
 
 // Scale the total time by given time
-evo_tree generate_coal_tree(const int& nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), const ITREE_PARAM& itree_param);
+evo_tree generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), const ITREE_PARAM& itree_param);
 
 
 void assign_tip_times(double delta_t, int Ns, gsl_rng* r, vector<double>& tobs, const vector<int>& edges, vector<double>& lengths);
@@ -131,7 +131,7 @@ evo_tree generate_time_tree(int nsample, gsl_rng* r, long unsigned (*fp_myrng)(l
 
 
 // Create a new tree with the same topology as input tree but different branch lengths
-evo_tree create_new_tree(gsl_vector* blens, evo_tree& rtree, const double& max_tobs, int cons);
+evo_tree create_new_tree(gsl_vector* blens, evo_tree& rtree, const double max_tobs, int cons);
 
 
 // Adjust the time of sample1 so that it is not after all other tips. Then the subsequent adjustment will be addition, not introducing negative values
@@ -143,7 +143,7 @@ void adjust_one_tip(evo_tree& rtree, const vector<double>& tobs, int i, int samp
 
 
 // Adjust all tips recursively so that tree height is smaller than age
-void adjust_all_tips(evo_tree& rtree, const double& max_tobs, int age);
+void adjust_all_tips(evo_tree& rtree, const double max_tobs, int age);
 
 
 void adjust_blen(double& nx, double a, double b);
@@ -175,7 +175,7 @@ void adjust_tree_height(evo_tree& rtree, gsl_rng* r, double min_height, double m
 
 
 // Check whether the set of branch lengths is valid under the time constraints
-bool is_tree_valid(evo_tree& rtree, const double& max_tobs, int age, int cons);
+bool is_tree_valid(evo_tree& rtree, const double max_tobs, int age, int cons);
 
 
 // Save all branch lengths in a vector for optimization
@@ -195,7 +195,7 @@ void restore_mutation_rates(evo_tree& rtree, const DoubleVector &muvec);
 evo_tree build_parsimony_tree(int Ns, vector<vector<int>>& data);
 
 // filename: a file with at least 3 columns: start, end, length
-evo_tree read_tree_info(const string& filename, const int& Ns, int debug = 0);
+evo_tree read_tree_info(const string& filename, const int Ns, int debug = 0);
 
 
 // Read a newick tree
@@ -224,7 +224,7 @@ void adjust_tip_time(evo_tree& rtree, const vector<double>& tobs, int Ns, int sa
 
 
 // Read parsimony trees built by other tools as starting trees, assign timings to tip nodes and initialize mutation rates
-evo_tree read_parsimony_tree(const string& tree_file, const int& Ns, const vector<double>& rates, const vector<double>& tobs, gsl_rng* r, int age, int cons);
+evo_tree read_parsimony_tree(const string& tree_file, const int Ns, const vector<double>& rates, const vector<double>& tobs, gsl_rng* r, int age, int cons);
 
 
 evo_tree get_tree_from_file(const string& tree_file, int Ns, vector<double>& rates, double max_tobs, int age, int cons);

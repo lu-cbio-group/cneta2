@@ -70,7 +70,7 @@ void check_pmats_blen2(int nstate, const vector<double>& blens, const vector<dou
 
 
 // rate matrix for total copy number 
-void get_rate_matrix_bounded(double* m, const double& dup_rate, const double& del_rate, const int& cn_max){
+void get_rate_matrix_bounded(double* m, const double dup_rate, const double del_rate, const int cn_max){
     int debug = 0;   // for debugging internally
     int ncol = cn_max + 1;
 
@@ -95,7 +95,7 @@ void get_rate_matrix_bounded(double* m, const double& dup_rate, const double& de
 
 
 // rate matrix for haplotype-specific CNAs
-void get_rate_matrix_allele_specific(double* m, const double& dup_rate, const double& del_rate, const int& cn_max){
+void get_rate_matrix_allele_specific(double* m, const double dup_rate, const double del_rate, const int cn_max){
     int debug = 0;
     int ncol = (cn_max + 1) * (cn_max + 2) / 2;
     if(debug){
@@ -108,7 +108,7 @@ void get_rate_matrix_allele_specific(double* m, const double& dup_rate, const do
         }
     }
 
-    int s = cn_max * (cn_max - 1) / 2; // start index for the last group
+    int s = cn_max * (cn_max - 1) / 2; // start index for the last group (total copy number 4)
     int r, c;   // row index and column index
     // 1st row for the last group (only deletion is allowed)
     r = ncol - (cn_max + 1);
@@ -181,13 +181,13 @@ void get_rate_matrix_allele_specific(double* m, const double& dup_rate, const do
     }
 
     if(debug){
-        r8mat_print(ncol, ncol, m, "  A:");
+        r8mat_print(ncol, ncol, m, "  Haplotype-specific P matrix:");
     }
 }
 
 
 // rate matrix for segment-level CNAs using independent Markov chain model
-void get_rate_matrix_site_change(double* m, const double& dup_rate, const double& del_rate, const int& site_change_max){
+void get_rate_matrix_site_change(double* m, const double dup_rate, const double del_rate, const int site_change_max){
     int debug = 0;
     int ncol = 2 * site_change_max + 1;
     int lcol = ncol - 1;    // last column
@@ -197,17 +197,17 @@ void get_rate_matrix_site_change(double* m, const double& dup_rate, const double
             m[i + j*ncol] = 0;
         }
     }
+
+    // start from 2nd row, index by row
     for(unsigned i = 1; i < ncol - 1; i++){
         m[i+(i - 1)*ncol] = del_rate;
         m[i+(i + 1)*ncol] = dup_rate;
         m[i+i*ncol] = 0 - m[i+(i-1)*ncol] - m[i+(i + 1)*ncol];
     }
-    // stored by column
-    m[ncol] = 0;
-    m[0] = 0;
-
-    m[lcol + (lcol - 1)*ncol] = del_rate;
-    m[lcol + lcol*ncol] = 0 - del_rate;
+    
+    // last row
+    m[lcol + (lcol - 1) * ncol] = del_rate;  // before the last element
+    m[lcol + lcol*ncol] = 0 - del_rate;   // last element
 
     if(debug){
         std::cout << m << std::endl;
@@ -216,8 +216,9 @@ void get_rate_matrix_site_change(double* m, const double& dup_rate, const double
 }
 
 
+
 // rate matrix for chr-level CNAs using independent Markov chain model
-void get_rate_matrix_chr_change(double* m, const double& chr_gain_rate, const double& chr_loss_rate, const int& chr_change_max){
+void get_rate_matrix_chr_change(double* m, const double chr_gain_rate, const double chr_loss_rate, const int chr_change_max){
     int debug = 0;
     int ncol = 2 * chr_change_max + 1;
     int lcol = ncol - 1;
@@ -227,15 +228,13 @@ void get_rate_matrix_chr_change(double* m, const double& chr_gain_rate, const do
             m[i + j*ncol] = 0;
         }
     }
-    for(unsigned i = 1; i < ncol - 1; i++){
-        m[i+(i-1)*ncol] = chr_loss_rate;
-        m[i+(i + 1)*ncol] = chr_gain_rate;
-        m[i+i*ncol] = 0 - m[i+(i-1)*ncol] - m[i+(i + 1)*ncol];
-    }
 
     // once lost all copies, cannot be regained
-    m[ncol] = 0;
-    m[0] = 0;
+    for(unsigned i = 1; i < ncol - 1; i++){
+        m[i+(i - 1)*ncol] = chr_loss_rate;
+        m[i+(i + 1)*ncol] = chr_gain_rate;
+        m[i+i*ncol] = 0 - chr_loss_rate - chr_gain_rate;
+    }
 
     m[lcol + (lcol - 1)*ncol] = chr_loss_rate;
     m[lcol + lcol*ncol] = 0 - chr_loss_rate;
@@ -247,8 +246,165 @@ void get_rate_matrix_chr_change(double* m, const double& chr_gain_rate, const do
 }
 
 
+
+// TODO: rate matrix for haplotype-specific segment-level CNAs using independent Markov chain model
+// 0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15
+// 0	1	1	2	2	2	3	3	3	3	4	4	4	5	5	6
+// 0/0	0/1	1/0	0/2	 1/1	2/0	0/3	 1/2	 2/1	3/0	 1/3	  2/2	 3/1	2/3	3/2	3/3
+// -1/-1	-1/0	0/-1	-1/+1	0/0	+1/-1	-1/+2	0/+1	+1/0	+1/+1	0/+2	+1/+1	+2/0	+1/+2	+2/+1	+2/+2
+// 16 states when at most one change allowed on one chr haplotype
+void get_rate_matrix_site_change_haplotype(double* m, const double dup_rate, const double del_rate, const int site_change_max_haplotype){
+    int debug = 0;
+    int ncol = compute_haplotype_change_dim(site_change_max_haplotype);  
+    assert(ncol == 16);     // hard coded for now, can be extended to higher copy number if needed
+    int lcol = ncol - 1;    // last column
+
+    for(unsigned i = 0; i < ncol; ++ i){
+        for (unsigned j = 0; j < ncol; ++ j){
+            m[i + j*ncol] = 0;
+        }
+    }
+
+    // the first two rows, after the first row with all 0s
+    for(unsigned i = 1; i <= 2; i++){
+        m[i] = del_rate;
+        m[i + (i + 2) * ncol] = dup_rate;
+        m[i + i * ncol] = 0 - del_rate - dup_rate;
+    }
+    for(unsigned i = 3; i <= 4; i++){
+        m[i + (i - 2) * ncol] = del_rate;
+        m[i + (i + 5) * ncol] = dup_rate;
+        m[i + i * ncol] = 0 - del_rate - dup_rate;
+    }
+
+    for(unsigned i = 5; i <= 7; i++){
+        m[i + i * ncol] = 0 - 2 * del_rate - 2 * dup_rate;
+    }
+
+    // for normal 1/1 state
+    unsigned i = 5;
+    m[i + (i - 3) * ncol] = del_rate;
+    m[i + (i - 4) * ncol] = del_rate;
+    m[i + (i + 1) * ncol] = dup_rate;
+    m[i + (i + 2) * ncol] = dup_rate;  
+
+    // for 1/2 and 2/1
+    for(unsigned i = 6; i <= 7; i++){
+        m[i + (i - 3) * ncol] = del_rate;
+        m[i + (i + 5) * ncol] = dup_rate;
+    }
+
+    i = 6;
+    m[i + (i - 3) * ncol] = del_rate;
+    m[i + (i + 4) * ncol] = dup_rate;
+
+    i = 7;
+    m[i + (i - 2) * ncol] = del_rate;
+    m[i + (i + 3) * ncol] = dup_rate;
+
+    for(unsigned i = 8; i <= 9; i++){
+        m[i + (i - 5) * ncol] = del_rate;
+        m[i + i * ncol] = 0 - del_rate;
+    }  
+
+    // 2/2
+    i = 10;
+    m[i + (i - 3) * ncol] = del_rate;
+    m[i + (i - 4) * ncol] = del_rate;
+    m[i + (i + 3) * ncol] = dup_rate;
+    m[i + (i + 4) * ncol] = dup_rate;  
+    m[i + i * ncol] = 0 - 2 * del_rate - 2 * dup_rate;
+
+    for(unsigned i = 11; i <= 12; i++){
+        m[i + (i - 3) * ncol] = del_rate;
+        m[i + (i - 5) * ncol] = del_rate;
+        m[i + (i + 2) * ncol] = dup_rate;
+        m[i + i * ncol] = 0 - 2 * del_rate - dup_rate;
+    }   
+
+    unsigned i_wgd = 10;
+    for(unsigned i = 13; i < lcol; i++){
+        m[i + (i - 2) * ncol] = del_rate;
+        m[i + i_wgd * ncol] = del_rate;
+        m[i + lcol * ncol] = dup_rate;
+        m[i + i * ncol] = 0 - 2 * del_rate - dup_rate;
+    }   
+
+    m[lcol + (lcol - 2)*ncol] = del_rate;
+    m[lcol + (lcol - 1)*ncol] = del_rate;
+    m[lcol + lcol*ncol] = 0 - 2 * del_rate;
+
+    if(debug){
+        std::cout << m << std::endl;
+        r8mat_print(ncol, ncol, m, "  Haplotype-specific Site-level P matrix:");
+    }
+}
+
+
+
+// TODO: rate matrix for haplotype-specific chr-level CNAs using independent Markov chain model
+// 0	1	2	3	4	5	6	7	8
+// 0	1	1	2	2	2	3	3	4
+// 0/0	0/1	1/0	0/2	 1/1	2/0	 1/2	 2/1	 2/2
+// -2	-1	-1	0	0	0	+1	+1	+2
+// -1/-1	-1/0	0/-1	-1/+1	0/0	+1/-1	0/+1	+1/0	+1/+1
+// 9 states when at most one change allowed on one chr haplotype
+// patterns not so obvious as the matrix for total changes
+void get_rate_matrix_chr_change_haplotype(double* m, const double chr_gain_rate, const double chr_loss_rate, const int chr_change_max_haplotype){
+    int debug = 0;
+    int ncol = compute_haplotype_change_dim(chr_change_max_haplotype);  
+    assert(ncol == 9);      
+    int lcol = ncol - 1;    // last column
+
+    for(unsigned i = 0; i < ncol; ++ i){
+        for (unsigned j = 0; j < ncol; ++ j){
+            m[i + j*ncol] = 0;
+        }
+    }
+
+    // the first two rows, after the first row with all 0s
+    for(unsigned i = 1; i <= 2; i++){
+        m[i] = chr_loss_rate;
+        m[i + (i + 2) * ncol] = chr_gain_rate;
+        m[i + i * ncol] = 0 - chr_loss_rate - chr_gain_rate;
+    }
+
+    // the next two rows, as first row has all 0s
+    for(unsigned i = 3; i <= 4; i++){
+        m[i + (i - 2) * ncol] = chr_loss_rate;
+        m[i + i * ncol] = 0 - chr_loss_rate;
+    }
+
+    // for normal 1/1 state
+    unsigned i = 5;
+    m[i + (i - 3) * ncol] = chr_loss_rate;
+    m[i + (i - 4) * ncol] = chr_loss_rate;
+    m[i + (i + 1) * ncol] = chr_gain_rate;
+    m[i + (i + 2) * ncol] = chr_gain_rate;
+    m[i + i * ncol] = 0 - 2 * chr_loss_rate - 2 * chr_gain_rate;
+
+    // the last two rows, as first row has all 0s
+    unsigned i_norm = 5;
+    for(unsigned i = 6; i < lcol; i++){
+        m[i + (i - 3) * ncol] = chr_loss_rate;
+        m[i + i_norm * ncol] = chr_loss_rate;
+        m[i + lcol * ncol] = chr_gain_rate;
+        m[i + i * ncol] = 0 - 2 * chr_loss_rate - chr_gain_rate;
+    }   
+
+    m[lcol + (lcol - 2)*ncol] = chr_loss_rate;
+    m[lcol + (lcol - 1)*ncol] = chr_loss_rate;
+    m[lcol + lcol*ncol] = 0 - 2 * chr_loss_rate;
+
+    if(debug){
+        std::cout << m << std::endl;
+        r8mat_print(ncol, ncol, m, "  Haplotype-specific Chr-level P matrix:");
+    }
+}
+
+
 // Maximum allowed number of WGD events over a time interval: 2
-void get_rate_matrix_wgd(double* m, const double& wgd_rate, const int& wgd_max){
+void get_rate_matrix_wgd(double* m, const double wgd_rate, const int wgd_max){
     int debug = 0;
     int ncol = wgd_max + 1;
 
@@ -271,7 +427,7 @@ void get_rate_matrix_wgd(double* m, const double& wgd_rate, const int& wgd_max){
 
 // // http://www.guwi17.de/ublas/examples/
 // // Use eigendecomposition to compute matrix exponential
-// double get_transition_prob_bounded(const boost::numeric::ublas::matrix<double>& q, double t, const int& sk, const int& sj ){
+// double get_transition_prob_bounded(const boost::numeric::ublas::matrix<double>& q, double t, const int sk, const int sj ){
 //     //
 //     boost::numeric::ublas::matrix<double> tmp = q * t;
 //     boost::numeric::ublas::matrix<double> p = expm_pad(tmp);
@@ -289,7 +445,7 @@ void get_rate_matrix_wgd(double* m, const double& wgd_rate, const int& wgd_max){
  * @param t: branch length
  * @param n: dimension of the matrix
 */
-void get_transition_matrix_bounded(double* q, double* p, const double& t, const int& n){
+void get_transition_matrix_bounded(double* q, double* p, const double t, const int n){
     int debug = 0;
 
     double *tmp = new double[n*n];
@@ -320,7 +476,7 @@ void get_transition_matrix_bounded(double* q, double* p, const double& t, const 
 
 
 // not used in practice to save efforts in function call
-double get_transition_prob_bounded(double* p, const int& sk, const int& sj, const int& n){
+double get_transition_prob_bounded(double* p, const int sk, const int sj, const int n){
     int debug = 0;
 
     int i = sk  + sj * n;

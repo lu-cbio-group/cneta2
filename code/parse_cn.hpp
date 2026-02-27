@@ -41,12 +41,15 @@ inline bool is_equal_vector(const vector<int>& bin1, const vector<int>& bin2){
 }
 
 
+/**************** function used in reconstructing ancestral states ****************/
 // Convert the haplotype-specific state (ordered by 0/0	0/1	1/0	0/2	 1/1	2/0	0/3	 1/2 2/1	3/0	 0/4 1/3 2/2 3/1	4/0) to total copy number
 int state_to_total_cn(int state, int cn_max);
-
 // Convert the haplotype-specific state (ordered by 0/0	0/1	1/0	0/2	 1/1	2/0	0/3	 1/2 2/1	3/0	 0/4 1/3 2/2 3/1	4/0) to haplotype-specific copy number
-int state_to_allele_cn(int state, int cn_max, int& cnA, int& cnB);
+void state_to_allele_cn(int state, int cn_max, int& cnA, int& cnB);
+int change_state_to_total_cn(int state, int max_haplotype_change);
+void change_state_to_allele_cn(int state, int max_haplotype_change, int& cnA, int& cnB);    
 
+/*****************************************/
 // Change the allele specific copy number to the state used in substitution rate matrix
 int allele_cn_to_state(int cnA, int cnB);
 
@@ -143,7 +146,7 @@ void get_bootstrap_vector_by_chr(map<int, vector<vector<int>>>& data, map<int, v
 // Ns: number of samples
 // age: age at earliest sample
 // Assume samples are ordered by ID from 1 to Ns
-vector<double> read_time_info(const string& filename, const int& Ns, int& age, int debug = 0);
+vector<double> read_time_info(const string& filename, const int Ns, int& age, int debug = 0);
 
 // Format of input total copy number: sample, chr, seg, copy_number
 // Format of input allele specific copy number: sample, chr, seg, copy_number A, copy_number B -> converted into a specific state by decomposition

@@ -32,6 +32,29 @@ cn_colors1 = c("#6283A9","#bdd7e7","#f0f0f0", '#fdcc8a','#fc8d59','#e34a33','#b3
 # For relative CN -4 to 4
 cn_colors2 = c('#08519c','#3182bd', '#6baed6', '#9ecae1', "#f0f0f0", '#fdcc8a','#fc8d59','#e34a33','#b30000')
 
+
+# customized font size 
+theme1 = theme(legend.position = "none",
+               #strip.text.x = element_blank(),
+               #strip.text.y = element_blank(),
+               strip.text.y.left = element_text(size=font_size, angle=0),
+               strip.background = element_blank(),
+               axis.line.x = element_blank(),
+               axis.line.y = element_blank(),
+               axis.text.x = element_blank(),
+               axis.text.y = element_blank(),
+               axis.title.y = element_blank(),
+               axis.title.x = element_blank(),
+               axis.ticks.x = element_blank(),
+               axis.ticks.y = element_blank(),
+               panel.grid.minor = element_blank(),
+               panel.grid.major = element_blank(),
+               panel.spacing.y = unit(0, "lines"),
+               panel.spacing.x = unit(0, "lines"),
+               panel.border = element_rect(color = "#d8d8d8", fill = NA, size = .2),
+               panel.background = element_rect(fill = "#f0f0f0")
+)
+
 # xlab_cna_size = "Expected size of copy number alterations per site (Mbp)"
 # xlab_cna_num = "Expected number of copy number alterations per site"
 xlab_cna_age = "Patient age (years)"

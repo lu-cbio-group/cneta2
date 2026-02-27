@@ -388,13 +388,13 @@ inline double get_prob_children(vector<vector<double>>& L_sk_k, const evo_tree& 
 // z: possible changes in copy number caused by chromosome gain/loss
 // only used in get_likelihood_chr
 // extracted as a function to avoid duplication in selection statement
-void get_likelihood_site(vector<vector<double>>& L_sk_k, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int& has_wgd, const int& z, const int& model, const int& nstate);
+void get_likelihood_site(vector<vector<double>>& L_sk_k, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int has_wgd, const int z, const int model, const int nstate);
 
 
 // Get the likelihood on a set of chromosomes
 // only used in get_likelihood_revised
 // extracted as a function to avoid duplication in selection statement
-double get_likelihood_chr(const map<int, vector<vector<int>>>& vobs, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int& has_wgd, const int& cn_type, const int& use_repeat, const int& model, const int& nstate, const int& is_total);
+double get_likelihood_chr(const map<int, vector<vector<int>>>& vobs, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int has_wgd, const int cn_type, const int use_repeat, const int model, const int nstate, const int is_total);
 
 
 

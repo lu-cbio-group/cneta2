@@ -17,6 +17,19 @@ typedef vector<double>::iterator DBIter;  // convenience typedefs
 typedef pair<DBIter, DBIter> DBIterPair;
 
 
+
+inline int compute_haplotype_change_dim(int n) {
+    if (n % 2 != 0) {
+        // n is odd: (2n + 1)^2
+        int x = 2 * n + 1;
+        return x * x;
+    } else {
+        // n is even: (2n)^2
+        int x = 2 * n;
+        return x * x;
+    }
+}
+
 // to validate the rate matrix (row sum should be 0)
 bool check_matrix_row_sum(double *mat, int nstate);
 
@@ -24,7 +37,7 @@ void check_pmats_blen2(int nstate, const vector<double>& blens, const vector<dou
 
 /*************** MK model *****************/
 // Mk model based on JC model
-inline double get_transition_prob(const double& mu, const double& blength, const int& sk, const int& sj){
+inline double get_transition_prob(const double mu, const double blength, const int sk, const int sj){
   //if(debug) cout << "\tget_transition_prob" << endl;
 
   // assume a basic Markov model here cf JC
@@ -47,17 +60,17 @@ inline double get_transition_prob(const double& mu, const double& blength, const
 /*************** BOUND model *****************/
 
 // model when copy number is bounded by 0 and cn_max
-void get_rate_matrix_bounded(double* m, const double& dup_rate, const double& del_rate, const int& cn_max);
+void get_rate_matrix_bounded(double* m, const double dup_rate, const double del_rate, const int cn_max);
 
 // A matrix with dimension (cn_max + 1) * (cn_max + 2) / 2
 // Suppose copy number configuration is in specific order such as:  0/0	0/1	1/0	0/2	 1/1	2/0	0/3	 1/2	 2/1	3/0	0/4	 1/3	  2/2	 3/1	4/0
-void get_rate_matrix_allele_specific(double* m, const double& dup_rate, const double& del_rate, const int& cn_max);
+void get_rate_matrix_allele_specific(double* m, const double dup_rate, const double del_rate, const int cn_max);
 
 // n = cn_max + 1 for model 1 (total copy number)
-void get_transition_matrix_bounded(double* q, double* p, const double& t, const int& n);
+void get_transition_matrix_bounded(double* q, double* p, const double t, const int n);
 
 // not used in practice to save effeorts in function call
-double get_transition_prob_bounded(double* p, const int& sk, const int& sj, const int& n);
+double get_transition_prob_bounded(double* p, const int sk, const int sj, const int n);
 
 
 /*************** DECOMP model *****************/
@@ -65,13 +78,17 @@ double get_transition_prob_bounded(double* p, const int& sk, const int& sj, cons
 // model decomposing observed copy numbers into different levels
 
 // rate matrix for segment-level CNAs
-void get_rate_matrix_site_change(double* m, const double& dup_rate, const double& del_rate, const int& site_change_max);
+void get_rate_matrix_site_change(double* m, const double dup_rate, const double del_rate, const int site_change_max);
 
 // rate matrix for chr-level CNAs
-void get_rate_matrix_chr_change(double* m, const double& chr_gain_rate, const double& chr_loss_rate, const int& chr_change_max);
+void get_rate_matrix_chr_change(double* m, const double chr_gain_rate, const double chr_loss_rate, const int chr_change_max);
+
+void get_rate_matrix_site_change_haplotype(double* m, const double dup_rate, const double del_rate, const int site_change_max_haplotype);
+
+void get_rate_matrix_chr_change_haplotype(double* m, const double chr_gain_rate, const double chr_loss_rate, const int chr_change_max_haplotype);
 
 // Maximum allowed number of WGD events over a time interval: 2
-void get_rate_matrix_wgd(double* m, const double& wgd_rate, const int& wgd_max = 2);
+void get_rate_matrix_wgd(double* m, const double wgd_rate, const int wgd_max = 2);
 
 // Get possible combinations for a total copy number (n = (alpha, beta, gamma))
 // deprecated due to excluding of WGD
