@@ -322,7 +322,7 @@ void get_rate_matrix_site_change_haplotype(double* m, const double dup_rate, con
         m[i + i * ncol] = 0 - 2 * del_rate - dup_rate;
     }   
 
-    unsigned i_wgd = 10;
+    unsigned i_wgd = 10; // 2/2
     for(unsigned i = 13; i < lcol; i++){
         m[i + (i - 2) * ncol] = del_rate;
         m[i + i_wgd * ncol] = del_rate;
@@ -336,7 +336,7 @@ void get_rate_matrix_site_change_haplotype(double* m, const double dup_rate, con
 
     if(debug){
         std::cout << m << std::endl;
-        r8mat_print(ncol, ncol, m, "  Haplotype-specific Site-level P matrix:");
+        r8mat_print(ncol, ncol, m, "  Haplotype-specific Site-level Q matrix:");
     }
 }
 
@@ -398,7 +398,7 @@ void get_rate_matrix_chr_change_haplotype(double* m, const double chr_gain_rate,
 
     if(debug){
         std::cout << m << std::endl;
-        r8mat_print(ncol, ncol, m, "  Haplotype-specific Chr-level P matrix:");
+        r8mat_print(ncol, ncol, m, "  Haplotype-specific Chr-level Q matrix:");
     }
 }
 

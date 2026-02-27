@@ -340,198 +340,197 @@ double get_likelihood_chr(const map<int, vector<vector<int>>>& vobs, const evo_t
  *  @param lnl_type Likelihood computation parameters
  */
 double get_likelihood_revised(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, LNL_TYPE& lnl_type){
-  // int debug = 0;
-  // if(debug) cout << "\tget_likelihood by matrix exponential" << endl;
+    // int debug = 0;
+    // if(debug) cout << "\tget_likelihood by matrix exponential" << endl;
 
     TimePoint start_time = now();
     ++cnt_revised_all;
-    
+
     if(!is_tree_valid(rtree, lnl_type.max_tobs, lnl_type.patient_age, lnl_type.cons)){// invalid tree only count toward "all" calls
         TimePoint end_all_invalid = now();
         time_revised_all += elapsed_seconds(start_time, end_all_invalid);
+        return SMALL_LNL;
+    }
 
-    return SMALL_LNL;
-   }
+    int model = lnl_type.model;
+    int cn_max = lnl_type.cn_max;
+    int is_total = lnl_type.is_total;
 
-  int model = lnl_type.model;
-  int cn_max = lnl_type.cn_max;
-  int is_total = lnl_type.is_total;
+    // For copy number instantaneous changes
+    int nstate = cn_max + 1;
+    if(model == BOUNDA) nstate = (cn_max + 1) * (cn_max + 2) / 2;
 
-  // For copy number instantaneous changes
-  int nstate = cn_max + 1;
-  if(model == BOUNDA) nstate = (cn_max + 1) * (cn_max + 2) / 2;
+    // may be different for each tree due to change of mutation rate
+    int dim_mat = nstate * nstate;
+    double *qmat = new double[dim_mat];
+    memset(qmat, 0.0, dim_mat * sizeof(double));
 
-  // may be different for each tree due to change of mutation rate
-  int dim_mat = nstate * nstate;
-  double *qmat = new double[dim_mat];
-  memset(qmat, 0.0, dim_mat * sizeof(double));
+    // model == BOUNDT || model == BOUNDA
+    assert(model > 0);
+    if(model == BOUNDA){
+        get_rate_matrix_allele_specific(qmat, rtree.dup_rate, rtree.del_rate, cn_max);
+    }else{
+        get_rate_matrix_bounded(qmat, rtree.dup_rate, rtree.del_rate, cn_max);
+    }
 
-  // model == BOUNDT || model == BOUNDA
-  assert(model > 0);
-  if(model == BOUNDA){
-      get_rate_matrix_allele_specific(qmat, rtree.dup_rate, rtree.del_rate, cn_max);
-  }else{
-      get_rate_matrix_bounded(qmat, rtree.dup_rate, rtree.del_rate, cn_max);
-  }
+    // if(debug){
+    //   r8mat_print(nstate, nstate, qmat, "  Q matrix:" );
+    //   check_matrix_row_sum(qmat, nstate);
+    // }
 
-  // if(debug){
-  //   r8mat_print(nstate, nstate, qmat, "  Q matrix:" );
-  //   check_matrix_row_sum(qmat, nstate);
-  // }
+    // Find the transition probability matrix for each branch at once to save computation for branches with same lengths
+    vector<int> knodes = lnl_type.knodes; // internal nodes in preorder traversal, including the root
+    vector<double> blens;
+    vector<double*> pmat_per_blen;    // transition probability matrices for each unique branch length, each element is a nstate * nstate matrix
 
-  // Find the transition probability matrix for each branch at once to save computation for branches with same lengths
-  vector<int> knodes = lnl_type.knodes; // internal nodes in preorder traversal, including the root
-  vector<double> blens;
-  vector<double*> pmat_per_blen;    // transition probability matrices for each unique branch length, each element is a nstate * nstate matrix
+    for(int kn = 0; kn < knodes.size(); ++kn){
+        int k = knodes[kn];
+        // two outgoing branches of the current internal node k
+        double bli = rtree.edges[rtree.nodes[k].e_ot[0]].length;
+        double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
 
-  for(int kn = 0; kn < knodes.size(); ++kn){
-    int k = knodes[kn];
-    // two outgoing branches of the current internal node k
-    double bli = rtree.edges[rtree.nodes[k].e_ot[0]].length;
-    double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
+        if(find(blens.begin(), blens.end(), bli) == blens.end()){
+            double *pmati = new double[dim_mat];
+            memset(pmati, 0.0, dim_mat * sizeof(double));
+            get_transition_matrix_bounded(qmat, pmati, bli, nstate);
+            pmat_per_blen.push_back(pmati);
+            blens.push_back(bli);
+            // if(debug){
+            //     cout << "Get Pmatrix for branch length " << bli << endl;
+            //     r8mat_print(nstate, nstate, pmati, "  P matrix:" );
+            // }
+        }
+        if(find(blens.begin(), blens.end(), blj) == blens.end()){
+            double *pmatj = new double[dim_mat];
+            memset(pmatj, 0.0, dim_mat * sizeof(double));
+            get_transition_matrix_bounded(qmat, pmatj, blj, nstate);
+            pmat_per_blen.push_back(pmatj);
+            blens.push_back(blj);
+            // if(debug){
+            //     cout << "Get Pmatrix for branch length " << blj << endl;
+            //     r8mat_print(nstate, nstate, pmatj, "  P matrix:" );
+            // }
+        }
+    }
 
-    if(find(blens.begin(), blens.end(), bli) == blens.end()){
-        double *pmati = new double[dim_mat];
-        memset(pmati, 0.0, dim_mat * sizeof(double));
-        get_transition_matrix_bounded(qmat, pmati, bli, nstate);
-        pmat_per_blen.push_back(pmati);
-        blens.push_back(bli);
+    // sort pmats according to branch lengths
+    auto p = sort_permutation(blens, [&](const double a, const double b){ return a < b; });
+    blens = apply_permutation(blens, p);
+    pmat_per_blen = apply_permutation(pmat_per_blen, p);
+
+    // if(debug){
+    //     for(int i = 0; i < pmat_per_blen.size(); ++i){
+    //         double blen = blens[i];
+    //         cout << "Get P matrix for branch length " << blen << endl;
+    //         r8mat_print(nstate, nstate, pmat_per_blen[i], "  P matrix:");
+    //     }
+    // }
+
+    double logL = 0.0;
+
+    if(lnl_type.cn_type){         // only consider segment-level copy number changes
+        // if(debug) cout << "Computing the likelihood without consideration of WGD" << endl;
+        logL += get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 0, lnl_type.cn_type, lnl_type.use_repeat, model, nstate, is_total);
+    }else{
+        // if(debug) cout << "Computing the likelihood with consideration of WGD" << endl;
+        logL += (1 - rtree.wgd_rate) * get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 0, lnl_type.cn_type, lnl_type.use_repeat, model, nstate, is_total);
+        logL += rtree.wgd_rate * get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 1, lnl_type.cn_type, lnl_type.use_repeat, model, nstate, is_total);
+    }
+
+    // if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;
+
+    if(lnl_type.correct_bias){
+        // if(debug) cout << "Correcting for the skip of invariant sites" << endl;
+
+        // Compute the likelihood of dummy sites consisting entirely of 2s for the tree
+        double lnl_invar = 0.0;
+        // Suppose the value is 2 for all samples
+        int normal_cn = 2;
+        if(!is_total){
+            normal_cn = 4;    // state ID for haplotype-specific CN 1/1
+        }
+
+        vector<int> obs(rtree.nleaf - 1, normal_cn);
+        vector<vector<double>> L_sk_k(2 * rtree.nleaf - 1, vector<double>(nstate, 0.0));
+        initialize_lnl_table(L_sk_k, obs, rtree, model, nstate, is_total);
+
+        for(int kn = 0; kn < knodes.size(); ++kn){
+            int k = knodes[kn];
+            int ni = rtree.edges[rtree.nodes[k].e_ot[0]].end;
+            double bli = rtree.edges[rtree.nodes[k].e_ot[0]].length;
+            int nj = rtree.edges[rtree.nodes[k].e_ot[1]].end;
+            double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
+
+            DBIterPair pi = equal_range(blens.begin(), blens.end(), bli);
+            // assert(distance(pi.first, pi.second) == 1);
+            int idx_bli = distance(blens.begin(), pi.first);
+            DBIterPair pj = equal_range(blens.begin(), blens.end(), blj);
+            // assert(distance(pj.first, pj.second) == 1);
+            int idx_blj = distance(blens.begin(), pj.first);
+
+            //loop over possible values of sk
+            for(int sk = 0; sk < nstate; ++sk){
+                double Li = 0.0;
+                for(int si = 0; si < nstate; ++si){
+                    if(model == MK){
+                    Li += get_transition_prob(rtree.mu, bli, sk, si) * L_sk_k[ni][si];
+                    }else{
+                    Li += pmat_per_blen[idx_bli][sk + si * nstate] * L_sk_k[ni][si];
+                    }
+                }
+                double Lj = 0.0;
+                for(int sj = 0; sj < nstate; ++sj){
+                    if(model == MK){
+                        Lj += get_transition_prob(rtree.mu, blj, sk, sj) * L_sk_k[nj][sj];
+                    }else{
+                        Lj += pmat_per_blen[idx_blj][sk + sj * nstate] * L_sk_k[nj][sj];
+                    }
+                }
+
+                L_sk_k[k][sk] = Li * Lj;
+            }
+        }
+
+        lnl_invar = extract_tree_lnl(L_sk_k, rtree.nleaf - 1, model);
+        cout << "Likelihood of an invariant bin: " << lnl_invar << endl;
+        double bias = lnl_type.num_invar_bins * lnl_invar;
+        cout << "Number of invariant bins " << lnl_type.num_invar_bins << endl;
+        logL = logL + bias;
+        cout << "Bias to correct " << bias << endl;
+        cout << "Final likelihood after correcting acquisition bias: " << logL << endl;
+
+
         // if(debug){
-        //     cout << "Get Pmatrix for branch length " << bli << endl;
-        //     r8mat_print(nstate, nstate, pmati, "  P matrix:" );
+        //     cout << "Likelihood of an invariant bin: " << lnl_invar << endl;
+        //     cout << "Number of invariant bins " << lnl_type.num_invar_bins << endl;
+        //     cout << "Bias to correct " << bias << endl;
+        //     cout << "Final likelihood after correcting acquisition bias: " << logL << endl;
         // }
     }
-    if(find(blens.begin(), blens.end(), blj) == blens.end()){
-        double *pmatj = new double[dim_mat];
-        memset(pmatj, 0.0, dim_mat * sizeof(double));
-        get_transition_matrix_bounded(qmat, pmatj, blj, nstate);
-        pmat_per_blen.push_back(pmatj);
-        blens.push_back(blj);
-        // if(debug){
-        //     cout << "Get Pmatrix for branch length " << blj << endl;
-        //     r8mat_print(nstate, nstate, pmatj, "  P matrix:" );
-        // }
-    }
-  }
 
-  // sort pmats according to branch lengths
-  auto p = sort_permutation(blens, [&](const double a, const double b){ return a < b; });
-  blens = apply_permutation(blens, p);
-  pmat_per_blen = apply_permutation(pmat_per_blen, p);
+    if(std::isnan(logL) || logL < SMALL_LNL) logL = SMALL_LNL;
+    // if(debug){
+    //     cout << "Final likelihood: " << logL << endl;
+    // }
 
-  // if(debug){
-  //     for(int i = 0; i < pmat_per_blen.size(); ++i){
-  //         double blen = blens[i];
-  //         cout << "Get P matrix for branch length " << blen << endl;
-  //         r8mat_print(nstate, nstate, pmat_per_blen[i], "  P matrix:");
-  //     }
-  // }
+    delete [] qmat;
+    for_each(pmat_per_blen.begin(), pmat_per_blen.end(), DeleteObject());
 
-  double logL = 0.0;
+    // end time measurement, only count toward "valid" calls
+    TimePoint end_all_valid = now();
+    double dt_valid = elapsed_seconds(start_time, end_all_valid);
+    
+    time_revised_all   += dt_valid; // valid also count toward all, so time for all is always updated
+    time_revised_valid += dt_valid; // only update time for valid calls
+    ++cnt_revised_valid; // only update count for valid calls
 
-  if(lnl_type.cn_type){         // only consider segment-level copy number changes
-      // if(debug) cout << "Computing the likelihood without consideration of WGD" << endl;
-      logL += get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 0, lnl_type.cn_type, lnl_type.use_repeat, model, nstate, is_total);
-  }else{
-      // if(debug) cout << "Computing the likelihood with consideration of WGD" << endl;
-      logL += (1 - rtree.wgd_rate) * get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 0, lnl_type.cn_type, lnl_type.use_repeat, model, nstate, is_total);
-      logL += rtree.wgd_rate * get_likelihood_chr(vobs, rtree, knodes, blens, pmat_per_blen, 1, lnl_type.cn_type, lnl_type.use_repeat, model, nstate, is_total);
-  }
-
-  // if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;
-
-  if(lnl_type.correct_bias){
-      // if(debug) cout << "Correcting for the skip of invariant sites" << endl;
-
-      // Compute the likelihood of dummy sites consisting entirely of 2s for the tree
-      double lnl_invar = 0.0;
-      // Suppose the value is 2 for all samples
-      int normal_cn = 2;
-      if(!is_total){
-          normal_cn = 4;    // state ID for haplotype-specific CN 1/1
-      }
-
-      vector<int> obs(rtree.nleaf - 1, normal_cn);
-      vector<vector<double>> L_sk_k(2 * rtree.nleaf - 1, vector<double>(nstate, 0.0));
-      initialize_lnl_table(L_sk_k, obs, rtree, model, nstate, is_total);
-
-      for(int kn = 0; kn < knodes.size(); ++kn){
-          int k = knodes[kn];
-          int ni = rtree.edges[rtree.nodes[k].e_ot[0]].end;
-          double bli = rtree.edges[rtree.nodes[k].e_ot[0]].length;
-          int nj = rtree.edges[rtree.nodes[k].e_ot[1]].end;
-          double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
-
-          DBIterPair pi = equal_range(blens.begin(), blens.end(), bli);
-          // assert(distance(pi.first, pi.second) == 1);
-          int idx_bli = distance(blens.begin(), pi.first);
-          DBIterPair pj = equal_range(blens.begin(), blens.end(), blj);
-          // assert(distance(pj.first, pj.second) == 1);
-          int idx_blj = distance(blens.begin(), pj.first);
-
-          //loop over possible values of sk
-          for(int sk = 0; sk < nstate; ++sk){
-            double Li = 0.0;
-            for(int si = 0; si < nstate; ++si){
-                if(model == MK){
-                  Li += get_transition_prob(rtree.mu, bli, sk, si) * L_sk_k[ni][si];
-                }else{
-                  Li += pmat_per_blen[idx_bli][sk + si * nstate] * L_sk_k[ni][si];
-                }
-            }
-            double Lj = 0.0;
-            for(int sj = 0; sj < nstate; ++sj){
-                if(model == MK){
-                     Lj += get_transition_prob(rtree.mu, blj, sk, sj) * L_sk_k[nj][sj];
-                }else{
-                     Lj += pmat_per_blen[idx_blj][sk + sj * nstate] * L_sk_k[nj][sj];
-                }
-            }
-
-            L_sk_k[k][sk] = Li * Lj;
-         }
-      }
-
-      lnl_invar = extract_tree_lnl(L_sk_k, rtree.nleaf - 1, model);
-      cout << "Likelihood of an invariant bin: " << lnl_invar << endl;
-      double bias = lnl_type.num_invar_bins * lnl_invar;
-      cout << "Number of invariant bins " << lnl_type.num_invar_bins << endl;
-      logL = logL + bias;
-      cout << "Bias to correct " << bias << endl;
-      cout << "Final likelihood after correcting acquisition bias: " << logL << endl;
-
-
-      // if(debug){
-      //     cout << "Likelihood of an invariant bin: " << lnl_invar << endl;
-      //     cout << "Number of invariant bins " << lnl_type.num_invar_bins << endl;
-      //     cout << "Bias to correct " << bias << endl;
-      //     cout << "Final likelihood after correcting acquisition bias: " << logL << endl;
-      // }
-  }
-
-  if(std::isnan(logL) || logL < SMALL_LNL) logL = SMALL_LNL;
-  // if(debug){
-  //     cout << "Final likelihood: " << logL << endl;
-  // }
-
-  delete [] qmat;
-  for_each(pmat_per_blen.begin(), pmat_per_blen.end(), DeleteObject());
-
-  // end time measurement, only count toward "valid" calls
-  TimePoint end_all_valid = now();
-  double dt_valid = elapsed_seconds(start_time, end_all_valid);
-  
-  time_revised_all   += dt_valid; // valid also count toward all, so time for all is always updated
-  time_revised_valid += dt_valid; // only update time for valid calls
-  ++cnt_revised_valid; // only update count for valid calls
-
-  return logL;
+    return logL;
 }
 
 
 
 /** 
- * @brief Compute the likelihood without grouping sites by chromosome, only considering site duplication/deletion
+ *  @brief Compute the likelihood without grouping sites by chromosome, only considering site duplication/deletion
  *  The initial version with more simplifications, used for testing
  *  @param vobs the observed data matrix
  *  @param rtree the given tree
@@ -703,6 +702,30 @@ void print_tree_lnl(const evo_tree& rtree, vector<vector<double>>& L_sk_k, int n
 
 
 /************* Funtions when decomposing observed copy numbers onto multiple level changes **********************/
+void get_state_index(int state_chr, int peak_sum_haplotype, int& si, int& ei){
+    vector<int> n_states = make_peak_vector(peak_sum_haplotype); // assume 2 in total and 1 for each haplotype at chr level
+    for (int k = 0; k < state_chr; k++){
+        si += n_states[k];
+    }
+    ei = si + n_states[state_chr] - 1;
+}
+
+
+// helper function to set likelihood table entries for different levels, considering the indexing of haplotype-specific states
+void set_lnl_table_change(int state_chr, int row, int peak_sum_haplotype, int is_total, vector<vector<double>>& L_sk_k){     
+    if (is_total){               // only observed total copy number change
+        int si = 0; // compute partial sum to get the index of the observed state
+        int ei = 0;
+        get_state_index(state_chr, peak_sum_haplotype, si, ei);
+
+        for (int k = si; k <= ei; k++){
+            L_sk_k[row][k] = 1.0;
+        }
+    }else{
+        // haplotype-specific observed change, not implemented yet
+    }
+}
+
 
 /**
  * @brief likelihood table initialization for models with WGD, chromosome gain/loss, and site duplication/deletion 
@@ -717,6 +740,7 @@ void print_tree_lnl(const evo_tree& rtree, vector<vector<double>>& L_sk_k, int n
 void initialize_lnl_table_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const vector<CN_CHANGE>& obs_change, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug){
     if(debug) cout << "\tinitialize likelihood table at tips for multiple levels" << endl;
     int Ns = rtree.nleaf - 1;
+    int is_total = 1;   // TODO: change later
 
     int nstate_wgd = dim_decomp.dim_wgd;         // number of WGD states  
     int nstate_chr = dim_decomp.dim_chr;         // number of chromosome gain/loss states
@@ -734,11 +758,13 @@ void initialize_lnl_table_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const
 
     if(nstate_chr > 0){
         L_sk_k.lnl_table_chr.resize(2 * Ns + 1, vector<double>(nstate_chr, 0.0));
-        L_sk_k.lnl_table_chr[Ns][abs(obs_decomp.max_chr_change)] = 1.0;  // no chr gain/loss
+        // L_sk_k.lnl_table_chr[Ns][abs(obs_decomp.max_chr_change)] = 1.0;  // no chr gain/loss
+        L_sk_k.lnl_table_chr[Ns][NO_CHANGE_HAPLOTYPE] = 1.0;  // no chr gain/loss for haplotype-specific case
     }
     if(nstate_site > 0){
         L_sk_k.lnl_table_seg.resize(2 * Ns + 1, vector<double>(nstate_site, 0.0));
-        L_sk_k.lnl_table_seg[Ns][abs(obs_decomp.max_site_change)] = 1.0;  // no site gain/loss  
+        // L_sk_k.lnl_table_seg[Ns][abs(obs_decomp.max_site_change)] = 1.0;  // no site gain/loss  
+        L_sk_k.lnl_table_seg[Ns][NO_CHANGE_HAPLOTYPE] = 1.0;  // no site gain/loss for haplotype-specific case
     }
 
     for(int i = 0; i < Ns; ++i){
@@ -754,41 +780,22 @@ void initialize_lnl_table_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const
         // and -1/-1	-1/0	0/-1	-1/+1	+1/-1	0/0	0/+1	+1/0	+1/+1 for haplotype-specific copy number
         if(nstate_chr > 0){
             // total change observed
-            int state_chr = obs_change[i].cn_change_chr + abs(obs_decomp.max_chr_change); // change value to positive index
+            // int state_chr = obs_change[i].cn_change_chr + abs(obs_decomp.max_chr_change); // change value to positive index
             // compute index of the observed state        
             // L_sk_k.lnl_table_chr[i][state_chr] = 1.0; 
             // TODO: As the matrix is indexed by haplotype-specific changes, all related state need to be set.
-            vector<int> n_states = make_peak_vector(obs_decomp.max_chr_change);   // assume 2 in total and 1 for each haplotype
-            if(is_total){   // only observed total copy number change
-                int si = 0;  // compute partial sum to get the index of the observed state
-                int ei = 0;
-                for(int k = 0; k < state_chr; k++){
-                    si += n_states[k];
-                }
-                ei = si + n_states[state_chr] - 1;
-                for(int k = si; k <= ei; k++){
-                    L_sk_k.lnl_table_chr[i][k] = 1.0;
-                }   
-            }
+            // assert(obs_decomp.max_chr_change == 2);   // for now assume the maximum change is 2, can be changed later
+            int state_chr = obs_change[i].cn_change_chr + 2;                    // can lost at most two copies
+            set_lnl_table_change(state_chr, i, 3, is_total, L_sk_k.lnl_table_chr);
         }
         
         // For site gain/loss
         // site state is likely -2, -1, 0, 1, 2
         if(nstate_site > 0){
-            int state_site = obs_change[i].cn_change_site + abs(obs_decomp.max_site_change); // change value to positive index
+            // int state_site = obs_change[i].cn_change_site + abs(obs_decomp.max_site_change); // change value to positive index
             // L_sk_k.lnl_table_seg[i][state_site] = 1.0; 
-            vector<int> n_states = make_peak_vector(obs_decomp.max_site_change);   // assume 4 in total and 2 for each haplotype
-            if(is_total){   // only observed total copy number change
-                int si = 0;  // compute partial sum to get the index of the observed state
-                int ei = 0;
-                for(int k = 0; k < state_site; k++){
-                    si += n_states[k];
-                }
-                ei = si + n_states[state_site] - 1;
-                for(int k = si; k <= ei; k++){
-                    L_sk_k.lnl_table_seg[i][k] = 1.0;
-                }   
-            }            
+            int state_site = obs_change[i].cn_change_site + 2;                    // can lost at most two copies
+            set_lnl_table_change(state_site, i, 4, is_total, L_sk_k.lnl_table_seg);          
         }
     }   
 
@@ -990,12 +997,14 @@ void build_transition_matrices(PMAT_DECOMP& pmat_decomp, const evo_tree& rtree, 
  * @param dim_decomp: dimensions of different levels  
  * @param debug: debug flag
  * @return LNL_VAL: likelihood values for different levels 
+ * When the rate matrix is defined by haplotype-specific changes, sk include the index for haplotype-specific changes
  */
 LNL_VAL compute_child_likelihood_change(int node, const CN_CHANGE& sk, const LNL_TABLE& L_sk_k, const PROB_DECOMP1& prob_decomp, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int debug) {
     double L_wgd = 0.0;
     double L_chr = 0.0;
     double L_seg = 0.0;
 
+    // loop over all possible end states on a branch
     for (int e = 0; e < dim_decomp.dim_wgd; ++e) {
         double p = prob_decomp.pbl_wgd[sk.num_wgd + e * dim_decomp.dim_wgd];
         L_wgd += p * L_sk_k.lnl_table_wgd[node][e];
@@ -1003,13 +1012,29 @@ LNL_VAL compute_child_likelihood_change(int node, const CN_CHANGE& sk, const LNL
 
     for (int e = 0; e < dim_decomp.dim_chr; ++e) {
         // as changes can be negative, need to transform to positive values first
-        double p = prob_decomp.pbl_chr[(sk.cn_change_chr + obs_decomp.max_chr_change) + e * dim_decomp.dim_chr];
+        // double p = prob_decomp.pbl_chr[(sk.cn_change_chr + obs_decomp.max_chr_change) + e * dim_decomp.dim_chr];
+        double p = prob_decomp.pbl_chr[(sk.cn_change_chr) + e * dim_decomp.dim_chr];
         L_chr += p * L_sk_k.lnl_table_chr[node][e];
+        // need to consider how possible states corresponding to the observed total change
+        // for(int s = si; s <= ei; s++){
+        //     double p = prob_decomp.pbl_chr[s + e * dim_decomp.dim_chr];
+        //     L_chr += p * L_sk_k.lnl_table_chr[node][e];
+        // }
     }
 
     for (int e = 0; e < dim_decomp.dim_seg; ++e) {
-        double p = prob_decomp.pbl_seg[(sk.cn_change_site + obs_decomp.max_site_change) + e * dim_decomp.dim_seg];
+        // double p = prob_decomp.pbl_seg[(sk.cn_change_site + obs_decomp.max_site_change) + e * dim_decomp.dim_seg];
+        double p = prob_decomp.pbl_seg[(sk.cn_change_site) + e * dim_decomp.dim_seg];
         L_seg += p * L_sk_k.lnl_table_seg[node][e];
+        // find all index of states corresponding to the observed total change and sum over them
+        // int si = 0; // compute partial sum to get the index of the observed state
+        // int ei = 0;
+        // int state_site = sk.cn_change_site + 2;   // change value to positive index
+        // get_state_index(state_site, 4, si, ei);
+        // for(int s = si; s <= ei; s++){
+        //     double p = prob_decomp.pbl_seg[s + e * dim_decomp.dim_seg];
+        //     L_seg += p * L_sk_k.lnl_table_seg[node][e];
+        // }
     }
 
     if (debug) {
@@ -1119,47 +1144,60 @@ void get_likelihood_site_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const 
         // loop over possible states of internal nodes
         if(k == rtree.nleaf){    // root node is always normal
             if(debug) cout << "Getting likelihood for root node " << k << endl;
-            CN_CHANGE sk = {2, 0, 0, 0};   // normal state in terms of decomposed copy number changes e.g. (0,1,2, -1,0,1, -1,0,1)
+            CN_CHANGE sk = {2, 0, NO_CHANGE_HAPLOTYPE, NO_CHANGE_HAPLOTYPE};   // normal state in terms of decomposed copy number changes e.g. (0,1,2, -1,0,1, -1,0,1)
             // int sk_idx = change_to_state(sk, cn_max);
             LNL_VAL lnl_val = get_prob_children_change(L_sk_k, rtree, sk, prob_decompi, prob_decompj, obs_decomp, dim_decomp, ni, nj, is_total, debug);
             if(dim_decomp.dim_wgd > 0) L_sk_k.lnl_table_wgd[k][0] = lnl_val.lnl_wgd;
-            if(dim_decomp.dim_chr > 0) L_sk_k.lnl_table_chr[k][obs_decomp.max_chr_change] = lnl_val.lnl_chr;
-            if(dim_decomp.dim_seg > 0) L_sk_k.lnl_table_seg[k][obs_decomp.max_site_change] = lnl_val.lnl_seg;
-           
+            // if(dim_decomp.dim_chr > 0) L_sk_k.lnl_table_chr[k][obs_decomp.max_chr_change] = lnl_val.lnl_chr;
+            // if(dim_decomp.dim_seg > 0) L_sk_k.lnl_table_seg[k][obs_decomp.max_site_change] = lnl_val.lnl_seg;
+            if(dim_decomp.dim_chr > 0){
+                L_sk_k.lnl_table_chr[k][NO_CHANGE_HAPLOTYPE] = lnl_val.lnl_chr;
+            }
+            if(dim_decomp.dim_seg > 0){
+                L_sk_k.lnl_table_seg[k][NO_CHANGE_HAPLOTYPE] = lnl_val.lnl_seg;   
+            }       
         }else{
             if(debug) cout << "Getting likelihood for internal node " << k << endl;
             if(obs_decomp.max_wgd > 0){
                 for(int i = 0; i <= obs_decomp.max_wgd; ++i){   
                     int cn_state = pow(2, i + 1);           
-                    CN_CHANGE sk = {cn_state, i, 0, 0}; 
+                    CN_CHANGE sk = {cn_state, i, NO_CHANGE_HAPLOTYPE, NO_CHANGE_HAPLOTYPE}; 
                     //  cout << i << ": " << sk << endl;
                     LNL_VAL lnl_val = get_prob_children_change(L_sk_k, rtree, sk, prob_decompi, prob_decompj, obs_decomp, dim_decomp, ni, nj, is_total, debug);
                     L_sk_k.lnl_table_wgd[k][i] = lnl_val.lnl_wgd;
-                    if(dim_decomp.dim_chr > 0) L_sk_k.lnl_table_chr[k][obs_decomp.max_chr_change] = lnl_val.lnl_chr;
-                    if(dim_decomp.dim_seg > 0) L_sk_k.lnl_table_seg[k][obs_decomp.max_site_change] = lnl_val.lnl_seg;
+                    if(dim_decomp.dim_chr > 0) L_sk_k.lnl_table_chr[k][NO_CHANGE_HAPLOTYPE] = lnl_val.lnl_chr;
+                    if(dim_decomp.dim_seg > 0) L_sk_k.lnl_table_seg[k][NO_CHANGE_HAPLOTYPE] = lnl_val.lnl_seg;
                 }
             }
 
             if(obs_decomp.max_chr_change > 0){
-                for(int j = -obs_decomp.max_chr_change; j <= obs_decomp.max_chr_change; ++j){
-                    int cn_state = 2 + j;
-                    CN_CHANGE sk = {cn_state, 0, j, 0};   // the copy number may not be real, just for placeholder
+                // for(int j = -obs_decomp.max_chr_change; j <= obs_decomp.max_chr_change; ++j){
+                // fill all possible haplotype-specific states related to the observed total copy number change
+                for(int j = 0; j < dim_decomp.dim_chr; ++j){
+                    // use haplotype-specific changes for placeholder
+                    int cn_state = change_state_to_total_cn(j, 1);
+                    assert(cn_state >= 0);   // for now assume the maximum change is 2, can be changed later
+                    CN_CHANGE sk = {cn_state, 0, j, NO_CHANGE_HAPLOTYPE};   // the copy number may not be real, just for placeholder
+                    if(debug) cout << "state index for chromosome change " << j << ": " << sk << endl;                  
                     LNL_VAL lnl_val = get_prob_children_change(L_sk_k, rtree, sk, prob_decompi, prob_decompj, obs_decomp, dim_decomp, ni, nj, is_total, debug);
                     if(dim_decomp.dim_wgd > 0) L_sk_k.lnl_table_wgd[k][0] = lnl_val.lnl_wgd;
-                    L_sk_k.lnl_table_chr[k][j + obs_decomp.max_chr_change] = lnl_val.lnl_chr;
-                    if(dim_decomp.dim_seg > 0) L_sk_k.lnl_table_seg[k][obs_decomp.max_site_change] = lnl_val.lnl_seg;
+                    L_sk_k.lnl_table_chr[k][j] = lnl_val.lnl_chr;                   
+                    if(dim_decomp.dim_seg > 0) L_sk_k.lnl_table_seg[k][NO_CHANGE_HAPLOTYPE] = lnl_val.lnl_seg;                        
                 }
             }
 
             if(obs_decomp.max_site_change > 0){
-                for(int l = -obs_decomp.max_site_change; l <= obs_decomp.max_site_change; ++l){
-                    int cn_state = 2 + l;
-                    CN_CHANGE sk = {cn_state, 0, 0, l}; 
-                    // cout << l << ": " << sk << endl;
+                // for(int l = -obs_decomp.max_site_change; l <= obs_decomp.max_site_change; ++l){
+                // fill all possible haplotype-specific states related to the observed total copy number change
+                for(int l = 0; l < dim_decomp.dim_seg; ++l){
+                    int cn_state = change_state_to_total_cn(l, 2);
+                    assert(cn_state >= 0); 
+                    CN_CHANGE sk = {cn_state, 0, NO_CHANGE_HAPLOTYPE, l}; 
+                    if(debug) cout << "state index for site change " << l << ": " << sk << endl;
                     LNL_VAL lnl_val = get_prob_children_change(L_sk_k, rtree, sk, prob_decompi, prob_decompj, obs_decomp, dim_decomp, ni, nj, is_total, debug);
                     if(dim_decomp.dim_wgd > 0) L_sk_k.lnl_table_wgd[k][0] = lnl_val.lnl_wgd;
-                    if(dim_decomp.dim_chr > 0) L_sk_k.lnl_table_chr[k][obs_decomp.max_chr_change] = lnl_val.lnl_chr;
-                    L_sk_k.lnl_table_seg[k][l + obs_decomp.max_site_change] = lnl_val.lnl_seg;  
+                    if(dim_decomp.dim_chr > 0) L_sk_k.lnl_table_chr[k][NO_CHANGE_HAPLOTYPE] = lnl_val.lnl_chr;
+                    L_sk_k.lnl_table_seg[k][l] = lnl_val.lnl_seg;                
                 }  
             }
          
@@ -1201,7 +1239,8 @@ double extract_tree_lnl_change(const LNL_TABLE& L_sk_k, const OBS_DECOMP& obs_de
 
     // Chromosome, no gain/loss
     if(!L_sk_k.lnl_table_chr.empty()){
-        double prob_chr = L_sk_k.lnl_table_chr[Ns + 1][obs_decomp.max_chr_change];  
+        // double prob_chr = L_sk_k.lnl_table_chr[Ns + 1][obs_decomp.max_chr_change]; 
+        double prob_chr = L_sk_k.lnl_table_chr[Ns + 1][5];  
         if (prob_chr > 0.0) {
             log_lnl += log(prob_chr);
         } else {
@@ -1213,7 +1252,7 @@ double extract_tree_lnl_change(const LNL_TABLE& L_sk_k, const OBS_DECOMP& obs_de
 
     // Segment, no duplication/deletion
     if(!L_sk_k.lnl_table_seg.empty()){
-        double prob_seg = L_sk_k.lnl_table_seg[Ns + 1][obs_decomp.max_site_change]; 
+        double prob_seg = L_sk_k.lnl_table_seg[Ns + 1][5]; 
         if (prob_seg > 0.0) {
             log_lnl += log(prob_seg);
         } else {
@@ -1363,8 +1402,10 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
 
     // only consider states that can reach observed changes
     if(max_wgd > 0) dim_wgd = max_wgd + 1;
-    if(max_chr_change > 0) dim_chr = 2 * max_chr_change + 1;
-    if(max_site_change > 0) dim_seg = 2 * max_site_change + 1;
+    // if(max_chr_change > 0) dim_chr = 2 * max_chr_change + 1;
+    // if(max_site_change > 0) dim_seg = 2 * max_site_change + 1;
+    if(max_chr_change > 0) dim_chr = 9;
+    if(max_site_change > 0) dim_seg = 16;
 
     int dim_mat_wgd = dim_wgd * dim_wgd;
     int dim_mat_chr = dim_chr * dim_chr;

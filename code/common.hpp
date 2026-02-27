@@ -44,7 +44,9 @@ const int MAX_AGE = 100;
 const int NUM_CHR = 22; // only consider autosome for now, TODD: add ChrX and chrY in the future ??
 const int NORM_PLOIDY = 2;
 const int NORM_ALLElE_STATE = 4;    // state 4 represents 1/1 in haplotype-specific copy number model BOUNDA
-const int NORM_CHANGE = 0; // no change at WGD, chr-level and site-level
+const int NO_CHANGE_WGD = 0; // no change at WGD level
+const int NO_CHANGE_HAPLOTYPE = 5;   // no change at chr-level and site-level
+
 
 const int PRINT_PRECISION = 10;
 
@@ -240,6 +242,24 @@ void get_vals_from_str(vector<T>& vals, string str_vals, int num = 0){
 }
 
 
+// used for haplotype-specific copy number model with multiple levels
+// when maximum haplotype change is 1, the number of states with each total copy number values is: 1 2 3 2 1, with maximum number is 4
+// when maximum haplotype change is 2, the number of states with each total copy number values is: 1 2 3 4 3 2 1, with maximum number is 6
+inline vector<int> make_peak_vector(int n) {
+    vector<int> v;
+    v.reserve(2 * n - 1);  // total length: 1..n..1
 
+    // Increasing part: 1, 2,..., n
+    for (int i = 1; i <= n; ++i) {
+        v.push_back(i);
+    }
+
+    // Decreasing part: n-1, n-2,..., 1
+    for (int i = n - 1; i >= 1; --i) {
+        v.push_back(i);
+    }
+
+    return v;
+}
 
 #endif

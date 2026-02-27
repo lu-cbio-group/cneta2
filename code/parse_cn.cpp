@@ -82,22 +82,6 @@ int allele_cn_to_state(int cnA, int cnB){
 }
 
 
-std::vector<int> make_peak_vector(int n) {
-    std::vector<int> v;
-    v.reserve(2 * n - 1);  // total length: 1..n..1
-
-    // Increasing part: 1, 2,..., n
-    for (int i = 1; i <= n; ++i) {
-        v.push_back(i);
-    }
-
-    // Decreasing part: n-1, n-2,..., 1
-    for (int i = n - 1; i >= 1; --i) {
-        v.push_back(i);
-    }
-
-    return v;
-}
 
 /** 
  * @brief Convert a change state (0-based index of copy number combinations used for rate matrix) to total copy number.    
@@ -652,9 +636,12 @@ void get_chr_change(const vector<vector<vector<int>>>& s_info, const vector<doub
             int chr_sum_cn = accumulate(cp.begin(), cp.end(), 0);
             double avg_chr_cn = (double) chr_sum_cn / cp.size();
             
+            // this number can be very large if avg_cn is large caused by WGD
             double num_change = avg_chr_cn - avg_cn;
             // int round_num_change = (int) (num_change + 0.5 - (num_change < 0));
             int round_num_change = (int) lround(num_change);
+            if(round_num_change < -2) round_num_change = -2;
+            if(round_num_change > 2) round_num_change = 2;
             // cout << "Number of segments in chromosome " << c.first << " is " << cp.size() << "; avg cn: " << avg_chr_cn << "; exact num changes: " << num_change  << "; num changes: " << round_num_change << endl;
 
             // TODO: Set change_chr for CN_CHANGE variable across all sites on this chr in the sample 
@@ -746,6 +733,8 @@ void get_site_change(const vector<vector<vector<int>>>& s_info, const vector<dou
             cns.push_back(cn);
 
             int cn_change = cn - lround(avg_cn);
+            if(cn_change < -2) cn_change = -2;
+            if(cn_change > 4) cn_change = 4;            
             // used to set change_site for CN_CHANGE variable for this site on this chr in the sample 
             site_change.push_back(cn_change);
 
