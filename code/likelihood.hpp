@@ -243,7 +243,7 @@ struct PROB_DECOMP{
 
 // separated for function refactoring
 struct PROB_DECOMP1{
-  double* pbl_wgd;
+  // double* pbl_wgd;
   double* pbl_chr;
   double* pbl_seg;
 
@@ -420,6 +420,12 @@ double extract_tree_lnl(vector<vector<double>>& L_sk_k, int Ns, int model);
 
 
 /************** functions for model DECOMP (copy number change) **************/
+
+void initialize_lnl_table_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& sample_num_wgd, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug);
+double compute_child_likelihood_wgd(int node, const int num_wgd, vector<vector<double>>& lnl_table_wgd, const double* pbl_wgd, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int debug);
+void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int is_total, int debug);
+
+
 void set_lnl_table_change(int state_chr, int row, int peak_sum_haplotype, int is_total, vector<vector<double>>& L_sk_k);
 void initialize_lnl_table_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const vector<CN_CHANGE>& obs_change, const DIM_DECOMP& dim_decomp, const OBS_DECOMP&obs_decomp, int debug);
 
