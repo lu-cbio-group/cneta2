@@ -53,6 +53,8 @@ void change_state_to_allele_cn(int state, int max_haplotype_change, int& cnA, in
 // Change the allele specific copy number to the state used in substitution rate matrix
 int allele_cn_to_state(int cnA, int cnB);
 
+void rcn_to_decomposition(const vector<vector<vector<int>>>& s_info, vector<vector<CN_CHANGE>>& s_info_change, vector<vector<int>>& sample_change_site, vector<int>& site_max_change, vector<int>& sample_max_cn, int debug);
+
 // Convert the copy number matrix to decomposition format
 void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vector<CN_CHANGE>>& s_info_change, const INPUT_DATA& input_data, int debug);
 
@@ -151,7 +153,7 @@ vector<double> read_time_info(const string& filename, const int Ns, int& age, in
 // Format of input total copy number: sample, chr, seg, copy_number
 // Format of input allele specific copy number: sample, chr, seg, copy_number A, copy_number B -> converted into a specific state by decomposition
 // s_info: a vector for each sample, which is composed of a vector of vector<int> vcn{chr, sid, cn}
-vector<vector<vector<int>>> read_cn(const string& filename, int Ns, int &num_total_bins, int cn_max, int is_total = 1, int is_rcn = 0, int debug = 0);
+void read_cn(vector<vector<vector<int>>>& s_info, const string& filename, int Ns, int &num_total_bins, int cn_max, int is_total = 1, int is_rcn = 0, int debug = 0);
 
 
 template <typename T>

@@ -1084,7 +1084,6 @@ LNL_VAL get_prob_children_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const
 }
 
 
-
 /** 
  * @brief Get the likelihood on one site of a chromosome (assuming each observed copy number is composed of three type of events)   
  * 

@@ -53,6 +53,7 @@ const int PRINT_PRECISION = 10;
 const double SMALL_VAL = 1.0e-10;   // used to compare floats
 
 const float WGD_CUTOFF = 3.0;    // genome ploidy to determine WGD
+const double WGD_WEIGHT = 0.001;   // used to represent very large negative log likelihood
 
 // key: chr, seg, copy_number
 typedef map<int, map<int, int>> copy_number;

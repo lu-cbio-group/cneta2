@@ -1244,7 +1244,7 @@ int main(int argc, char** const argv){
     vector<map<int, vector<int>>> sample_chr_cn; // chromosome copy numbers grouped by chr for each sample
 
     // Set max_* as global variables to avoid adding more parameters in maximization
-    int m_max;   // maximum number of site copies before chromosome gain/loss
+    int m_max = 1;   // maximum number of site copies before chromosome gain/loss
     int max_wgd = 0;    // maximum number of WGD
     int max_chr_change = 0; // maximum number of chromosome changes
     int max_site_change = 0;  // maximum number of site (segment/bin) changes
@@ -1469,7 +1469,7 @@ int main(int argc, char** const argv){
         // Using CN type tag to control the max_* values instead
 
         // 1) WGD per sample and global max_wgd
-        if(cn_type != ONLY_SEG && cn_type != EXCLUDE_WGD){
+        if(cn_type != ONLY_SEG && cn_type != EXCLUDE_WGD && !is_rcn){
             max_wgd = *max_element(sample_num_wgd.begin(), sample_num_wgd.end());
             if(max_wgd > 0){
                 infer_wgd = 1;
@@ -1477,7 +1477,7 @@ int main(int argc, char** const argv){
         }
 
         // 2) chromosome change per sample (gain and loss) and global max_chr_change
-        if(cn_type == EXCLUDE_SEG || cn_type == ALL){ 
+        if(!is_rcn && (cn_type == EXCLUDE_SEG || cn_type == ALL)){ 
             max_chr_change = *max_element(chr_max_change.begin(), chr_max_change.end());
             if(max_chr_change > 0){
                 infer_chr = 1;

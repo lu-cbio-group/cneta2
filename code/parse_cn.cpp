@@ -211,6 +211,98 @@ void change_state_to_allele_cn(int state, int max_haplotype_change, int& cnA, in
 }
 
 
+/** 
+ * @brief Decompose relative total copy number into multi-level changes (WGD, chromosome, segment) given original data and computed changes.
+ * @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
+ * @param cn_change_info A vector of CN_CHANGE structs to store the decomposed copy number changes for each sample, same dimensions as s_info.
+ * @param input_data INPUT_DATA struct containing sample-level information needed for decomposition.
+ * @param cn_max Maximum copy number allowed by the program.
+ * @param is_total Indicator whether the copy numbers are total (1) or haplotype-specific (0). Only for total copy number decomposition for now.
+ * @param debug Debug flag for verbose output.
+ */
+void rcn_to_decomposition(const vector<vector<vector<int>>>& s_info, vector<vector<CN_CHANGE>>& s_info_change, vector<vector<int>>& sample_change_site, vector<int>& site_max_change, vector<int>& sample_max_cn, int debug){
+    if(debug) cout << "\tChanging relativecopy number to multiple level changes" << endl;
+
+    if(debug > 1){
+        for(size_t i = 0; i < s_info.size(); i++){
+            cout << "\nSample " << (i+1) << " original copy number:" << endl;
+            for(size_t j = 0; j < s_info[i].size(); j++){
+                cout << "\tSegment " << (j+1) << ": ";
+                for(size_t k = 0; k < s_info[i][j].size(); k++){
+                    cout << "\t" << s_info[i][j][k];
+                }
+                cout << endl;
+            }
+        }
+    }
+
+    s_info_change.resize(s_info.size());    // for samples
+    for (size_t i = 0; i < s_info.size(); i++) {     // for all segments
+        s_info_change[i].resize(s_info[i].size());
+    }
+    site_max_change.clear();
+    site_max_change.reserve(s_info.size());
+
+    for(size_t i = 0; i < s_info.size(); i++){
+        vector<vector<int>> s_cn = s_info[i];
+        vector<int> cns;    // store all copy numbers to get the maximum value
+        vector<int> site_change;     // copy number changes across all chromosomes in sample i       
+        int max_dev = 0;        // max deviation from avg_cn
+        int max_chr = -1, max_seg = -1, max_cn_val = -1;
+
+        // get multi-level CN changes for each sample    
+        for(size_t j = 0; j < s_cn.size(); j++){
+            int chr = s_cn[j][0];
+            int cn  = s_cn[j][2];
+
+            CN_CHANGE cc;
+            cc.cn_state = cn;
+            // cc.cnA = -1;
+            // cc.cnB = -1;
+            cc.num_wgd = 0;
+            cc.cn_change_chr = 0;
+            int cn_change = cn - NORM_PLOIDY;
+            cc.cn_change_site = cn_change;
+            s_info_change[i][j] = cc;
+
+            cns.push_back(cn);
+            site_change.push_back(cn_change);
+
+            int dev = abs(cn_change);
+            if(dev > max_dev){
+                max_dev = dev;
+                max_chr = s_cn[j][0];
+                max_seg = s_cn[j][1];
+                max_cn_val = cn;
+            }           
+        }
+
+        sample_change_site.push_back(site_change);
+        int mcn = *max_element(cns.begin(), cns.end());     // Getting the largest copy number for each sample
+        sample_max_cn.push_back(mcn);
+        site_max_change.push_back(max_dev);    
+              
+        if(debug){
+            cout << "Sample " << (i+1)
+                 << ": max_cn=" << mcn
+                 << " |max_cn-avg_cn|=" << max_dev
+                 << " -> site_change=" << max_dev
+                 << " (at chr " << max_chr << ", seg " << max_seg << ", cn " << max_cn_val << ")"
+                 << endl;
+        }        
+    }
+
+    if(debug > 1){
+        for(size_t i = 0; i < s_info_change.size(); i++){
+            cout << "\nSample " << (i+1) << " decomposed copy number changes:" << endl;
+            for(size_t j = 0; j < s_info_change[i].size(); j++){
+                cout << "\tSegment " << (j+1) << ": " << s_info_change[i][j] << endl;
+            }
+        }
+    }
+}
+
+
 
 /** 
  * @brief Decompose total copy number into multi-level changes (WGD, chromosome, segment) given original data and computed changes.
@@ -221,7 +313,7 @@ void change_state_to_allele_cn(int state, int max_haplotype_change, int& cnA, in
  * @param is_total Indicator whether the copy numbers are total (1) or haplotype-specific (0). Only for total copy number decomposition for now.
  * @param debug Debug flag for verbose output.
  */
-void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,  vector<vector<CN_CHANGE>>& s_info_change, const INPUT_DATA& input_data, int debug){
+void cn_to_decomposition(const vector<vector<vector<int>>>& s_info, vector<vector<CN_CHANGE>>& s_info_change, const INPUT_DATA& input_data, int debug){
     if(debug) cout << "\tChanging copy number to multiple level changes" << endl;
     vector<int> sample_num_wgd = input_data.sample_num_wgd;
     vector<vector<int>> sample_change_chr = input_data.sample_change_chr;   
@@ -395,6 +487,7 @@ vector<double> read_time_info(const string& filename, const int Ns, int& age, in
 
 /** 
  *  @brief Read the input copy number file
+ *  @param s_info A reference to a vector of vectors of vectors that will store the copy number information for each sample in the format s_info[sample - 1] = {vcn = {chr, sid, cn}}.
  *  @param filename The name of the input file containing copy number data.
  *  @param Ns The number of samples to read from the file.
  *  @param num_total_bins A reference to an integer that will store the total number of bins read from the file.
@@ -402,10 +495,8 @@ vector<double> read_time_info(const string& filename, const int Ns, int& age, in
  *  @param is_total An integer flag indicating whether the copy numbers are total (1) or haplotype-specific (0).
  *  @param is_rcn An integer flag indicating whether the copy numbers are relative copy numbers (1) or absolute copy numbers (0).
  *  @param debug An integer flag for enabling debug output.
- *  @return A vector of vectors of vectors containing the copy number information for each sample in the format s_info[sample - 1] = {vcn = {chr, sid, cn}}
  */ 
-vector<vector<vector<int>>> read_cn(const string& filename, int Ns, int& num_total_bins, int cn_max, int is_total, int is_rcn, int debug){
-    vector<vector<vector<int>>> s_info;
+void read_cn(vector<vector<vector<int>>>& s_info, const string& filename, int Ns, int& num_total_bins, int cn_max, int is_total, int is_rcn, int debug){
     num_total_bins = 0;
     // data indexed by [sample][data][ chr, bid, cn ]
     for(int i = 0; i < Ns; ++i) s_info.push_back(vector<vector<int>>());
@@ -496,7 +587,6 @@ vector<vector<vector<int>>> read_cn(const string& filename, int Ns, int& num_tot
 
     if(debug) cout << "\tSuccessfully read input file with " << num_total_bins << " sites" << endl;
 
-    return s_info;
 }
 
 
@@ -715,7 +805,7 @@ void get_site_change(const vector<vector<vector<int>>>& s_info, const vector<dou
     site_max_change.reserve(s_info.size());
 
     for(size_t i = 0; i < s_info.size(); i++){
-        const auto& s_cn = s_info[i];
+        vector<vector<int>> s_cn = s_info[i];
         if(s_cn.empty()){
             cout << "Sample " << (i+1) << " has 0 records, site_change=0" << endl;
             exit(EXIT_FAILURE);
@@ -733,8 +823,19 @@ void get_site_change(const vector<vector<vector<int>>>& s_info, const vector<dou
             cns.push_back(cn);
 
             int cn_change = cn - lround(avg_cn);
+            // use multiple of 2 to roughly determine events before or after WGD
+            if(avg_cn > WGD_CUTOFF){    // one WGD 
+                int reminder = cn % NORM_PLOIDY;
+                if(reminder == 0){   // likely occurred before WGD, with copy number change in multiple of 2 or ploidy
+                    int rcn = cn / NORM_PLOIDY;
+                    cn_change = rcn - NORM_PLOIDY;
+                }
+            }
+            
+            // set those outside limits of rate matrix
             if(cn_change < -2) cn_change = -2;
-            if(cn_change > 4) cn_change = 4;            
+            if(cn_change > 4) cn_change = 4;       
+
             // used to set change_site for CN_CHANGE variable for this site on this chr in the sample 
             site_change.push_back(cn_change);
 
@@ -864,7 +965,7 @@ vector<vector<int>> get_invar_segs(const vector<vector<vector<int>>>& s_info, in
           }
           int seg_end = s_info[0][k-1][1];
           int id_end = k - 1;
-        //   if(debug) cout << "seg_end:\t" << seg_end << "\t" << k << endl;
+          // if(debug) cout << "seg_end:\t" << seg_end << "\t" << k << endl;
 
           // id_*: start from 0 until #segments; seg_*: original segment ID
           vector<int> seg{chr, id_start, id_end, seg_start, seg_end};
@@ -1202,7 +1303,7 @@ int get_segs_cn(vector<vector<vector<int>>>& s_info, vector<vector<int>>& segs, 
     int cn_max = input_property.cn_max;
 
     // get CNs for all the bins or sites
-    s_info = read_cn(filename, input_property.Ns, input_data.num_total_bins, cn_max, input_property.is_total, input_property.is_rcn, debug);
+    read_cn(s_info, filename, input_property.Ns, input_data.num_total_bins, cn_max, input_property.is_total, input_property.is_rcn, debug);
 
     // find location of segments (consecutive sites) first
     if(input_property.is_bin){
@@ -1379,25 +1480,29 @@ void read_data_var_regions_by_chr_change(map<int, vector<vector<int>>>& data_cha
     cout << "\nReading data and group regions by chromosome" << endl;
     vector<vector<vector<int>>> s_info; 
     vector<vector<int>> segs;
-
-    int max_cn_state = get_segs_cn(s_info, segs, filename, input_property, input_data, debug);
-
-    get_sample_ploidy(s_info, input_data.sample_avg_cn, input_data.sample_chr_cn, input_property.cn_max, input_property.is_total, debug);
-
-    // get_sample_mcn(s_info, input_data.sample_max_cn, cn_max, input_property.is_total, debug);
-    get_site_change(s_info, input_data.sample_avg_cn, input_data.sample_change_site, input_data.site_max_change, input_data.sample_max_cn, input_property.cn_max, input_property.is_total, debug);
-
-    get_num_wgd(s_info, input_data.sample_avg_cn, input_data.sample_num_wgd, debug);
-    get_chr_change(s_info, input_data.sample_avg_cn, input_data.sample_chr_cn, input_data.sample_change_chr, input_data.chr_max_change, input_property.cn_max, input_property.is_total, debug);
-
     // convert copy numbers to copy number changes for decomposition model
     vector<vector<CN_CHANGE>> s_info_change;  
 
-    if(input_property.is_total){
-        cout << "Converting total copy numbers to copy number changes for decomposition model" << endl;
-        cn_to_decomposition(s_info, s_info_change, input_data, debug);
+    int max_cn_state = get_segs_cn(s_info, segs, filename, input_property, input_data, debug);
+
+    if(!input_property.is_rcn){
+        get_sample_ploidy(s_info, input_data.sample_avg_cn, input_data.sample_chr_cn, input_property.cn_max, input_property.is_total, debug);
+
+        // get_sample_mcn(s_info, input_data.sample_max_cn, cn_max, input_property.is_total, debug);
+        get_site_change(s_info, input_data.sample_avg_cn, input_data.sample_change_site, input_data.site_max_change, input_data.sample_max_cn, input_property.cn_max, input_property.is_total, debug);
+
+        get_num_wgd(s_info, input_data.sample_avg_cn, input_data.sample_num_wgd, debug);
+        get_chr_change(s_info, input_data.sample_avg_cn, input_data.sample_chr_cn, input_data.sample_change_chr, input_data.chr_max_change, input_property.cn_max, input_property.is_total, debug);
+
+        if(input_property.is_total){
+            cout << "Converting total copy numbers to copy number changes for decomposition model" << endl;
+            cn_to_decomposition(s_info, s_info_change, input_data, debug);
+        }else{
+            cout << "TODO: Converting haplotype-specific copy numbers to copy number changes for decomposition model" << endl;
+        }
     }else{
-        cout << "TODO: Converting haplotype-specific copy numbers to copy number changes for decomposition model" << endl;
+        cout << "Converting relative copy numbers to copy number changes for decomposition model" << endl;
+        rcn_to_decomposition(s_info, s_info_change, input_data.sample_change_site, input_data.site_max_change, input_data.sample_max_cn, debug);
     }
     
     group_segs_by_chr_change(segs, s_info_change, data_change, input_property.Ns, input_data.num_total_bins, seg_file, debug);
