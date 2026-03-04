@@ -686,11 +686,10 @@ void get_num_wgd(const vector<vector<vector<int>>>& s_info, const vector<double>
         }else{
             nwgd = 0;
         }
-        // TODO: Set num_wgd for CN_CHANGE variable across all sites in the sample 
 
         sample_num_wgd.push_back(nwgd);
         // if(debug)
-          cout << "Sample " << i + 1 << " probably has " << nwgd << " WGD event, with ploidy " << ploidy << endl;
+        cout << "Sample " << i + 1 << " probably has " << nwgd << " WGD event, with ploidy " << ploidy << endl;
     }
 }
 
@@ -701,7 +700,7 @@ void get_num_wgd(const vector<vector<vector<int>>>& s_info, const vector<double>
  *  @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
  *  @param sample_avg_cn A vector to store the average copy number for each sample in the input.
  *  @param sample_chr_cn A vector of maps to store copy numbers for each chromosome in each sample.
- *  @param sample_change_chr A vector to store the estimated number of chromosome changes for each sample in the input.
+ *  @param sample_change_chr A vector to store the estimated number of chromosome changes for each sample in the input, indexed by [sample][chromosome].
  *  @param chr_max_change A vector to store the maximum absolute chromosome change for each sample in the input.
  *  @param cn_max Maximum copy number.
  *  @param is_total Indicator whether the copy numbers are total (1) or haplotype-specific (0).
@@ -726,15 +725,23 @@ void get_chr_change(const vector<vector<vector<int>>>& s_info, const vector<doub
             int chr_sum_cn = accumulate(cp.begin(), cp.end(), 0);
             double avg_chr_cn = (double) chr_sum_cn / cp.size();
             
+            // If many chr gains, avg_cn will be large, and the difference will be small
             // this number can be very large if avg_cn is large caused by WGD
             double num_change = avg_chr_cn - avg_cn;
             // int round_num_change = (int) (num_change + 0.5 - (num_change < 0));
             int round_num_change = (int) lround(num_change);
+            // use multiple of 2 to roughly determine events before or after WGD
+            if(avg_cn > WGD_CUTOFF){    // one WGD 
+                int reminder = round_num_change % NORM_PLOIDY;
+                if(reminder == 0){   // likely occurred before WGD, with copy number change in multiple of 2 or ploidy
+                    round_num_change = round_num_change / NORM_PLOIDY;
+                }
+            }
             if(round_num_change < -2) round_num_change = -2;
+            // TODO: change to dynamic threshold later
             if(round_num_change > 2) round_num_change = 2;
             // cout << "Number of segments in chromosome " << c.first << " is " << cp.size() << "; avg cn: " << avg_chr_cn << "; exact num changes: " << num_change  << "; num changes: " << round_num_change << endl;
 
-            // TODO: Set change_chr for CN_CHANGE variable across all sites on this chr in the sample 
             chr_change.push_back(round_num_change);
         }
 

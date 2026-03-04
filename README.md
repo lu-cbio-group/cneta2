@@ -168,9 +168,9 @@ Please see run-cnets.sh to learn how to set different parameters.
 ## Output
 * *-cn.txt.gz: The total copy number at each site for each sample, including the normal sample
 * *-rel-times.txt: The sampling time of tip nodes
-* *-allele-cn.txt.gz: The haplotype-specific copy number at each site for each sample
+* *-haplotype-cn.txt.gz: The haplotype-specific copy number at each site for each sample
 * *-rcn.txt.gz: The relative total copy number at each site for each sample
-* *-allele-rcn.txt.gz: The processed haplotype-specific copy number by normalizing with a baseline at each site for each sample
+* *-haplotype-rcn.txt.gz: The processed haplotype-specific copy number by normalizing with a baseline at each site for each sample
 * *-inode-cn.txt.gz: The copy number at each site for each internal node in the tree
 * *-info.txt: The time of each node and the total number of mutations simulated on each branch of the tree, grouped by lineages of tip nodes.
 * *-mut.txt: The list of simulated mutations on each branch of the tree.

@@ -64,7 +64,7 @@ void get_rate_matrix_bounded(double* m, const double dup_rate, const double del_
 
 // A matrix with dimension (cn_max + 1) * (cn_max + 2) / 2
 // Suppose copy number configuration is in specific order such as:  0/0	0/1	1/0	0/2	 1/1	2/0	0/3	 1/2	 2/1	3/0	0/4	 1/3	  2/2	 3/1	4/0
-void get_rate_matrix_allele_specific(double* m, const double dup_rate, const double del_rate, const int cn_max);
+void get_rate_matrix_haplotype_specific(double* m, const double dup_rate, const double del_rate, const int cn_max);
 
 // n = cn_max + 1 for model 1 (total copy number)
 void get_transition_matrix_bounded(double* q, double* p, const double t, const int n);
@@ -101,7 +101,7 @@ void insert_tuple_order(map<int, set<vector<int>>>& decomp_table, set<vector<int
 void insert_tuple_order_withm(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int m1, int m2, int i, int j, int k, int j0, int k0);
 
 // Get possible haplotype-specific combinations for a total copy number (not used in practice for now)
-void insert_tuple_allele_specific(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int i, int j1, int j2, int k1, int k2);
+void insert_tuple_haplotype_specific(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int i, int j1, int j2, int k1, int k2);
 
 // Adjust the value of m_max based on the maximum copy number for a sample, not used for now
 void adjust_m_max(const vector<int>& sample_num_wgd, const vector<int>& sample_max_cn, int m_max, int max_chr_change, int max_site_change);

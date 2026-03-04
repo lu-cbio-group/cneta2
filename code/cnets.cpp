@@ -332,7 +332,8 @@ void print_sequences(map<int, copy_number>& cn_matrix, int cn_max, int model, in
     int num_total_bins = 0;
     int num_invar_bins = 0;
     cout << "Reading data and calculating CNA regions" << endl;
-    vector<vector<vector<int>>> s_info = read_cn(sstm.str(), test_tree.nleaf - 1, num_total_bins, cn_max);
+    vector<vector<vector<int>>>  s_info; 
+    read_cn(s_info, sstm.str(), test_tree.nleaf - 1, num_total_bins, cn_max);
 
     vector<vector<int>> segs;
     segs = get_all_segs(s_info, test_tree.nleaf - 1, num_total_bins, num_invar_bins, 1);
@@ -341,7 +342,7 @@ void print_sequences(map<int, copy_number>& cn_matrix, int cn_max, int model, in
 
     if(print_level.print_allele && model == BOUNDA){
         cout << "Writing haplotype-specific copy number " << endl;
-        sstm << dir << prefix << "-allele-cn.txt.gz";
+        sstm << dir << prefix << "-haplotype-cn.txt.gz";
         ogzstream out_allele_cn(sstm.str().c_str());
         for(int j = 0; j < test_tree.nleaf; ++j){
           write_allele_cn(cn_matrix, j, out_allele_cn, cn_max);
@@ -361,7 +362,7 @@ void print_sequences(map<int, copy_number>& cn_matrix, int cn_max, int model, in
         sstm.str("");
 
         cout << "Writing relative haplotype-specific copy number " << endl;
-        sstm << dir << prefix << "-allele-rcn.txt.gz";
+        sstm << dir << prefix << "-haplotype-rcn.txt.gz";
         ogzstream out_rcn_baseline(sstm.str().c_str());
         for(int j = 0; j < test_tree.nleaf; ++j){
             write_allele_rcn(cn_matrix, j, out_rcn_baseline, cn_max, model);
@@ -478,7 +479,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
           cout << "There are " << get_num_available_chr(g) << " non-empty chromosomes before" << endl;
         }
 
-        double rate = get_total_rates_allele_specific(g, site_dup_rates, site_del_rates, chr_gain_rates, chr_loss_rates, type_rates, rate_consts, model, cn_max, debug);
+        double rate = get_total_rates_haplotype_specific(g, site_dup_rates, site_del_rates, chr_gain_rates, chr_loss_rates, type_rates, rate_consts, model, cn_max, debug);
         if(rate <= 0){
             if(debug) cout << "This genome cannot be mutated any more on edge " << edge_id + 1 << endl;
             break;
@@ -1012,7 +1013,8 @@ void print_simulations(int mode, int model, int num_seg, const vector<double>& r
     int is_total = 1;
     int is_rcn = 0;
     cout << "Reading data and calculating CNA regions" << endl;
-    vector<vector<vector<int>>> s_info = read_cn(sstm.str(), test_tree.nleaf - 1, num_total_bins, cn_max, is_total, is_rcn, debug);
+    vector<vector<vector<int>>> s_info;
+    read_cn(s_info, sstm.str(), test_tree.nleaf - 1, num_total_bins, cn_max, is_total, is_rcn, debug);
 
     vector<double> sample_avg_cn;  // estimated sample ploidy
     vector<map<int, vector<int>>> sample_chr_cn; // chromosome copy numbers grouped by chr for each sample
@@ -1303,7 +1305,7 @@ void run_simulations(string tree_file, int mode, int method, const vector<int>& 
                 if(debug){
                     cout << "\tGetting haplotype-specific rate matrix" << endl;
                 }
-                get_rate_matrix_allele_specific(qmat, dup_rate, del_rate, cn_max);
+                get_rate_matrix_haplotype_specific(qmat, dup_rate, del_rate, cn_max);
             }else{
                 if(debug){
                     cout << "\tGetting total rate matrix" << endl;

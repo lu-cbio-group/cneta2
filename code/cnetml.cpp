@@ -1426,11 +1426,11 @@ int main(int argc, char** const argv){
     cout << "\nReading copy number profiles for tree inference" << endl;
     if(model == DECOMP){
         read_data_var_regions_by_chr_change(data_change, datafile, input_property, input_data, seg_file, debug);
-        if(debug) print_data_map<int>(data_change);
+        if(debug > 1) print_data_map<int>(data_change);
         // convert observed copy numbers into decomposition format
         cout << "\nBuilding decomposition table for observed copy numbers" << endl;        
         get_obs_vector_by_chr_change(data_change, vobs_change, Ns);
-        if (debug){
+        if(debug > 1){
             print_data_map<CN_CHANGE>(vobs_change);
         }       
     }else{       

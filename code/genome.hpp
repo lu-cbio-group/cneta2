@@ -135,7 +135,7 @@ site_*_rates: duplication/deletion probabilities for all sites on the genome, us
 chr_*_rates: chromosome gain/loss probabilities for all sites on the genome, used for picking a site for chromosome gain/loss
 type_rates: used for selecting different mutational types
 */
-double get_total_rates_allele_specific(genome& g, vector<double>& site_dup_rates, vector<double>& site_del_rates, vector<double>& chr_gain_rates, vector<double>& chr_loss_rates, vector<double>& type_rates, const vector<double>& rate_consts, int model, int cn_max, int debug);
+double get_total_rates_haplotype_specific(genome& g, vector<double>& site_dup_rates, vector<double>& site_del_rates, vector<double>& chr_gain_rates, vector<double>& chr_loss_rates, vector<double>& type_rates, const vector<double>& rate_consts, int model, int cn_max, int debug);
 
 /*
  Note: the sites are counted for all the haplotypes. 

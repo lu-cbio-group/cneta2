@@ -704,7 +704,7 @@ double get_site_rates(const vector<double>& rate_consts, int model, int stateA, 
 }
 
 
-double get_total_rates_allele_specific(genome& g, vector<double>& site_dup_rates, vector<double>& site_del_rates, vector<double>& chr_gain_rates, vector<double>& chr_loss_rates, vector<double>& type_rates, const vector<double>& rate_consts, int model, int cn_max, int debug){
+double get_total_rates_haplotype_specific(genome& g, vector<double>& site_dup_rates, vector<double>& site_del_rates, vector<double>& chr_gain_rates, vector<double>& chr_loss_rates, vector<double>& type_rates, const vector<double>& rate_consts, int model, int cn_max, int debug){
     assert(rate_consts.size() == 5);
     assert(g.cn_profile.size() == NUM_CHR);
 

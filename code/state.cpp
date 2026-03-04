@@ -566,7 +566,7 @@ void set_pmat(const evo_tree& rtree, int Ns, int nstate, int model, int cn_max, 
       cout << "Getting rate matrix" << endl;
   }
   if(model == BOUNDA){
-      get_rate_matrix_allele_specific(qmat, rtree.dup_rate, rtree.del_rate, cn_max);
+      get_rate_matrix_haplotype_specific(qmat, rtree.dup_rate, rtree.del_rate, cn_max);
   }else{
       get_rate_matrix_bounded(qmat, rtree.dup_rate, rtree.del_rate, cn_max);
   }

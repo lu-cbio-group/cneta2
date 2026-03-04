@@ -95,7 +95,7 @@ void get_rate_matrix_bounded(double* m, const double dup_rate, const double del_
 
 
 // rate matrix for haplotype-specific CNAs
-void get_rate_matrix_allele_specific(double* m, const double dup_rate, const double del_rate, const int cn_max){
+void get_rate_matrix_haplotype_specific(double* m, const double dup_rate, const double del_rate, const int cn_max){
     int debug = 0;
     int ncol = (cn_max + 1) * (cn_max + 2) / 2;
     if(debug){
@@ -585,7 +585,7 @@ void insert_tuple_order(map<int, set<vector<int>>>& decomp_table, set<vector<int
 
 
 // Get possible haplotype-specific combinations for a total copy number
-void insert_tuple_allele_specific(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int i, int j1, int j2, int k1, int k2){
+void insert_tuple_haplotype_specific(map<int, set<vector<int>>>& decomp_table, set<vector<int>>& comps, int cn_max, int m_max, int i, int j1, int j2, int k1, int k2){
     int sum = pow(2, i + 1) + j1 + j2 + k1 + k2;
     // cout << i << "\t" << j1 << "\t" << j2 << "\t" << k1 << "\t" << k2 << "\t" << sum << endl;
     if(sum >= 0 && sum <= cn_max){
@@ -713,22 +713,22 @@ void build_decomp_table(map<int, set<vector<int>>>& decomp_table, set<vector<int
                 for(int j2 = 0; j2 <= max_chr_change; j2++){
                     for(int k1 = 0; k1 <= max_site_change; k1++){
                         for(int k2 = 0; k2 <= max_site_change; k2++){
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, -k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, -k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, -k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, -k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, -k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, -k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, -k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, -k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, -k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, -k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, -k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, -k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, -k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, -k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, -k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, -k1, -k2);
                         }
                     }
                 }
@@ -810,22 +810,22 @@ void build_decomp_table_withm(map<int, set<vector<int>>>& decomp_table, set<vect
                 for(int j2 = 0; j2 <= max_chr_change; j2++){
                     for(int k1 = 0; k1 <= max_site_change; k1++){
                         for(int k2 = 0; k2 <= max_site_change; k2++){
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, -k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, -k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, -k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, -k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, -k1, k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, -k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, -k1, -k2);
-                            insert_tuple_allele_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, -k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, -k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, -k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, -k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, j2, -k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, -k1, k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, j2, -k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, j1, -j2, -k1, -k2);
+                            insert_tuple_haplotype_specific(decomp_table, comps, cn_max, m_max, i, -j1, -j2, -k1, -k2);
                         }
                     }
                 }
