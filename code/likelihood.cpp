@@ -808,7 +808,7 @@ double compute_child_likelihood_chr(int node, const int cn_change_chr, vector<ve
         // }
     }
 
-    if (debug) {
+    if (debug > 1) {
         std::cout << "\tLikelihood scoring for chr-level chagnes on node " << node << " given parent state "
                   << cn_change_chr << ", "
                   << L_chr << std::endl;
@@ -847,11 +847,10 @@ void get_likelihood_per_chr(vector<vector<double>>& lnl_table_chr, const evo_tre
         int nj = rtree.edges[rtree.nodes[k].e_ot[1]].end;
         double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
 
-        double *pbli_chr, *pblj_chr;
        
         map<double, double*> pmats_chr = pmat_decomp.pmats_chr;
-        pbli_chr = pmats_chr[bli];
-        pblj_chr = pmats_chr[blj];
+        double* pbli_chr = pmats_chr[bli];
+        double* pblj_chr = pmats_chr[blj];
         
 
         if(debug > 1) cout << "node: " << rtree.nodes[k].id + 1 << " -> " << ni + 1 << " , " << bli << "\t" <<  nj + 1 << " , " << blj << endl;
@@ -957,7 +956,7 @@ double compute_child_likelihood_wgd(int node, const int num_wgd, vector<vector<d
         L_wgd += p * lnl_table_wgd[node][e];
     }
 
-    if (debug) {
+    if (debug > 1) {
         std::cout << "\tLikelihood scoring for WGD on node " << node << " given parent state "
                   << num_wgd << ", "
                   << L_wgd << std::endl;
@@ -994,12 +993,10 @@ void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& r
         double bli = rtree.edges[rtree.nodes[k].e_ot[0]].length;
         int nj = rtree.edges[rtree.nodes[k].e_ot[1]].end;
         double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
-
-        double *pbli_wgd, *pblj_wgd;       
+   
         map<double, double*> pmats_wgd = pmat_decomp.pmats_wgd;
-        pbli_wgd = pmats_wgd[bli];
-        pblj_wgd = pmats_wgd[blj];
-        
+        double* pbli_wgd = pmats_wgd[bli];
+        double* pblj_wgd = pmats_wgd[blj];
 
         if(debug > 1) cout << "node: " << rtree.nodes[k].id + 1 << " -> " << ni + 1 << " , " << bli << "\t" <<  nj + 1 << " , " << blj << endl;
 
@@ -1347,7 +1344,7 @@ LNL_VAL compute_child_likelihood_change(int node, const CN_CHANGE& sk, const LNL
         // }
     }
 
-    if (debug) {
+    if (debug > 1) {
         std::cout << "\tLikelihood scoring for node " << node << " given parent state ("
                   << sk.cn_state << ", "
                   << sk.num_wgd << ", "
@@ -1382,7 +1379,7 @@ LNL_VAL compute_child_likelihood_change(int node, const CN_CHANGE& sk, const LNL
  * @param is_total: whether the observed data is total copy number      
 */
 LNL_VAL get_prob_children_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const CN_CHANGE& sk, PROB_DECOMP1& prob_decompi, PROB_DECOMP1& prob_decompj, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int ni, int nj, int is_total, int debug){
-    if(debug) cout << "\tget_prob_children_change" << endl;
+    if(debug > 1) cout << "\tget_prob_children_change" << endl;
     
     LNL_VAL li_vals = compute_child_likelihood_change(ni, sk, L_sk_k, prob_decompi, obs_decomp, dim_decomp, debug);
     
@@ -1644,71 +1641,82 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
                 cout << endl;
             }
 
-            if(lnl_type.use_repeat){ 
-                if(sites_lnl_map.find(obs) == sites_lnl_map.end()){
-                if(debug) cout << "\tsites new" << endl;
+            if(obs_decomp.max_site_change > 0){
+                if(debug){
+                    cout << "Site changes observed, computing site_level likelihood for ";
+                    print_vector<CN_CHANGE>(obs);
+                }
+                if(lnl_type.use_repeat){ 
+                    if(sites_lnl_map.find(obs) == sites_lnl_map.end()){
+                    if(debug) cout << "sites new" << endl;
+                        initialize_lnl_table_change(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);
+                        get_likelihood_site_change(L_sk_k, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
+                        sites_lnl_map[obs] = L_sk_k;
+                    }else{
+                        if(debug) cout << "sites repeated" << endl;
+                        L_sk_k = sites_lnl_map[obs];
+                    }
+                }else{
+                    if(debug) cout << "sites no repeat consideration" << endl;
                     initialize_lnl_table_change(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);
                     get_likelihood_site_change(L_sk_k, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
-                    sites_lnl_map[obs] = L_sk_k;
-                }else{
-                    if(debug) cout << "\tsites repeated" << endl;
-                    L_sk_k = sites_lnl_map[obs];
                 }
-            }else{
-                if(debug) cout << "\tsites no repeat consideration" << endl;
-                initialize_lnl_table_change(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);
-                get_likelihood_site_change(L_sk_k, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
-            }
 
-            site_logL += extract_tree_lnl_change(L_sk_k, obs_decomp, rtree.nleaf - 1, debug);
+                site_logL += extract_tree_lnl_change(L_sk_k, obs_decomp, rtree.nleaf - 1, debug);
 
-            if(debug > 1){
-                cout << "\nLikelihood computed for site: ";
-                for(size_t i = 0; i < obs.size(); i++){
-                    cout << "\t" << obs.at(i);
+                if(debug > 1){
+                    cout << "\nLikelihood computed for site: ";
+                    for(size_t i = 0; i < obs.size(); i++){
+                        cout << "\t" << obs.at(i);
+                    }
+                    cout << endl;
+                    print_tree_lnl(rtree, L_sk_k.lnl_table_wgd, dim_decomp.dim_wgd);
+                    // print_tree_lnl(rtree, L_sk_k.lnl_table_chr, dim_decomp.dim_chr);
+                    // print_tree_lnl(rtree, L_sk_k.lnl_table_seg, dim_decomp.dim_seg);  
                 }
-                cout << endl;
-                print_tree_lnl(rtree, L_sk_k.lnl_table_wgd, dim_decomp.dim_wgd);
-                // print_tree_lnl(rtree, L_sk_k.lnl_table_chr, dim_decomp.dim_chr);
-                // print_tree_lnl(rtree, L_sk_k.lnl_table_seg, dim_decomp.dim_seg);  
             }
         }
 
         logL += site_logL;
 
         // compute likelihood for chr-level changes, which is the same for all sites on the chromosome, so only compute once
-        if(lnl_type.use_repeat){ 
-            if(chr_lnl_map.find(change_chr) == chr_lnl_map.end()){
-                    if(debug){
-                        cout << "\tchr sites new" << endl;
-                        print_vector<int>(change_chr);
-                    }
-                    initialize_lnl_table_chr(lnl_table_chr, rtree, change_chr, dim_decomp, obs_decomp, debug);
-                    get_likelihood_per_chr(lnl_table_chr, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
-                    chr_lnl_map[change_chr] = lnl_table_chr;
-                }else{
-                    if(debug){
-                        cout << "\tchr sites repeated" << endl;
-                        print_vector<int>(change_chr);
-                    }
-                    lnl_table_chr = chr_lnl_map[change_chr];
-                }
-        }else{
+        if(obs_decomp.max_chr_change > 0){
             if(debug){
-                cout << "\tchr sites no repeat consideration" << endl;
-                print_vector<int>(change_chr);
+                cout << "\nChr-level changes observed, computing chromosome-level likelihood for Chr " << nchr << endl;
             }
-            initialize_lnl_table_chr(lnl_table_chr, rtree, change_chr, dim_decomp, obs_decomp, debug);
-            get_likelihood_per_chr(lnl_table_chr, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
-        }
+            if(lnl_type.use_repeat){ 
+                if(chr_lnl_map.find(change_chr) == chr_lnl_map.end()){
+                        if(debug){
+                            cout << "chr sites new on chr " << nchr << endl;
+                            print_vector<int>(change_chr);
+                        }
+                        initialize_lnl_table_chr(lnl_table_chr, rtree, change_chr, dim_decomp, obs_decomp, debug);
+                        get_likelihood_per_chr(lnl_table_chr, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
+                        chr_lnl_map[change_chr] = lnl_table_chr;
+                    }else{
+                        if(debug){
+                            cout << "chr sites repeated on chr " << nchr << endl;
+                            print_vector<int>(change_chr);
+                        }
+                        lnl_table_chr = chr_lnl_map[change_chr];
+                    }
+            }else{
+                if(debug){
+                    cout << "chr sites no repeat consideration" << endl;
+                    print_vector<int>(change_chr);
+                }
+                initialize_lnl_table_chr(lnl_table_chr, rtree, change_chr, dim_decomp, obs_decomp, debug);
+                get_likelihood_per_chr(lnl_table_chr, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
+            }
 
-        double chr_logL = log(lnl_table_chr[rtree.nleaf][NO_CHANGE_HAPLOTYPE]);   // likelihood for no change on chromosome, which is the same for all sites on the chromosome
-        site_logL += chr_logL; 
+            double chr_logL = log(lnl_table_chr[rtree.nleaf][NO_CHANGE_HAPLOTYPE]);   // likelihood for no change on chromosome, which is the same for all sites on the chromosome
+            logL += chr_logL;   
 
-        if(debug){
-            cout << "\nLikelihood for chromosome-level changes on " << nchr << " is " << chr_logL << endl;
-            cout << "\nLikelihood for chromosome " << nchr << " is " << site_logL << endl;
-        }
+            if(debug){
+                cout << "\nLikelihood for chromosome-level changes on " << nchr << " is " << chr_logL << endl;
+                cout << "\nSite-level likelihood for chromosome " << nchr << " is " << site_logL << endl;
+            }                     
+         }
     } // for each chromosome
 
     // only need to compute once for WGD as it is the same for all sites in the sample
@@ -1720,6 +1728,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
 
     if(debug){
         cout << "\nLikelihood for WGD is " << wgd_logL << endl;
+        cout << "\nLikelihood for in total is " << logL << endl;
     }
 
     return logL;
@@ -1824,9 +1833,9 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
     }
 
     TimePoint end_all_valid = now();
-    double dt_valid= elapsed_seconds(start_time, end_all_valid);
+    double dt_valid = elapsed_seconds(start_time, end_all_valid);
     
-    time_decomp_all   += dt_valid; // valid also count toward all, so time for all is always updated
+    time_decomp_all += dt_valid; // valid also count toward all, so time for all is always updated
     time_decomp_valid += dt_valid; // only update time for valid calls
     ++cnt_decomp_valid; // only update count for valid calls
 

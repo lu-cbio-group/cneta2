@@ -180,7 +180,7 @@ Please see run-cnets.sh to learn how to set different parameters.
 
 File *-cn.txt.gz (*-rcn.txt.gz) can serve as the input to a tree building program that used absolute (relative) integer total copy number.
 
-File *-allele-cn.txt.gz (*-allele-rcn.txt.gz) can serve as the input to a tree building program that used absolute (relative) integer haplotype-specific copy number.
+File *-haplotype-cn.txt.gz (*-haplotype-rcn.txt.gz) can serve as the input to a tree building program that used absolute (relative) integer haplotype-specific copy number.
 
 File *-rel-times.txt can provide the timing information of tip nodes to allow estimation of divergence time and mutation rates.
 
@@ -263,7 +263,7 @@ You may check the copy number counts in the input data using similar command as 
 <!-- ## How to prepare MP trees -->
 
 ## Input
-* (Required) A file containing integer absolute/relative copy numbers for all the patient samples and/or the normal sample (*-cn.txt.gz or *-allele-cn.txt.gz). 
+* (Required) A file containing integer absolute/relative copy numbers for all the patient samples and/or the normal sample (*-cn.txt.gz or *-haplotype-cn.txt.gz). 
 
   Either compressed file or uncompressed file is fine.
   There need to be at least four columns, separated by space, in this file: sample_ID, chr_ID, site_ID, CN.
@@ -321,7 +321,7 @@ Please ensure the input file exist and their names are correct, or else there ma
 Only the implementation under the bounded model of haplotype-specific copy number has been fully tested so far.
 
 ## Input
-* (Required) A file containing integer absolute copy numbers for all the patient samples and/or the normal sample (*-cn.txt.gz or *-allele-cn.txt.gz).
+* (Required) A file containing integer absolute copy numbers for all the patient samples and/or the normal sample (*-cn.txt.gz or *-haplotype-cn.txt.gz).
 * (Required) *-tree.txt: A tree file in tab-delimited format.
 * (Required) --dup_rate dup_rate --del_rate del_rate: The mutation rates of the input tree.
 * (Optional) A file containing the timing information of patient samples (*-rel-times.txt).
@@ -343,7 +343,7 @@ There are two running modes depending on whether a reference tree is provided or
 With a reference tree, the tree topology is fixed.
 
 ## Input
-* (Required) A file containing copy numbers for all the samples, including the normal sample (*-cn.txt.gz or *-allele-cn.txt.gz)
+* (Required) A file containing copy numbers for all the samples, including the normal sample (*-cn.txt.gz or *-haplotype-cn.txt.gz)
 * (Optional) A file containing the timing information of tip nodes (*-rel-times.txt)
 * (Optional) A configuration file which sets most input parameters (mcmc.cfg)
 

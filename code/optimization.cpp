@@ -763,7 +763,7 @@ LNL_TYPE& lnl_type, int my_iterations, double tolerance){
     DoubleVector lenvec;
     double new_tree_lh = 0.0;
     for(int i = 0; i < my_iterations; i++){
-    	  save_branch_lengths(rtree, lenvec, 0);
+    	save_branch_lengths(rtree, lenvec, 0);
 
         for(int j = 0; j < nodes.size(); j++){
             if(debug){
@@ -827,6 +827,7 @@ LNL_TYPE& lnl_type, int my_iterations, double tolerance){
 /*****************************************************
     L-BFGS-B method
 *****************************************************/
+// not used so far
 void update_variables(evo_tree& rtree, int model, int cons, int estmu, double *x){
     int debug = 0;
 
@@ -933,7 +934,6 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         cout << endl;
     }
 
-
     auto print_rate = [&](const char* name, double value) {
         cout << name << " value so far: " << value << endl;
     };
@@ -943,7 +943,6 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
     int cn_type = lnl_type.cn_type;
     int is_total = lnl_type.is_total;
     int nparams_est = 0;
-
 
     if(opt_type.opt_one_branch){
         if(debug){
@@ -997,7 +996,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
             }
         }else{
             // nparams_est = nintedge + 1;
-            nparams_est = rtree.nleaf - 1;
+            nparams_est = rtree.nleaf - 1;          // number of branches
 
             // store original ratios
             vector<double> ratios = rtree.get_ratio_from_age();
@@ -1044,7 +1043,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
             }
 
             if(debug){
-                cout << "Current values of estimated variables: " << endl;
+                cout << "Current values of estimated ratio variables: " << endl;
                 for(int i = 0; i < ratios.size(); i++){
                     cout << i + 1 << "\t" << "\t" << ratios[i] << endl;
                 }
@@ -1115,14 +1114,6 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
           }
 
           if(debug){
-              // for(int i = 0; i <= nparams_est + 1; i++){ cout << x[i] << '\n';}
-              // cout << "dup_rate value so far: " << rtree.dup_rate << endl;
-              // cout << "del_rate value so far: " << rtree.del_rate << endl;
-              // if(!only_seg){
-              //     cout << "chr_gain_rate value so far: " << rtree.chr_gain_rate << endl;
-              //     cout << "chr_loss_rate value so far: " << rtree.chr_loss_rate << endl;
-              //     cout << "wgd_rate value so far: " << rtree.wgd_rate << endl;
-              // }
               switch (cn_type) {
                 case ALL:
                     print_rate("dup_rate",      rtree.dup_rate);
@@ -1172,16 +1163,6 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
     @param x the input vector x
     @return the function value at x (negative log likelihood)
 */
-// double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps,
-// LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double x[]){
-//     update_variables_transformed(rtree, x, lnl_type, opt_type);
-
-//     if(lnl_type.model == DECOMP){
-//         return -1.0 * get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
-//     }else{
-//         return -1.0 * get_likelihood_revised(rtree, vobs, lnl_type);
-//     }
-// }
 double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double x[]){
   int debug = 0;
   update_variables_transformed(rtree, x, lnl_type, opt_type);
@@ -1222,23 +1203,23 @@ double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, co
 	@return the function value at x
 */
 double derivativeFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int ndim, double x[], double dfx[]){
-  int debug = 0;
+    int debug = 0;
 
-	double *h = new double[ndim + 1];
-  double temp;
-  int dim;
+    double *h = new double[ndim + 1];
+    double temp;
+    int dim;
 
-  double fx = targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, x);
+    double fx = targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, x);
 
 	for(dim = 1; dim <= ndim; dim++){
-		temp = x[dim];
-		h[dim] = ERROR_X * fabs(temp);
-		if(h[dim] == 0.0) h[dim] = ERROR_X;
-		x[dim] = temp + h[dim];
-		h[dim] = x[dim] - temp;
+        temp = x[dim];
+        h[dim] = ERROR_X * fabs(temp);
+        if(h[dim] == 0.0) h[dim] = ERROR_X;
+        x[dim] = temp + h[dim];
+        h[dim] = x[dim] - temp;
 
-    dfx[dim] = (targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, x));
-		x[dim] = temp;
+        dfx[dim] = (targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, x));
+        x[dim] = temp;
 	}
 
 	for(dim = 1; dim <= ndim; dim++){
@@ -1248,7 +1229,7 @@ double derivativeFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs
         }
     }
 
-  delete [] h;
+    delete [] h;
 
 	return fx;
 }
@@ -1481,9 +1462,9 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
 
     auto set_param = [&](int offset, double value) {
         int idx = nparams_est + offset;
-        variables[idx]    = value;
-        lower_bound[idx]  = MIN_MRATE;
-        upper_bound[idx]  = MAX_MRATE;
+        variables[idx] = value;
+        lower_bound[idx] = MIN_MRATE;
+        upper_bound[idx] = MAX_MRATE;
     };
 
 

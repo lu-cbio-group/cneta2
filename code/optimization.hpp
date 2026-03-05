@@ -130,17 +130,25 @@ inline int get_ndim(int estmu, int nparams_est, int model, int cn_type){
         if(model == MK){
             ndim = nparams_est + 1;
         }else{
-            if (cn_type == ALL) { //segmental, chromosomal and whole-genome
-                ndim = nparams_est + 5;
-            }else if (cn_type == ONLY_SEG) { //segmental only
-                ndim = nparams_est + 2;
-            }else if (cn_type == EXCLUDE_SEG) { //chromosomal and whole-genome
-                ndim = nparams_est + 3;
-            }else if (cn_type == EXCLUDE_CHR)  { //segmental and whole-genome
-                ndim = nparams_est + 3;        
-            }else{
-                cerr << "### ERROR: Unknown copy number alteration type for optimization!" << endl;
-                exit(1);
+            switch (cn_type) {
+                case ALL:
+                    ndim = nparams_est + 5;
+                    break;
+                case ONLY_SEG:
+                    ndim = nparams_est + 2;
+                    break;
+                case EXCLUDE_SEG:
+                    ndim = nparams_est + 3;         
+                    break;
+                case EXCLUDE_CHR:
+                    ndim = nparams_est + 3;
+                    break;
+                case EXCLUDE_WGD:
+                    ndim = nparams_est + 4;
+                    break;
+                default:
+                    cerr << "### ERROR: Unknown copy number alteration type for optimization!" << endl;
+                    exit(1);
             }
         }
     }

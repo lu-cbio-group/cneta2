@@ -1256,7 +1256,7 @@ int main(int argc, char** const argv){
     LNL_TYPE lnl_type;
     OBS_DECOMP obs_decomp;
 
-    OPT_TYPE opt_type;
+    OPT_TYPE opt_type;  // optimization type
 
     int Npop, Ngen, Ne;
     int max_static, bootstrap, optim, mode, tree_search, init_tree;

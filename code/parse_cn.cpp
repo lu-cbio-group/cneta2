@@ -338,7 +338,7 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info, vector<vecto
     }
 
     for(size_t i = 0; i < s_info.size(); i++){
-        vector<vector<int>> s_cn = s_info[i];
+        vector<vector<int>> s_cn = s_info[i];   // vector<int>: each segment in the sample, with format [chr, sid, cn]
 
         // get multi-level CN changes for each sample    
         for(size_t j = 0; j < s_cn.size(); j++){
@@ -350,14 +350,18 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info, vector<vecto
             // cc.cnA = -1;
             // cc.cnB = -1;
             cc.num_wgd = sample_num_wgd[i];
-            cc.cn_change_chr = sample_change_chr[i][chr];
-            cc.cn_change_site = sample_change_site[i][j];
+            cc.cn_change_chr = sample_change_chr[i][chr - 1];   // chr is 1-based in input, but sample_change_chr is 0-based
+            int site_change = sample_change_site[i][j];
+            if(cc.cn_change_chr != 0){   // if there is chromosome change, adjust site change accordingly to avoid double counting
+                site_change = site_change - cc.cn_change_chr;
+            }
+            cc.cn_change_site = site_change;
 
             s_info_change[i][j] = cc;
         }
     }
 
-    if(debug > 1){
+    if(debug){
         for(size_t i = 0; i < s_info_change.size(); i++){
             cout << "\nSample " << (i+1) << " decomposed copy number changes:" << endl;
             for(size_t j = 0; j < s_info_change[i].size(); j++){
@@ -710,7 +714,6 @@ void get_chr_change(const vector<vector<vector<int>>>& s_info, const vector<doub
     cout << "\nGetting the potential number of chromosome changes for each sample" << endl;
     
     // vector<int> chr_gain_max, chr_loss_min;
-
     for(size_t i = 0; i < s_info.size(); i++){
         // chr, seg, CN
         vector<vector<int>> s_cn = s_info[i];
@@ -733,14 +736,16 @@ void get_chr_change(const vector<vector<vector<int>>>& s_info, const vector<doub
             // use multiple of 2 to roughly determine events before or after WGD
             if(avg_cn > WGD_CUTOFF){    // one WGD 
                 int reminder = round_num_change % NORM_PLOIDY;
-                if(reminder == 0){   // likely occurred before WGD, with copy number change in multiple of 2 or ploidy
+                // likely occurred before WGD, with copy number change in multiple of 2 or ploidy
+                // Another possibility is that the change occurred after WGD but with very large copy number change
+                if(reminder == 0){   
                     round_num_change = round_num_change / NORM_PLOIDY;
                 }
             }
             if(round_num_change < -2) round_num_change = -2;
             // TODO: change to dynamic threshold later
             if(round_num_change > 2) round_num_change = 2;
-            // cout << "Number of segments in chromosome " << c.first << " is " << cp.size() << "; avg cn: " << avg_chr_cn << "; exact num changes: " << num_change  << "; num changes: " << round_num_change << endl;
+            cout << "Number of segments in chromosome " << c.first << " is " << cp.size() << "; avg cn: " << avg_chr_cn << "; exact num changes: " << num_change  << "; num changes: " << round_num_change << endl;
 
             chr_change.push_back(round_num_change);
         }
@@ -1513,8 +1518,6 @@ void read_data_var_regions_by_chr_change(map<int, vector<vector<int>>>& data_cha
     }
     
     group_segs_by_chr_change(segs, s_info_change, data_change, input_property.Ns, input_data.num_total_bins, seg_file, debug);
-
     
     cout << "=============Reading input copy number change finished==============\n" << endl;
-
 }
