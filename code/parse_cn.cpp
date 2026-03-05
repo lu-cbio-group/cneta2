@@ -353,7 +353,11 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info, vector<vecto
             cc.cn_change_chr = sample_change_chr[i][chr - 1];   // chr is 1-based in input, but sample_change_chr is 0-based
             int site_change = sample_change_site[i][j];
             if(cc.cn_change_chr != 0){   // if there is chromosome change, adjust site change accordingly to avoid double counting
-                site_change = site_change - cc.cn_change_chr;
+                if(cc.cn_change_chr % 1000 != 0){
+                    site_change = site_change - cc.cn_change_chr;
+                }else{
+                    site_change = site_change - cc.cn_change_chr / 1000;
+                }
             }
             cc.cn_change_site = site_change;
 
@@ -738,13 +742,15 @@ void get_chr_change(const vector<vector<vector<int>>>& s_info, const vector<doub
                 int reminder = round_num_change % NORM_PLOIDY;
                 // likely occurred before WGD, with copy number change in multiple of 2 or ploidy
                 // Another possibility is that the change occurred after WGD but with very large copy number change
+                // encode ambiguity by allowing both possibilities 
                 if(reminder == 0){   
-                    round_num_change = round_num_change / NORM_PLOIDY;
+                    round_num_change = round_num_change / NORM_PLOIDY;  // assume before WGD
+                    round_num_change = round_num_change * 1000;  // encode ambiguous orders regarding WGD
                 }
             }
-            if(round_num_change < -2) round_num_change = -2;
-            // TODO: change to dynamic threshold later
-            if(round_num_change > 2) round_num_change = 2;
+            // if(round_num_change < -2) round_num_change = -2;
+            // // TODO: change to dynamic threshold later
+            // if(round_num_change > 2) round_num_change = 2;
             cout << "Number of segments in chromosome " << c.first << " is " << cp.size() << "; avg cn: " << avg_chr_cn << "; exact num changes: " << num_change  << "; num changes: " << round_num_change << endl;
 
             chr_change.push_back(round_num_change);
@@ -838,13 +844,13 @@ void get_site_change(const vector<vector<vector<int>>>& s_info, const vector<dou
             // use multiple of 2 to roughly determine events before or after WGD
             if(avg_cn > WGD_CUTOFF){    // one WGD 
                 int reminder = cn % NORM_PLOIDY;
+                // TODO: set ambuiguity flag
                 if(reminder == 0){   // likely occurred before WGD, with copy number change in multiple of 2 or ploidy
-                    int rcn = cn / NORM_PLOIDY;
-                    cn_change = rcn - NORM_PLOIDY;
+                    cn_change = cn / NORM_PLOIDY - NORM_PLOIDY;
                 }
             }
             
-            // set those outside limits of rate matrix
+            // TODO: set those outside limits of rate matrix
             if(cn_change < -2) cn_change = -2;
             if(cn_change > 4) cn_change = 4;       
 

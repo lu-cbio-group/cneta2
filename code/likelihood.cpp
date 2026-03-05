@@ -703,11 +703,21 @@ void print_tree_lnl(const evo_tree& rtree, vector<vector<double>>& L_sk_k, int n
 
 /************* Funtions when decomposing observed copy numbers onto multiple level changes **********************/
 void get_state_index(int state_chr, int peak_sum_haplotype, int& si, int& ei){
+    // number of elements for each state
     vector<int> n_states = make_peak_vector(peak_sum_haplotype); // assume 2 in total and 1 for each haplotype at chr level
-    for (int k = 0; k < state_chr; k++){
+    int last_index = state_chr;
+    if(state_chr < 0){
+        cout << "State index is negative, resetting to 0" << endl;
+        last_index = 0;
+    }    
+    if(state_chr > 2 * peak_sum_haplotype - 2){
+        cout << "State index exceeds the number of states, resetting to maximum valid index" << endl;
+        last_index = 2 * peak_sum_haplotype - 2;
+    }
+    for (int k = 0; k < last_index; k++){
         si += n_states[k];
     }
-    ei = si + n_states[state_chr] - 1;
+    ei = si + n_states[last_index] - 1;
 }
 
 
@@ -766,10 +776,21 @@ void initialize_lnl_table_chr(vector<vector<double>>& lnl_table_chr, const evo_t
         // L_sk_k.lnl_table_chr[i][state_chr] = 1.0; 
         // TODO: As the matrix is indexed by haplotype-specific changes, all related state need to be set.
         // assert(obs_decomp.max_chr_change == 2);   // for now assume the maximum change is 2, can be changed later
-        int state_chr = change_chr[i] + 2;                    // can lost at most two copies
-        set_lnl_table_change(state_chr, i, 3, is_total, lnl_table_chr);
-    }   
-
+        int state_chr = 0;             // can lost at most two copies
+        // check ambuigous encoding
+        if(change_chr[i] != 0 && change_chr[i] % 1000 == 0){
+            if(debug) cout << "Ambiguous encoding for chromosome gain/loss. Include both cases." << endl;
+            // before WGD
+            state_chr = change_chr[i] / 1000 + 2;    // CN normalied by ploidy previously
+            set_lnl_table_change(state_chr, i, 3, is_total, lnl_table_chr);
+            // after WGD
+            state_chr = state_chr * NORM_PLOIDY + 2;
+            set_lnl_table_change(state_chr, i, 3, is_total, lnl_table_chr);            
+        }else{
+            state_chr = change_chr[i] + 2;        
+            set_lnl_table_change(state_chr, i, 3, is_total, lnl_table_chr);    
+        }
+    } 
     if(debug){
         cout << "Likelihood table at tips for chromosome gain/loss:";
         print_lnl_at_tips<int>(rtree, change_chr, lnl_table_chr, nstate_chr);
@@ -1030,6 +1051,54 @@ void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& r
 }
 
 
+/**
+ * @brief likelihood table initialization for models with WGD, chromosome gain/loss, and site duplication/deletion 
+ * 
+ * @param L_sk_k: Ns * nstate likelihood tables for WGD, chromosome gain/loss, and site duplication/deletion       
+ * @param obs_change: observed changes in copy number states at tips
+ * @param rtree: evolutionary tree 
+ * @param nstates: number of states for WGD, chromosome gain/loss, and site duplication/deletion
+ * @param dim_decomp: dimensions for different levels
+ * @param obs_decomp: observed changes for different levels, including maximum changes 
+ */
+void initialize_lnl_table_site(LNL_TABLE& L_sk_k, const evo_tree& rtree, const vector<CN_CHANGE>& obs_change, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug){
+    if(debug) cout << "\tinitialize likelihood table at tips for multiple levels" << endl;
+    int Ns = rtree.nleaf - 1;
+    int is_total = 1;   // TODO: change later
+
+    int nstate_site = dim_decomp.dim_seg;        // number of site gain/loss
+
+    assert(nstate_site > 0);
+
+    L_sk_k.lnl_table_seg.resize(2 * Ns + 1, vector<double>(nstate_site, 0.0));
+    // L_sk_k.lnl_table_seg[Ns][abs(obs_decomp.max_site_change)] = 1.0;  // no site gain/loss  
+    L_sk_k.lnl_table_seg[Ns][NO_CHANGE_HAPLOTYPE] = 1.0;  // no site gain/loss for haplotype-specific case
+
+
+    for(int i = 0; i < Ns; ++i){       
+        // For site gain/loss
+        // site state is likely -2, -1, 0, 1, 2
+        // int state_site = obs_change[i].cn_change_site + abs(obs_decomp.max_site_change); // change value to positive index
+        // L_sk_k.lnl_table_seg[i][state_site] = 1.0; 
+        int state_site = obs_change[i].cn_change_site + 2;                    // can lost at most two copies
+        // TODO: check ambuigous encoding, a bit complicated due to chr-level changes
+        if(state_site < 0) {
+            cout << "State index for site change is negative, resetting to 0" << endl;
+            state_site = 0;
+        }
+        if(state_site >= nstate_site) {
+            cout << "State index for site change exceeds the number of states for site gain/loss, resetting to maximum valid index" << endl;
+            state_site = nstate_site - 1;
+        }
+        set_lnl_table_change(state_site, i, 4, is_total, L_sk_k.lnl_table_seg);          
+    }   
+
+    if(debug){
+        cout << "Likelihood table at tips for site duplication/deletion:";
+        print_lnl_at_tips<CN_CHANGE>(rtree, obs_change, L_sk_k.lnl_table_seg, nstate_site);   
+    }
+}
+
 
 
 /**
@@ -1041,6 +1110,7 @@ void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& r
  * @param nstates: number of states for WGD, chromosome gain/loss, and site duplication/deletion
  * @param dim_decomp: dimensions for different levels
  * @param obs_decomp: observed changes for different levels, including maximum changes 
+ * Not used, as likelihood is better computed for different levels separately
  */
 void initialize_lnl_table_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const vector<CN_CHANGE>& obs_change, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug){
     if(debug) cout << "\tinitialize likelihood table at tips for multiple levels" << endl;
@@ -1385,7 +1455,7 @@ LNL_VAL get_prob_children_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const
     
     LNL_VAL lj_vals = compute_child_likelihood_change(nj, sk, L_sk_k, prob_decompj, obs_decomp, dim_decomp, debug);
 
-    LNL_VAL result = {0, li_vals.lnl_chr * lj_vals.lnl_chr, li_vals.lnl_seg * lj_vals.lnl_seg};
+    LNL_VAL result = {0, 0, li_vals.lnl_seg * lj_vals.lnl_seg};
 
     return result;
 }
@@ -1503,8 +1573,8 @@ void get_likelihood_site_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const 
                     CN_CHANGE sk = {cn_state, 0, NO_CHANGE_HAPLOTYPE, l}; 
                     if(debug > 1) cout << "state index for site change " << l << ": " << sk << endl;
                     LNL_VAL lnl_val = get_prob_children_change(L_sk_k, rtree, sk, prob_decompi, prob_decompj, obs_decomp, dim_decomp, ni, nj, is_total, debug);
-                    if(dim_decomp.dim_wgd > 0) L_sk_k.lnl_table_wgd[k][0] = lnl_val.lnl_wgd;
-                    if(dim_decomp.dim_chr > 0) L_sk_k.lnl_table_chr[k][NO_CHANGE_HAPLOTYPE] = lnl_val.lnl_chr;
+                    // if(dim_decomp.dim_wgd > 0) L_sk_k.lnl_table_wgd[k][0] = lnl_val.lnl_wgd;
+                    // if(dim_decomp.dim_chr > 0) L_sk_k.lnl_table_chr[k][NO_CHANGE_HAPLOTYPE] = lnl_val.lnl_chr;
                     L_sk_k.lnl_table_seg[k][l] = lnl_val.lnl_seg;                
                 }  
             }        
@@ -1649,7 +1719,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
                 if(lnl_type.use_repeat){ 
                     if(sites_lnl_map.find(obs) == sites_lnl_map.end()){
                     if(debug) cout << "sites new" << endl;
-                        initialize_lnl_table_change(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);
+                        initialize_lnl_table_site(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);
                         get_likelihood_site_change(L_sk_k, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
                         sites_lnl_map[obs] = L_sk_k;
                     }else{
@@ -1658,7 +1728,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
                     }
                 }else{
                     if(debug) cout << "sites no repeat consideration" << endl;
-                    initialize_lnl_table_change(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);
+                    initialize_lnl_table_site(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);
                     get_likelihood_site_change(L_sk_k, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
                 }
 
@@ -1808,10 +1878,10 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
 
     if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;
     if(lnl_type.correct_bias){
-        if(debug) cout << "Correcting for the skip of invariant sites" << endl;
-        vector<CN_CHANGE> obs(rtree.nleaf - 1, {0, 0, 0});   // invariant site
+        if(debug) cout << "Correcting for the skip of invariant sites" << endl;   
+        vector<CN_CHANGE> obs(rtree.nleaf - 1, {2, 0, NO_CHANGE_HAPLOTYPE, NO_CHANGE_HAPLOTYPE});   // invariant site
         LNL_TABLE L_sk_k;
-        initialize_lnl_table_change(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);   
+        initialize_lnl_table_site(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);   
         get_likelihood_site_change(L_sk_k, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);
         double lnl_invar = extract_tree_lnl_change(L_sk_k, obs_decomp, rtree.nleaf - 1, debug);
 
