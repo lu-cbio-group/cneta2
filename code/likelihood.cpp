@@ -1790,14 +1790,18 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
     } // for each chromosome
 
     // only need to compute once for WGD as it is the same for all sites in the sample
-    vector<vector<double>> lnl_table_wgd;
-    initialize_lnl_table_wgd(lnl_table_wgd, rtree, sample_num_wgd, dim_decomp, obs_decomp, debug);    
-    get_likelihood_wgd(lnl_table_wgd, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);  
-    double wgd_logL = log(lnl_table_wgd[rtree.nleaf][0]);
-    logL += wgd_logL;   // likelihood for WGD is the same for all sites, so only compute once
+    if(obs_decomp.max_wgd > 0){
+        vector<vector<double>> lnl_table_wgd;
+        initialize_lnl_table_wgd(lnl_table_wgd, rtree, sample_num_wgd, dim_decomp, obs_decomp, debug);    
+        get_likelihood_wgd(lnl_table_wgd, rtree, knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);  
+        double wgd_logL = log(lnl_table_wgd[rtree.nleaf][0]);
+        logL += wgd_logL;   // likelihood for WGD is the same for all sites, so only compute once
+         if(debug){
+            cout << "\nWGD observed, computed WGD likelihood for all samples  " << wgd_logL << endl;
+        }       
+    }
 
     if(debug){
-        cout << "\nLikelihood for WGD is " << wgd_logL << endl;
         cout << "\nLikelihood for in total is " << logL << endl;
     }
 
