@@ -702,6 +702,7 @@ void print_tree_lnl(const evo_tree& rtree, vector<vector<double>>& L_sk_k, int n
 
 
 /************* Funtions when decomposing observed copy numbers onto multiple level changes **********************/
+// state_chr: change state plus 2 to make it non-negatie
 void get_state_index(int state_chr, int peak_sum_haplotype, int& si, int& ei){
     // number of elements for each state
     vector<int> n_states = make_peak_vector(peak_sum_haplotype); // assume 2 in total and 1 for each haplotype at chr level
@@ -711,7 +712,7 @@ void get_state_index(int state_chr, int peak_sum_haplotype, int& si, int& ei){
         last_index = 0;
     }    
     if(state_chr > 2 * peak_sum_haplotype - 2){
-        cout << "State index exceeds the number of states, resetting to maximum valid index" << endl;
+        cout << "State index " << state_chr << " exceeds the number of states, resetting to maximum valid index" << endl;
         last_index = 2 * peak_sum_haplotype - 2;
     }
     for (int k = 0; k < last_index; k++){
@@ -784,7 +785,7 @@ void initialize_lnl_table_chr(vector<vector<double>>& lnl_table_chr, const evo_t
             state_chr = change_chr[i] / 1000 + 2;    // CN normalied by ploidy previously
             set_lnl_table_change(state_chr, i, 3, is_total, lnl_table_chr);
             // after WGD
-            state_chr = state_chr * NORM_PLOIDY + 2;
+            state_chr = (state_chr - 2 ) * NORM_PLOIDY + 2;
             set_lnl_table_change(state_chr, i, 3, is_total, lnl_table_chr);            
         }else{
             state_chr = change_chr[i] + 2;        
@@ -1083,11 +1084,11 @@ void initialize_lnl_table_site(LNL_TABLE& L_sk_k, const evo_tree& rtree, const v
         int state_site = obs_change[i].cn_change_site + 2;                    // can lost at most two copies
         // TODO: check ambuigous encoding, a bit complicated due to chr-level changes
         if(state_site < 0) {
-            cout << "State index for site change is negative, resetting to 0" << endl;
+            cout << "State index for site change " << state_site << " is negative, resetting to 0" << endl;
             state_site = 0;
         }
         if(state_site >= nstate_site) {
-            cout << "State index for site change exceeds the number of states for site gain/loss, resetting to maximum valid index" << endl;
+            cout << "State index for site change " << state_site << " exceeds the number of states for site gain/loss, resetting to maximum valid index" << endl;
             state_site = nstate_site - 1;
         }
         set_lnl_table_change(state_site, i, 4, is_total, L_sk_k.lnl_table_seg);          
