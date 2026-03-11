@@ -778,7 +778,7 @@ void initialize_lnl_table_chr(vector<vector<double>>& lnl_table_chr, const evo_t
         // TODO: As the matrix is indexed by haplotype-specific changes, all related state need to be set.
         // assert(obs_decomp.max_chr_change == 2);   // for now assume the maximum change is 2, can be changed later
         int state_chr = 0;             // can lost at most two copies
-        // check ambuigous encoding
+        // check ambuigous encoding, only minor effect on likelihood
         if(change_chr[i] != 0 && change_chr[i] % 1000 == 0){
             if(debug) cout << "Ambiguous encoding for chromosome gain/loss. Include both cases." << endl;
             // before WGD

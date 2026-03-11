@@ -35,7 +35,6 @@
 .DS_Store
 
 # R package folder and related files
-cneta_lib/
 *.R
 *.rda
 
@@ -50,9 +49,9 @@ code/lbfgsb
 example/
 
 # compiled program files
-cnets
-cnetml
-cnetmcmc
+code/cnets
+code/cnetml
+code/cnetmcmc
 
 # workspace files
 cneta.code-workspace
