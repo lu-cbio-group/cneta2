@@ -715,7 +715,34 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
   // out_tree.close();
 }
 
+// Compute the total mutation rate by summing up the rates of different types of CNAs according to cn_type
+double compute_total_mutation_rate(const evo_tree& tree, int cn_type, int num_total_bins){
+    switch(cn_type){
+        case ALL:
+            return NORM_PLOIDY * NUM_CHR * (tree.chr_gain_rate + tree.chr_loss_rate)
+                 + NORM_PLOIDY * num_total_bins * (tree.dup_rate + tree.del_rate)
+                 + tree.wgd_rate;
 
+        case ONLY_SEG:
+            return NORM_PLOIDY * num_total_bins * (tree.dup_rate + tree.del_rate);
+
+        case EXCLUDE_SEG:
+            return NORM_PLOIDY * NUM_CHR * (tree.chr_gain_rate + tree.chr_loss_rate)
+                 + tree.wgd_rate;
+
+        case EXCLUDE_CHR:
+            return NORM_PLOIDY * num_total_bins * (tree.dup_rate + tree.del_rate)
+                 + tree.wgd_rate;
+
+        case EXCLUDE_WGD:
+            return NORM_PLOIDY * NUM_CHR * (tree.chr_gain_rate + tree.chr_loss_rate)
+                 + NORM_PLOIDY * num_total_bins * (tree.dup_rate + tree.del_rate);
+
+        default:
+            cout << "Error in cn_type!" << endl;
+            exit(EXIT_FAILURE);
+    }
+}
 
 // Get the mutation rates in year along each branch
 // num_total_bins: number of total segments in the (haploid) genome
@@ -725,18 +752,7 @@ vector<int> compute_mutation_rates(evo_tree& tree, int cn_type, int num_total_bi
     vector<double> mu_all;
     vector<int> nmuts;
 
-    if (cn_type == ALL){ // all types of CNAs
-        mu_est = NORM_PLOIDY * NUM_CHR * (tree.chr_gain_rate + tree.chr_loss_rate) + NORM_PLOIDY * num_total_bins * (tree.dup_rate + tree.del_rate) + tree.wgd_rate;
-    }else if(cn_type == ONLY_SEG){  // only segmental CNAs
-        mu_est = NORM_PLOIDY * num_total_bins * (tree.dup_rate + tree.del_rate);
-    }else if(cn_type == EXCLUDE_SEG){  // only chromosomal and wgd CNAs
-        mu_est = NORM_PLOIDY * NUM_CHR * (tree.chr_gain_rate + tree.chr_loss_rate) + tree.wgd_rate;
-    }else if(cn_type == EXCLUDE_CHR){  // only segmental and wgd CNAs
-        mu_est = NORM_PLOIDY * num_total_bins * (tree.dup_rate + tree.del_rate) + tree.wgd_rate;
-    }else{
-        cout << "Error in cn_type!" << endl;
-        exit(EXIT_FAILURE);
-    }
+    mu_est = compute_total_mutation_rate(tree, cn_type, num_total_bins);
 
     mu_all.clear();
     for(int i = 0; i < tree.edges.size(); i++){
@@ -748,6 +764,37 @@ vector<int> compute_mutation_rates(evo_tree& tree, int cn_type, int num_total_bi
     return nmuts;
 }
 
+
+// Print the estimated mutation-rate parameters according to cn_type
+void print_rates_by_cn_type(const evo_tree& tree, int cn_type, double nlnl) {
+    switch(cn_type){
+        case ALL:
+            cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+                 << tree.dup_rate << "\t" << tree.del_rate << "\t"
+                 << tree.chr_gain_rate << "\t" << tree.chr_loss_rate << "\t"
+                 << tree.wgd_rate;
+            break;
+        case ONLY_SEG:
+            cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+                 << tree.dup_rate << "\t" << tree.del_rate;
+            break;
+        case EXCLUDE_SEG:
+            cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+                 << tree.chr_gain_rate << "\t" << tree.chr_loss_rate << "\t" << tree.wgd_rate;
+            break;
+        case EXCLUDE_CHR:
+            cout << "\nMinimised tree likelihood / mu by BFGS : " <<    nlnl << "\t"
+                 << tree.dup_rate << "\t" << tree.del_rate << "\t" << tree.wgd_rate;
+            break;
+        case EXCLUDE_WGD:
+            cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
+                 << tree.dup_rate << "\t" << tree.del_rate << "\t" << tree.chr_gain_rate << "\t" << tree.chr_loss_rate;
+            break;
+        default:
+            cout << "Error in cn_type!" << endl;
+            exit(EXIT_FAILURE);
+    }
+}
 
 
 // Run the program on a given tree with different modes of estimation (branch length constrained or not, mutation rate estimated or not)
@@ -795,26 +842,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     max_likelihood_BFGS(test_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
     
-    if (cn_type == ALL) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
-             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
-             << min_tree.wgd_rate;
-    }else if (cn_type == ONLY_SEG) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate;
-    }else if (cn_type == EXCLUDE_SEG) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
-             << min_tree.wgd_rate;
-    }else if (cn_type == EXCLUDE_CHR) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
-             << min_tree.wgd_rate;
-    }else{
-        cout << "Error in cn_type!" << endl;
-        exit(EXIT_FAILURE);
-    }
+    print_rates_by_cn_type(min_tree, cn_type, nlnl);
 
     cout << endl;
     min_tree.print();
@@ -833,26 +861,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     max_likelihood_BFGS(test_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
    
-    if (cn_type == ALL) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
-             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
-             << min_tree.wgd_rate;
-    }else if (cn_type == ONLY_SEG) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate;
-    }else if (cn_type == EXCLUDE_SEG) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
-             << min_tree.wgd_rate;
-    }else if (cn_type == EXCLUDE_CHR) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
-             << min_tree.wgd_rate;
-    }else{
-        cout << "Error in cn_type!" << endl;
-        exit(EXIT_FAILURE);
-    }
+    print_rates_by_cn_type(min_tree, cn_type, nlnl);
 
     cout << endl;
     min_tree.print();
@@ -872,26 +881,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     max_likelihood_BFGS(test_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
 
-    if (cn_type == ALL) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
-             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
-             << min_tree.wgd_rate;
-    }else if (cn_type == ONLY_SEG) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate;
-    }else if (cn_type == EXCLUDE_SEG) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
-             << min_tree.wgd_rate;
-    }else if (cn_type == EXCLUDE_CHR) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
-             << min_tree.wgd_rate;
-    }else{
-        cout << "Error in cn_type!" << endl;
-        exit(EXIT_FAILURE);
-    }
+    print_rates_by_cn_type(min_tree, cn_type, nlnl);
     
     cout << endl;
     min_tree.print();
@@ -911,26 +901,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     max_likelihood_BFGS(test_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
     min_tree = test_tree;
 
-    if (cn_type == ALL) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
-             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
-             << min_tree.wgd_rate;
-    }else if (cn_type == ONLY_SEG) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate;
-    }else if (cn_type == EXCLUDE_SEG) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.chr_gain_rate << "\t" << min_tree.chr_loss_rate << "\t"
-             << min_tree.wgd_rate;
-    }else if (cn_type == EXCLUDE_CHR) {
-        cout << "\nMinimised tree likelihood / mu by BFGS : " << nlnl << "\t"
-             << min_tree.dup_rate << "\t" << min_tree.del_rate << "\t"
-             << min_tree.wgd_rate;
-    }else{
-        cout << "Error in cn_type!" << endl;
-        exit(EXIT_FAILURE);
-    }
+    print_rates_by_cn_type(min_tree, cn_type, nlnl);
 
     cout << endl;
     min_tree.print();
@@ -991,18 +962,7 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
     // When mutation rates are not estimated, using specified rates to compute number of mutations
     double mu_est = 0.0;
 
-    if (cn_type == ALL){ // all types of CNAs
-        mu_est = NORM_PLOIDY * NUM_CHR * (min_nlnl_tree.chr_gain_rate + min_nlnl_tree.chr_loss_rate) + NORM_PLOIDY * num_total_bins * (min_nlnl_tree.dup_rate + min_nlnl_tree.del_rate) + min_nlnl_tree.wgd_rate;
-    }else if(cn_type == ONLY_SEG){  // only segmental CNAs
-        mu_est = NORM_PLOIDY * num_total_bins * (min_nlnl_tree.dup_rate + min_nlnl_tree.del_rate);
-    }else if(cn_type == EXCLUDE_SEG){  // only chromosomal and wgd CNAs
-        mu_est = NORM_PLOIDY * NUM_CHR * (min_nlnl_tree.chr_gain_rate + min_nlnl_tree.chr_loss_rate) + min_nlnl_tree.wgd_rate;
-    }else if(cn_type == EXCLUDE_CHR){  // only segmental and wgd CNAs
-        mu_est = NORM_PLOIDY * num_total_bins * (min_nlnl_tree.dup_rate + min_nlnl_tree.del_rate) + min_nlnl_tree.wgd_rate;
-    }else{
-        cout << "Error in cn_type!" << endl;
-        exit(EXIT_FAILURE);
-    }
+    mu_est = compute_total_mutation_rate(min_nlnl_tree, cn_type, num_total_bins);
 
     cout << "Total mutation rate per year " << mu_est << endl;
     vector<double> mu_all;
@@ -1131,22 +1091,32 @@ void print_desc(int cons, int estmu, int correct_bias, int use_repeat, int optim
         cout << "\nAssuming mutation rate is fixed " << endl;
     }else{
         cout << "\nEstimating mutation rates" << endl;
-        // if(!only_seg){
-        //     cout << "\tfor site duplication/deletion, chromosome gain/loss, and whole genome doubling " << endl;
-        // }else{
-        //     cout << "\tfor site duplication/deletion " << endl;
-        // }
-        if (cn_type == ALL){
-            cout << "\tfor site duplication/deletion, chromosome gain/loss, and whole genome doubling " << endl;
-        }else if(cn_type == ONLY_SEG){
-            cout << "\tfor site duplication/deletion " << endl;
-        }else if(cn_type == EXCLUDE_SEG){
-            cout << "\tfor chromosome gain/loss, and whole genome doubling " << endl;
-        }else if(cn_type == EXCLUDE_CHR){
-            cout << "\tfor site duplication/deletion, and whole genome doubling " << endl;
-        }else{
-            cout << "Error in cn_type!" << endl;
-            exit(EXIT_FAILURE);
+    
+        switch(cn_type){
+            case ALL:{
+                cout << "\tfor site duplication/deletion, chromosome gain/loss, and whole genome doubling " << endl;
+                break;
+            }
+            case ONLY_SEG:{
+                cout << "\tfor site duplication/deletion " << endl;
+                break;
+            }
+            case EXCLUDE_SEG:{
+                cout << "\tfor chromosome gain/loss, and whole genome doubling " << endl;
+                break;
+            }
+            case EXCLUDE_CHR:{
+                cout << "\tfor site duplication/deletion, and whole genome doubling " << endl;
+                break;
+            }
+            case EXCLUDE_WGD:{
+                cout << "\tfor site duplication/deletion, and chromosome gain/loss " << endl;
+                break;
+            }
+            default:{
+                cout << "Error in cn_type!" << endl;
+                exit(EXIT_FAILURE);
+            }
         }
     }
 
@@ -1306,7 +1276,7 @@ int main(int argc, char** const argv){
     ("is_bin", po::value<int>(&is_bin)->default_value(1), "whether or not the input copy number is for each bin. If not, the input copy number is read as it is. Or else, consecutive bins will be merged")
     ("incl_all", po::value<int>(&incl_all)->default_value(1), "whether or not to include all the input copy numbers for phylogeny inference")
 
-    ("cn_type", po::value<int>(&cn_type), "Type of copy number changes to consider (0: only segment-level mutations, 1: only chromosome gain/loss and whole genome doubling, 2: only duplication/deletion and whole genome doubling, 3: all types of mutations)")
+    ("cn_type", po::value<int>(&cn_type), "Type of copy number changes to consider (0: only segment-level mutations (ONLY_SEG), 1: only chromosome gain/loss and whole genome doubling (EXCLUDE_SEG), 2: only duplication/deletion and whole genome doubling (EXCLUDE_CHR), 3: only duplication/deletion and chromosome gain/loss (EXCLUDE_WGD), 4: all types of mutations (ALL))")
 
     ("infer_wgd", po::value<int>(&infer_wgd)->default_value(0), "whether or not to infer WGD status of a sample from its ABSOLUTE copy numbers")
     ("infer_chr", po::value<int>(&infer_chr)->default_value(0), "whether or not to infer chromosome gain/loss status of a sample from its ABSOLUTE copy numbers")

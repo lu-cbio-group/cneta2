@@ -32,4 +32,30 @@
 *.app
 
 # Mac
-.DS_Store 
+.DS_Store
+
+# R package folder and related files
+cneta_lib/
+*.R
+*.rda
+
+# Shell configuration files
+*.bashrc
+*.zshrc
+
+# LBFGSB files
+code/lbfgsb
+
+# example files
+example/
+
+# compiled program files
+cnets
+cnetml
+cnetmcmc
+
+# workspace files
+cneta.code-workspace
+
+# vscode
+.vscode/

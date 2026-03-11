@@ -137,11 +137,12 @@ Mk model is an extension of JC69 model on total copy numbers, where duplication 
 
 In bounded model, duplication rate may be different from deletion rate. Once a copy number becomes 0, it cannot be changed. Once a copy number becomes maximum (cn_max), it cannot be increased.
 
-There are three copy-number mutation types (cn_type):
+There are five copy-number mutation types (cn_type):
 * cn_type = 0 (ONLY_SEG mode): only use segment level copy-number changes (rates r1 and r2).
 * cn_type = 1 (EXCLUDE_SEG mode): exclude segment level changes, use only chromosome level copy-number changes and allow WGDs (rates r3, r4, r5).
 * cn_type = 2 (EXCLUDE_CHR mode): exclude chromosome level changes, use only segment level copy-number changes and allow WGDs (rates r1, r2, r5).
-* cn_type = 3 (ALL mode): use segment level, chromosome level copy-number changes and also allow WGDs (rates r1 to r5).
+* cn_type = 3 (EXCLUDE_WGD mode): exclude whole genome doubling, use only segment level, chromosome level copy-number changes (rate r1 to r4).
+* cn_type = 4 (ALL mode): use segment level, chromosome level copy-number changes and also allow WGDs (rates r1 to r5).
 
 There are two ways of simulating mutations along a tree:
 1. Simulating waiting times along a branch (default). A random waiting time is generated from the exponential distribution with mean `1/r`. Here, `r` is the total mutation rate across the genome, obtained by adding up the duplication and deletion rates across all sites in the genome, chromosomal gain or loss rates across all chromosomes and whole genome doubling rate. When a mutation is generated, its type is randomly chosen based on the relative rates of different types of mutational events.
@@ -216,7 +217,7 @@ When estimating branch length, time constraints (in longitudinal samples) can be
 When building the tree, mutation rates can be estimated by specifying the following parameters.
 * `estmu`: Whether or not to estimate mutation rate. When estmu = 1, mutation rates will be estimated. This is only reliable when the sampling times of tip nodes provide sufficient information (cons = 1 and dt > 0).
 <!-- * `only_seg`: When only_seg = 1, only estimate duplication/deletion rates. Otherwise, the rates for chromosome gain/loss and whole genome doubling (WGD) will be estimated. -->
-* `cn_type`: 0, only estimate duplication/deletion rates; 1, estimate chr gain/loss and wgd rates; 2, estimate duplication/deletion and wgd rates; 3, estimate duplication/deletion, gain/loss, and wgd rates.
+* `cn_type`: 0, only estimate duplication/deletion rates; 1, estimate chr gain/loss and wgd rates; 2, estimate duplication/deletion and wgd rates; 3, estimate duplication/deletion and chr gain/loss rates; 4, estimate duplication/deletion, gain/loss, and wgd rates.
 
 Mutation rates are implicit parameters in the computing tree likelihood, so the reconstructed tree should be more accurate when cons = 1 and estmu = 1 given longitudinal samples, unless mutation rates are known as in simulated data.
 

@@ -130,22 +130,27 @@ inline int get_ndim(int estmu, int nparams_est, int model, int cn_type){
         if(model == MK){
             ndim = nparams_est + 1;
         }else{
-            switch (cn_type) {
-                case ALL:
+            switch(cn_type){
+                case ALL:{
                     ndim = nparams_est + 5;
                     break;
-                case ONLY_SEG:
+                }
+                case ONLY_SEG:{
                     ndim = nparams_est + 2;
                     break;
-                case EXCLUDE_SEG:
+                }
+                case EXCLUDE_SEG:{
                     ndim = nparams_est + 3;         
                     break;
-                case EXCLUDE_CHR:
+                }
+                case EXCLUDE_CHR:{
                     ndim = nparams_est + 3;
                     break;
-                case EXCLUDE_WGD:
+                }
+                case EXCLUDE_WGD:{
                     ndim = nparams_est + 4;
                     break;
+                }
                 default:
                     cerr << "### ERROR: Unknown copy number alteration type for optimization!" << endl;
                     exit(1);

@@ -634,38 +634,38 @@ double optimize_mutation_rates(evo_tree& rtree, const map<int, vector<vector<int
         optx = minimizeOneDimen(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, 0, RATE_MIN, rtree.mu, RATE_MAX, tolerance, &negative_lh, &ferror);
     }else{ // for other models
         switch (lnl_type.cn_type) {
-        case ALL:
+        case ALL:{
             optimize_rate(1, rtree.dup_rate,      "duplication rate");
             optimize_rate(2, rtree.del_rate,      "deletion rate");
             optimize_rate(3, rtree.chr_gain_rate, "chromosome gain rate");
             optimize_rate(4, rtree.chr_loss_rate, "chromosome loss rate");
             optimize_rate(5, rtree.wgd_rate,      "WGD rate");
             break;
-        
-        case EXCLUDE_WGD:
-            optimize_rate(1, rtree.dup_rate,      "duplication rate");
-            optimize_rate(2, rtree.del_rate,      "deletion rate");
-            optimize_rate(3, rtree.chr_gain_rate, "chromosome gain rate");
-            optimize_rate(4, rtree.chr_loss_rate, "chromosome loss rate");
-            break;
-
-        case ONLY_SEG:
+        }
+        case ONLY_SEG:{
             optimize_rate(1, rtree.dup_rate, "duplication rate");
             optimize_rate(2, rtree.del_rate, "deletion rate");
             break;
-
-        case EXCLUDE_SEG:
+        }
+        case EXCLUDE_SEG:{
             optimize_rate(3, rtree.chr_gain_rate, "chromosome gain rate");
             optimize_rate(4, rtree.chr_loss_rate, "chromosome loss rate");
             optimize_rate(5, rtree.wgd_rate,      "WGD rate");
             break;
-
-        case EXCLUDE_CHR:
+        }
+        case EXCLUDE_CHR:{
             optimize_rate(1, rtree.dup_rate, "duplication rate");
             optimize_rate(2, rtree.del_rate, "deletion rate");
             optimize_rate(5, rtree.wgd_rate, "WGD rate");
             break;
-
+        }
+        case EXCLUDE_WGD:{
+            optimize_rate(1, rtree.dup_rate,      "duplication rate");
+            optimize_rate(2, rtree.del_rate,      "deletion rate");
+            optimize_rate(3, rtree.chr_gain_rate, "chromosome gain rate");
+            optimize_rate(4, rtree.chr_loss_rate, "chromosome loss rate");
+            break;
+        }
         default:
             cerr << "### ERROR: Unknown copy number alteration type for optimization!" << endl;
             exit(EXIT_FAILURE);
@@ -1114,39 +1114,39 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
           }
 
           if(debug){
-              switch (cn_type) {
-                case ALL:
+              switch(cn_type){
+                case ALL:{
                     print_rate("dup_rate",      rtree.dup_rate);
                     print_rate("del_rate",      rtree.del_rate);
                     print_rate("chr_gain_rate", rtree.chr_gain_rate);
                     print_rate("chr_loss_rate", rtree.chr_loss_rate);
                     print_rate("wgd_rate",      rtree.wgd_rate);
                     break;
-
-                case EXCLUDE_WGD:
+                }
+                case ONLY_SEG:{
+                    print_rate("dup_rate", rtree.dup_rate);
+                    print_rate("del_rate", rtree.del_rate);
+                    break;
+                }
+                case EXCLUDE_SEG:{
+                    print_rate("chr_gain_rate", rtree.chr_gain_rate);
+                    print_rate("chr_loss_rate", rtree.chr_loss_rate);
+                    print_rate("wgd_rate",      rtree.wgd_rate);
+                    break;
+                }
+                case EXCLUDE_CHR:{
+                    print_rate("dup_rate", rtree.dup_rate);
+                    print_rate("del_rate", rtree.del_rate);
+                    print_rate("wgd_rate", rtree.wgd_rate);
+                    break;
+                }
+                case EXCLUDE_WGD:{
                     print_rate("dup_rate",      rtree.dup_rate);
                     print_rate("del_rate",      rtree.del_rate);
                     print_rate("chr_gain_rate", rtree.chr_gain_rate);   
                     print_rate("chr_loss_rate", rtree.chr_loss_rate);
                     break;
-                    
-                case ONLY_SEG:
-                    print_rate("dup_rate", rtree.dup_rate);
-                    print_rate("del_rate", rtree.del_rate);
-                    break;
-
-                case EXCLUDE_SEG:
-                    print_rate("chr_gain_rate", rtree.chr_gain_rate);
-                    print_rate("chr_loss_rate", rtree.chr_loss_rate);
-                    print_rate("wgd_rate",      rtree.wgd_rate);
-                    break;
-
-                case EXCLUDE_CHR:
-                    print_rate("dup_rate", rtree.dup_rate);
-                    print_rate("del_rate", rtree.del_rate);
-                    print_rate("wgd_rate", rtree.wgd_rate);
-                    break;
-
+                }
                 default:
                     cerr << "Unknown cn_type while printing rates" << endl;
                     exit(EXIT_FAILURE);
@@ -1529,39 +1529,39 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
             lower_bound[i + 1] = MIN_MRATE;
             upper_bound[i + 1] = MAX_MRATE;
         }else{ // other models
-            switch (cn_type) {
-              case ALL:
+            switch(cn_type){
+              case ALL:{
                   set_param(1, rtree.dup_rate);
                   set_param(2, rtree.del_rate);
                   set_param(3, rtree.chr_gain_rate);
                   set_param(4, rtree.chr_loss_rate);
                   set_param(5, rtree.wgd_rate);
                   break;
-
-              case EXCLUDE_WGD:
+                }
+              case ONLY_SEG:{
+                  set_param(1, rtree.dup_rate);
+                  set_param(2, rtree.del_rate);
+                  break;
+                }
+              case EXCLUDE_SEG:{
+                  set_param(1, rtree.chr_gain_rate);
+                  set_param(2, rtree.chr_loss_rate);
+                  set_param(3, rtree.wgd_rate);
+                  break;
+                }
+              case EXCLUDE_CHR:{
+                  set_param(1, rtree.dup_rate);
+                  set_param(2, rtree.del_rate);
+                  set_param(3, rtree.wgd_rate);
+                  break;
+                }
+              case EXCLUDE_WGD:{
                   set_param(1, rtree.dup_rate);
                   set_param(2, rtree.del_rate);
                   set_param(3, rtree.chr_gain_rate);    
                   set_param(4, rtree.chr_loss_rate);
                   break;
-
-              case ONLY_SEG:
-                  set_param(1, rtree.dup_rate);
-                  set_param(2, rtree.del_rate);
-                  break;
-
-              case EXCLUDE_SEG:
-                  set_param(1, rtree.chr_gain_rate);
-                  set_param(2, rtree.chr_loss_rate);
-                  set_param(3, rtree.wgd_rate);
-                  break;
-
-              case EXCLUDE_CHR:
-                  set_param(1, rtree.dup_rate);
-                  set_param(2, rtree.del_rate);
-                  set_param(3, rtree.wgd_rate);
-                  break;
-
+                }
               default:
                   cerr << "Error: unknown cn_type when optimizing mutation rates!" << endl;
                   exit(EXIT_FAILURE);

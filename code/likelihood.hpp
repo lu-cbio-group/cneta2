@@ -268,7 +268,7 @@ struct LNL_TYPE{
   int correct_bias; // Whether or not to correct acquisition bias, used in get_likelihood_*
   int num_invar_bins; // used in get_likelihood_*
 
-  int cn_type; // Whether or not to only consider segment-level mutations, used in get_likelihood_revised
+  int cn_type; // type of copy number changes modeled (0: only segmental CNAs; 1: only chromosomal and WGD CNAs; 2: segmental and WGD CNAs; 3: segmental and chromosomal CNAs; 4: all types of CNAs)
 
   int infer_wgd; // whether or not to infer WGD status of a sample, called in initialize_lnl_table_decomp
   int infer_chr; // whether or not to infer chromosome gain/loss status of a sample, called in initialize_lnl_table_decomp

@@ -46,7 +46,7 @@ model=2  # Model of evolution.  0: Mk model, 1: bounded model for total copy num
 m_max=1
 
 estmu=1  # Whether or not to estimate mutation rate
-cn_type=0  # 0-ONLY_SEG: only use segments level CN changes (use only r1/r2); 1-EXCLUDE_SEG: exclude segment level CN changes (use only r3/r4/r5); 2-EXCLUDE_CHR: exclude chromosome level changes (use only r1/r2/r5) ; 3-ALL: three types of mutations (use r1 to r5)
+cn_type=0  # 0-ONLY_SEG: only use segments level CN changes (use only r1/r2); 1-EXCLUDE_SEG: exclude segment level CN changes (use only r3/r4/r5); 2-EXCLUDE_CHR: exclude chromosome level changes (use only r1/r2/r5) ; 3-EXCLUDE_WGD: exclude whole genome doubling (use only r1/r2/r3/r4); 4-ALL: three types of mutations (use r1 to r5)
 
 if [[ $times == "" ]]; then
   estmu=0

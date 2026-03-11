@@ -41,8 +41,7 @@ int use_repeat;   // whether or not to use repeated site patterns, used in get_l
 int correct_bias; // Whether or not to correct acquisition bias, used in get_likelihood_*
 int num_invar_bins;   // number of invariant sites
 
-// int cn_type; // Whether or not to only consider segment-level mutations, used in get_likelihood_revised
-int cn_type; // 0-ONLY_SEG: only use segments level CN changes; 1-EXCLUDE_SEG: exclude segment level CN changes; 2-EXCLUDE_CHR: exclude chromosome level changes; 3-ALL: three types of mutations
+int cn_type; // 0-ONLY_SEG: only use segments level CN changes; 1-EXCLUDE_SEG: exclude segment level CN changes; 2-EXCLUDE_CHR: exclude chromosome level changes; 3-EXCLUDE_WGD: exclude whole genome doubling; 4-ALL: three types of mutations
 
 int infer_wgd; // whether or not to infer WGD status of a sample, called in initialize_lnl_table_decomp
 int infer_chr; // whether or not to infer chromosome gain/loss status of a sample, called in initialize_lnl_table_decomp
@@ -1761,33 +1760,56 @@ void run_mcmc(evo_tree& rtree, int model, const int n_draws, const int n_burnin,
                     //     prob_move_gain = 0;
                     //     prob_move_loss = 0;
                     //     prob_move_wgd = 0;
-                    if (cn_type == ALL){ // all mutation rates
-                        prob_move_dup = 0.2;
-                        prob_move_del = 0.2;
-                        prob_move_gain = 0.2;
-                        prob_move_loss = 0.2;
-                        prob_move_wgd = 0.2;
-                    }else if (cn_type == ONLY_SEG){ // only segmental mutation rates
-                        prob_move_dup = 0.33333;
-                        prob_move_del = 0.33333;
-                        prob_move_gain = 0;
-                        prob_move_loss = 0;
-                        prob_move_wgd = 0.33333;
-                    }else if (cn_type == EXCLUDE_SEG){ // exclude segmental dup/del
-                        prob_move_dup = 0;
-                        prob_move_del = 0;
-                        prob_move_gain = 0.3333;
-                        prob_move_loss = 0.3333;
-                        prob_move_wgd = 0.3333;
-                    }else if (cn_type == EXCLUDE_CHR){ // exclude chromosomal gain/loss
-                        prob_move_dup = 0.33333;
-                        prob_move_del = 0.33333;
-                        prob_move_gain = 0;
-                        prob_move_loss = 0;
-                        prob_move_wgd = 0.33333;
-                    }else{
-                        cout << "Unknown cn_type!" << endl;
-                        exit(1);
+                    switch(cn_type){
+                        case ALL:{ // all mutation rates
+                            prob_move_dup = 0.2;
+                            prob_move_del = 0.2;
+                            prob_move_gain = 0.2;
+                            prob_move_loss = 0.2;
+                            prob_move_wgd = 0.2;
+                            break;
+                        }
+
+                        case ONLY_SEG:{ // only segmental mutation rates
+                            prob_move_dup = 0.33333;
+                            prob_move_del = 0.33333;
+                            prob_move_gain = 0;
+                            prob_move_loss = 0;
+                            prob_move_wgd = 0.33333;
+                            break;
+                        }
+
+                        case EXCLUDE_SEG:{ // exclude segmental dup/del
+                            prob_move_dup = 0;
+                            prob_move_del = 0;
+                            prob_move_gain = 0.3333;
+                            prob_move_loss = 0.3333;
+                            prob_move_wgd = 0.3333;
+                            break;
+                        }
+
+                        case EXCLUDE_CHR:{ // exclude chromosomal gain/loss
+                            prob_move_dup = 0.33333;
+                            prob_move_del = 0.33333;
+                            prob_move_gain = 0;
+                            prob_move_loss = 0;
+                            prob_move_wgd = 0.33333;
+                            break;
+                        }
+
+                        case EXCLUDE_WGD:{ // exclude WGD
+                            prob_move_dup = 0.25;
+                            prob_move_del = 0.25;
+                            prob_move_gain = 0.25;
+                            prob_move_loss = 0.25;
+                            prob_move_wgd = 0;
+                            break;
+                        }
+
+                        default:{
+                            cout << "Unknown cn_type!" << endl;
+                            exit(1);
+                        }
                     }
                     // if(model == DECOMP){
                     //     if(max_wgd == 0) prob_move_wgd = 0;
@@ -2182,7 +2204,7 @@ int main (int argc, char ** const argv) {
             ("sigma_blen,g", po::value<double>(&sigma_blen)->default_value(2.5), "sigma for proposal of branch length")
             ("sigma_height", po::value<double>(&sigma_height)->default_value(2.5), "sigma for proposal of tree height")
 
-            ("cn_type", po::value<int>(&cn_type)->default_value(0), "Type of copy number changes to consider (0: only segment-level mutations, 1: only chromosome gain/loss and whole genome doubling, 2: only duplication/deletion and whole genome doubling, 3: all types of mutations)")
+            ("cn_type", po::value<int>(&cn_type)->default_value(0), "Type of copy number changes to consider (0: only segment-level mutations, 1: only chromosome gain/loss and whole genome doubling, 2: only duplication/deletion and whole genome doubling, 3: only duplication/deletion and chromosome gain/loss, 4: all types of mutations)")
             ("mu,x", po::value<double>(&mu)->default_value(0.025), "mean of mutation rate")
             ("dup_rate", po::value<double>(&dup_rate)->default_value(0.01), "mean of site duplication rate")
             ("del_rate", po::value<double>(&del_rate)->default_value(0.01), "mean of site deletion rate")

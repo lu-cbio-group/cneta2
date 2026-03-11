@@ -1381,34 +1381,40 @@ void evo_tree::print_mutation_rates(int model, int cn_type) const{
     if(model == MK){
       cout << "mutation rate (per allele per site per year):  " << mu << endl;
     }else{
-      // cout << "site duplication rate (per allele per site per year):  " << dup_rate << endl;
-      // cout << "site deletion rate (per allele per site per year):  " << del_rate << endl;
-      // cout << "chromosome gain rate (per chromosome per year):  " << chr_gain_rate << endl;
-      // cout << "chromosome loss rate (per chromosome per year):  " << chr_loss_rate << endl;
-      // cout << "whole genome doubling rate (per year):  " << wgd_rate << endl;
-      // if(!only_seg){
-      //     cout << "chromosome gain rate (per chromosome per year):  " << chr_gain_rate << endl;
-      //     cout << "chromosome loss rate (per chromosome per year):  " << chr_loss_rate << endl;
-      //     cout << "whole genome doubling rate (per year):  " << wgd_rate << endl;
-      // }
-      if (cn_type == ALL){
+      switch(cn_type){
+        case ALL:{
           cout << "site duplication rate (per allele per site per year):  " << dup_rate << endl;
           cout << "site deletion rate (per allele per site per year):  " << del_rate << endl;
           cout << "chromosome gain rate (per chromosome per year):  " << chr_gain_rate << endl;
           cout << "chromosome loss rate (per chromosome per year):  " << chr_loss_rate << endl;
           cout << "whole genome doubling rate (per year):  " << wgd_rate << endl;
-      }else if (cn_type == ONLY_SEG){
+          break;
+        }
+        case ONLY_SEG:{
           cout << "site duplication rate (per allele per site per year):  " << dup_rate << endl;
           cout << "site deletion rate (per allele per site per year):  " << del_rate << endl;
-      }else if (cn_type == EXCLUDE_SEG){
+          break;
+        }
+        case EXCLUDE_SEG:{
           cout << "chromosome gain rate (per chromosome per year):  " << chr_gain_rate << endl;
           cout << "chromosome loss rate (per chromosome per year):  " << chr_loss_rate << endl;
           cout << "whole genome doubling rate (per year):  " << wgd_rate << endl;
-      }else if (cn_type == EXCLUDE_CHR){
+          break;
+        }
+        case EXCLUDE_CHR:{
           cout << "site duplication rate (per allele per site per year):  " << dup_rate << endl;
           cout << "site deletion rate (per allele per site per year):  " << del_rate << endl;
           cout << "whole genome doubling rate (per year):  " << wgd_rate << endl;
-      }else{
+          break;
+        }
+        case EXCLUDE_WGD:{
+          cout << "site duplication rate (per allele per site per year):  " << dup_rate << endl;
+          cout << "site deletion rate (per allele per site per year):  " << del_rate << endl;
+          cout << "chromosome gain rate (per chromosome per year):  " << chr_gain_rate << endl;
+          cout << "chromosome loss rate (per chromosome per year):  " << chr_loss_rate << endl;
+          break;
+        }
+        default:
           cout << "Unknown CN model type!" << endl;
       }
     }
