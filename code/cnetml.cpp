@@ -1432,6 +1432,11 @@ int main(int argc, char** const argv){
         exit(EXIT_FAILURE);
     }
 
+    if(is_rcn && !cn_type == ONLY_SEG){
+        cout << "Relative copy number input only supports rate estimation at segment level!" << endl;
+        cn_type = ONLY_SEG;    
+    }
+
     if(model == DECOMP){      
         // vector<vector<vector<int>>> s_info = read_cn(datafile, Ns, num_total_bins, cn_max, is_total, is_rcn, debug);
         // adjust_m_max();
@@ -1463,7 +1468,7 @@ int main(int argc, char** const argv){
             m_max = 0;
         }
 
-        cout << "Paramters used for copy number decomposition model:" << endl;
+        cout << "Parameters used for copy number decomposition model:" << endl;
         cout << "\tmaximum number of WGD events is " << max_wgd << endl;
         cout << "\tmaximum number of chromosome gain/loss events on one chromosome is " << max_chr_change << endl;
         cout << "\tmaximum number of site duplication/deletion events is " << max_site_change << endl;
@@ -1553,7 +1558,7 @@ int main(int argc, char** const argv){
           // cout << " the string representation is " << real_tstring << endl;
 
           double lnl = compute_tree_likelihood(real_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, debug);
-          cout << "   The log likelihood of the real tree is " << lnl << endl;
+          cout << "   The log likelihood of the real tree using initial ratesis " << lnl << endl;
       }
 
       // nodes are in an order suitable for dynamic programming (lower nodes at first, which may be changed after topolgy change)
