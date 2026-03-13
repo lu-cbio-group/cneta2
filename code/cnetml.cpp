@@ -1432,7 +1432,7 @@ int main(int argc, char** const argv){
         exit(EXIT_FAILURE);
     }
 
-    if(is_rcn && !cn_type == ONLY_SEG){
+    if(is_rcn && !(cn_type == ONLY_SEG)){
         cout << "Relative copy number input only supports rate estimation at segment level!" << endl;
         cn_type = ONLY_SEG;    
     }

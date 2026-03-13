@@ -702,7 +702,7 @@ void print_tree_lnl(const evo_tree& rtree, vector<vector<double>>& L_sk_k, int n
 
 
 /************* Funtions when decomposing observed copy numbers onto multiple level changes **********************/
-// state_chr: change state plus 2 to make it non-negatie
+// state_chr: copy number change state plus 2 to make it non-negative
 void get_state_index(int state_chr, int peak_sum_haplotype, int& si, int& ei){
     // number of elements for each state
     vector<int> n_states = make_peak_vector(peak_sum_haplotype); // assume 2 in total and 1 for each haplotype at chr level
@@ -1067,8 +1067,7 @@ void initialize_lnl_table_site(LNL_TABLE& L_sk_k, const evo_tree& rtree, const v
     int Ns = rtree.nleaf - 1;
     int is_total = 1;   // TODO: change later
 
-    int nstate_site = dim_decomp.dim_seg;        // number of site gain/loss
-
+    int nstate_site = dim_decomp.dim_seg;        // number of site duplication/deletion states, 16 for max CN 6 or 25 for max CN 8
     assert(nstate_site > 0);
 
     L_sk_k.lnl_table_seg.resize(2 * Ns + 1, vector<double>(nstate_site, 0.0));
@@ -1077,19 +1076,20 @@ void initialize_lnl_table_site(LNL_TABLE& L_sk_k, const evo_tree& rtree, const v
 
 
     for(int i = 0; i < Ns; ++i){       
-        // For site gain/loss
+        // For site duplication/deletion
         // site state is likely -2, -1, 0, 1, 2
         // int state_site = obs_change[i].cn_change_site + abs(obs_decomp.max_site_change); // change value to positive index
         // L_sk_k.lnl_table_seg[i][state_site] = 1.0; 
         int state_site = obs_change[i].cn_change_site + 2;                    // can lost at most two copies
         // TODO: check ambuigous encoding, a bit complicated due to chr-level changes
         if(state_site < 0) {
-            cout << "State index for site change " << state_site << " is negative, resetting to 0" << endl;
+            cout << "State for site change for sample " << i << ": " << state_site << " is negative, resetting to 0" << endl;
             state_site = 0;
         }
-        if(state_site >= nstate_site) {
-            cout << "State index for site change " << state_site << " exceeds the number of states for site gain/loss, resetting to maximum valid index" << endl;
-            state_site = nstate_site - 1;
+        if(state_site > 6) {
+            cout << obs_change[i] << endl;
+            cout << "State for site change for sample " << i << ": " <<  state_site << " exceeds the number of states for site duplication/deletion, resetting to maximum valid index" << endl;
+            state_site = 6;
         }
         set_lnl_table_change(state_site, i, 4, is_total, L_sk_k.lnl_table_seg);          
     }   
@@ -1571,6 +1571,7 @@ void get_likelihood_site_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const 
                 for(int l = 0; l < dim_decomp.dim_seg; ++l){
                     int cn_state = change_state_to_total_cn(l, 2);
                     assert(cn_state >= 0); 
+                    // l is the index in the rate, so it may not be the real change, just for placeholder
                     CN_CHANGE sk = {cn_state, 0, NO_CHANGE_HAPLOTYPE, l}; 
                     if(debug > 1) cout << "state index for site change " << l << ": " << sk << endl;
                     LNL_VAL lnl_val = get_prob_children_change(L_sk_k, rtree, sk, prob_decompi, prob_decompj, obs_decomp, dim_decomp, ni, nj, is_total, debug);
@@ -1884,7 +1885,7 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
     if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;
     if(lnl_type.correct_bias){
         if(debug) cout << "Correcting for the skip of invariant sites" << endl;   
-        vector<CN_CHANGE> obs(rtree.nleaf - 1, {2, 0, NO_CHANGE_HAPLOTYPE, NO_CHANGE_HAPLOTYPE});   // invariant site
+        vector<CN_CHANGE> obs(rtree.nleaf - 1, {2, 0, 0, 0});   // invariant site
         LNL_TABLE L_sk_k;
         initialize_lnl_table_site(L_sk_k, rtree, obs, dim_decomp, obs_decomp, debug);   
         get_likelihood_site_change(L_sk_k, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, obs_decomp, is_total, debug);

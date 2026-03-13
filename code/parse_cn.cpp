@@ -523,7 +523,7 @@ void read_cn(vector<vector<vector<int>>>& s_info, const string& filename, int Ns
       while(ss >> buf) split.push_back(buf);
 
       const char* sstr = split[0].c_str();
-      if(!isdigit(*sstr) || !isdigit(*split[1].c_str()) || !isdigit(*split[2].c_str()) || !isdigit(*split[3].c_str())){
+      if(!isdigit(*sstr) || !isdigit(*split[1].c_str()) || !isdigit(*split[2].c_str())){
           cout << "\nError: invalid format in line " << line << endl;
           cout << "Each column must be an integer!" << endl;
           cout << "The sample_ID has to be ordered from 1 to the number of patient samples." << endl;
