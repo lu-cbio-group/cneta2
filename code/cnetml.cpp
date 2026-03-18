@@ -1452,7 +1452,7 @@ int main(int argc, char** const argv){
         }
 
         // 2) chromosome change per sample (gain and loss) and global max_chr_change
-        if(!is_rcn && (cn_type == EXCLUDE_SEG || cn_type == ALL)){ 
+        if(!is_rcn && (cn_type == EXCLUDE_SEG || cn_type == EXCLUDE_WGD || cn_type == ALL )){ 
             max_chr_change = *max_element(chr_max_change.begin(), chr_max_change.end());
             if(max_chr_change > 0){
                 infer_chr = 1;

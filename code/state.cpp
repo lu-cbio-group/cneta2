@@ -14,6 +14,19 @@ void print_tree_state(const evo_tree& rtree, const vector<vector<int>>& S_sk_k, 
 }
 
 
+/**
+ * @brief Extract the most likely joint estimation of ancestral nodes based on the likelihood and state tables obtained from get_ancestral_states_site or get_ancestral_states_site_decomp
+ * @param rtree     The evolutionary tree     
+ * @param knodes    The list of internal node indices in the tree, ordered from tips to root
+ * @param comps         The set of possible copy number compositions for the decomposition model, where each composition is represented as a vector of 5 integers (wgd, chr_gain, seg_gain, chr_loss, seg_loss)
+ * @param L_sk_k    The likelihood table for each node and each possible state of its parent, obtained from get_ancestral_states_site or get_ancestral_states_site_decomp               
+ * @param S_sk_k        The state table for each node and each possible state of its parent, recording the most likely state of the node given the parent state, obtained from get_ancestral_states_site or get_ancestral_states_site_decomp
+ * @param model     The model used for ancestral state reconstruction, MK, BOUNDA, or DECOMP
+ * @param cn_max            The maximum copy number considered in the model, only used for BOUNDA model
+ * @param is_total      Whether the observed copy number is total copy number (true) or haplotype-specific copy number (false), only used for BOUNDA model
+ * @param m_max         The maximum number of site changes considered in the decomposition model, only used for DECOMP model
+ * @param asr_states        The output map to store the most likely state for each node, where the key is the node index and the value is the state index
+ */
 void extract_tree_ancestral_state(const evo_tree& rtree, const vector<int>& knodes, const set<vector<int>>& comps, const vector<vector<double>>& L_sk_k, const vector<vector<int>>& S_sk_k, int model, int cn_max, int is_total, int m_max, map<int, int> &asr_states){
     int debug = 0;
 
@@ -68,6 +81,18 @@ void extract_tree_ancestral_state(const evo_tree& rtree, const vector<int>& knod
 }
 
 
+/** @brief Initialize the tables for reconstructing joint ancestral states
+ * 
+ * @param obs observed copy number at tips
+ * @param rtree the evolutionary tree
+ * @param blens vector of branch lengths for which transition probability matrices are computed
+ * @param pmat_per_blen vector of transition probability matrices for each branch length in blens
+ * @param L_sk_k likelihood table for each node and each possible state of its parent
+ * @param S_sk_k state table for each node and each possible state of its parent, recording the most likely state of the node given the parent state
+ * @param model the model used for ancestral state reconstruction, MK or BOUNDA
+ * @param nstate number of states in the model
+ * @param is_total whether the observed copy number is total copy number (true) or haplotype-specific copy number (false), only used for BOUNDA model
+ */
 void initialize_asr_table(const vector<int>& obs, const evo_tree& rtree, const vector<double>& blens, const vector<double*>& pmat_per_blen, vector<vector<double>>& L_sk_k, vector<vector<int>>& S_sk_k, int model, int nstate, int is_total){
     int debug = 0;
     if(debug){
