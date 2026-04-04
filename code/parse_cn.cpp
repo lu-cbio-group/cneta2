@@ -181,28 +181,28 @@ int allele_cn_to_state(int cnA, int cnB){
 }
 
 
-// TODO: make it general
-// only cn_max 4, 6, 8 at an individual level supported for now, can be extended to higher copy number if needed
-void set_nstates(const int max_change_haplotype, int& max_cn, vector<int>& n_states, vector<int>& sums){
-    switch (max_change_haplotype){
-        case 2:
-            max_cn = 6;
-            n_states = make_peak_vector(4); 
-            break;
-        case 3:
-            max_cn = 8;
-            n_states = make_peak_vector(5); 
-            break;        
-        default: // + 1
-            max_cn = 4;
-            n_states = make_peak_vector(3);   // the number of states corresponding to each copy number: 1,2,3,4,3,2,1 when +2 allowed
-            break;
+// Example:
+// max_change_haplotype = 1 -> make_peak_vector(3) -> 1,2,3,2,1
+// max_change_haplotype = 2 -> make_peak_vector(4) -> 1,2,3,4,3,2,1
+// max_change_haplotype = 3 -> make_peak_vector(5) -> 1,2,3,4,5,4,3,2,1
+void set_nstates(int max_change_haplotype,
+                 int& max_cn,
+                 vector<int>& n_states,
+                 vector<int>& sums) {
+    if (max_change_haplotype < 1) {
+        throw std::invalid_argument("max_change_haplotype must be >= 1");
     }
 
-    // used to get the indices of states corresponding to each copy number
+    max_cn = 2 * (max_change_haplotype + 1);
+
+    n_states = make_peak_vector(max_change_haplotype + 2);
+
+    sums.clear();
+    sums.reserve(n_states.size());
+
     int s = 0;
-    for(int i = 0; i <= max_cn; i++){
-        s = s + n_states[i];
+    for (int x : n_states) {
+        s += x;
         sums.push_back(s);
     }
 }
@@ -400,13 +400,13 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,
             int cn  = s_cn[j][2];
 
             CN_CHANGE cc;
-            cc.cn_state = cn;
+            cc.cn_state = cn;  // total CN or haplotype-specific state index
             cc.num_wgd = sample_num_wgd[i];
             cc.cn_change_chr = sample_change_chr[i][chr - 1];   // chr is 1-based in input, but sample_change_chr is 0-based
             // if there is chromosome change, adjust site change accordingly to avoid double counting
             int site_change = sample_change_site[i][j];
             
-            if(is_total){
+            if(is_total){   // adjust for WGD affecting chr gain/loss
                 if(cc.cn_change_chr != 0){   
                     if(cc.cn_change_chr % CHANGE_CHR != 0){
                         site_change = site_change - cc.cn_change_chr;
@@ -993,9 +993,10 @@ void get_chr_change(const vector<int>& sample_num_wgd,
                 cout << "Number of segments in chromosome " << c.first << " is " << cp.size() << "; avg cn: " << avg_chr_cn << "; exact num changes: " << num_change  << "; num changes: " << round_num_change << endl;
             }
            
-            if(round_num_change < MIN_CHANGE) round_num_change = MIN_CHANGE;
-            int max_chr_change = max_chr_change_haplotype * 2;
-            if(round_num_change > max_chr_change) round_num_change = max_chr_change;    
+            // This will cancel out CHR_CHANGE factor
+            // if(round_num_change < MIN_CHANGE) round_num_change = MIN_CHANGE;
+            // int max_chr_change = max_chr_change_haplotype * 2;
+            // if(round_num_change > max_chr_change) round_num_change = max_chr_change;    
             
             chr_change.push_back(round_num_change);           
         }
@@ -1099,6 +1100,7 @@ void get_chr_change_haplotype(const vector<int>& sample_num_wgd,
             chr_changeA.push_back(abs(round_num_changeA));
             chr_changeB.push_back(abs(round_num_changeB));
 
+            // need to check boundaries to obtain correct state indices
             if(round_num_changeA < MIN_CHANGE_HAPLOTYPE) round_num_changeA = MIN_CHANGE_HAPLOTYPE;
             if(round_num_changeA > max_chr_change_haplotype) round_num_changeA = max_chr_change_haplotype;
             if(round_num_changeB < MIN_CHANGE_HAPLOTYPE) round_num_changeB = MIN_CHANGE_HAPLOTYPE;
@@ -1179,9 +1181,9 @@ void get_site_change(const vector<int>& sample_num_wgd,
             cn_change = adjust_site_change_for_chr_change(cn_change, avg_cn, nwgd);  
 
             // TODO: set those outside limits of rate matrix
-            if(cn_change < MIN_CHANGE) cn_change = MIN_CHANGE;
-            int max_site_change = max_site_change_haplotype * 2;
-            if(cn_change > max_site_change) cn_change = max_site_change;
+            // if(cn_change < MIN_CHANGE) cn_change = MIN_CHANGE;
+            // int max_site_change = max_site_change_haplotype * 2;
+            // if(cn_change > max_site_change) cn_change = max_site_change;
 
             // used to set change_site for CN_CHANGE variable for this site on this chr in the sample 
             site_change.push_back(cn_change);
