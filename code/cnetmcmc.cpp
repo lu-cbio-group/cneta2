@@ -26,11 +26,12 @@ int age;
 
 // Set max_* as global variables to avoid adding more parameters in maximization
 int m_max;
-int max_wgd;
-int max_chr_change;
-int max_site_change;
+int max_wgd; // maximum number of WGD allowed, determining the dimension of rate matrix for WGD
+int max_chr_change_haplotype; // maximum number of chromosome gain/loss allowed for each haplotype, determining the dimension of rate matrix for chromosome gain/loss
+int max_site_change_haplotype; // maximum number of site duplication/deletion allowed for each haplotype, determining the dimension of rate matrix for segment duplication/deletion
 
 int cn_max;
+
 int is_total; // whether or not the input is total copy number
 
 int model;
@@ -43,22 +44,19 @@ int num_invar_bins;   // number of invariant sites
 
 int cn_type; // 0-ONLY_SEG: only use segments level CN changes; 1-EXCLUDE_SEG: exclude segment level CN changes; 2-EXCLUDE_CHR: exclude chromosome level changes; 3-EXCLUDE_WGD: exclude whole genome doubling; 4-ALL: three types of mutations
 
-int infer_wgd; // whether or not to infer WGD status of a sample, called in initialize_lnl_table_decomp
-int infer_chr; // whether or not to infer chromosome gain/loss status of a sample, called in initialize_lnl_table_decomp
-
 int nstate;
 
 /********* derived from input ***********/
 map<int, vector<vector<int>>> vobs;   // CNP for each site, grouped by chr
+map<int, vector<vector<CN_CHANGE>>> vobs_change;   // CNP for each site, grouped by chr
 vector<double> tobs; // input times for each sample, should be the same for all trees, defined when reading input, used in likelihood computation
 double max_tobs;
 
 int Nchar;  // number of sites
 
-
-vector<int> sample_num_wgd;  // possible number of WGD events
-vector<vector<int>> sample_change_chr;
-vector<int> sample_max_cn;
+vector<int> sample_num_wgd;  // estimated number of WGD events from observed copy numbers for each sample
+vector<int> chr_max_change;  
+vector<int> site_max_change;
 
 map<int, set<vector<int>>> decomp_table;  // possible state combinations for observed copy numbers
 set<vector<int>> comps;
@@ -691,7 +689,7 @@ void update_topology(evo_tree& rtree, int model, double& log_likelihood, int& na
       // }else{
         // rtree.print();
       if(model == DECOMP){
-          prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+          prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
       }else{
           prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
       }
@@ -715,7 +713,7 @@ void update_topology(evo_tree& rtree, int model, double& log_likelihood, int& na
     }else{
         // ntree.print();
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -788,7 +786,7 @@ void update_blen(evo_tree& rtree, int branch_i, int model, double& log_likelihoo
     }
     else{
         if(model == DECOMP){
-            prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
         }
@@ -833,7 +831,7 @@ void update_blen(evo_tree& rtree, int branch_i, int model, double& log_likelihoo
     }
     else{
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -895,7 +893,7 @@ void update_tree_height(evo_tree& rtree, int model, double& log_likelihood, int&
     }
     else{
         if(model == DECOMP){
-            prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
         }
@@ -934,7 +932,7 @@ void update_tree_height(evo_tree& rtree, int model, double& log_likelihood, int&
     }
     else{
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -989,7 +987,7 @@ void update_pop_size(evo_tree& rtree, double& log_likelihood, int& naccepts, int
     }
     else{
         if(model == DECOMP){
-            prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
         }
@@ -1009,7 +1007,7 @@ void update_pop_size(evo_tree& rtree, double& log_likelihood, int& naccepts, int
     }
     else{
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -1061,7 +1059,7 @@ void update_mutation_rates(evo_tree& rtree, double& log_likelihood, int& naccept
     }
     else{
         if(model == DECOMP){
-            prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
         }
@@ -1082,7 +1080,7 @@ void update_mutation_rates(evo_tree& rtree, double& log_likelihood, int& naccept
     }
     else{
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -1134,7 +1132,7 @@ void update_mutation_rates_lnormal(evo_tree& rtree, int model, double& log_likel
         prev_log_likelihood = 1;
     }else{
         if(model == DECOMP){
-            prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
         }
@@ -1155,7 +1153,7 @@ void update_mutation_rates_lnormal(evo_tree& rtree, int model, double& log_likel
     }
     else{
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -1207,7 +1205,7 @@ void update_deletion_rates_lnormal(evo_tree& rtree, int model, double& log_likel
     }
     else{
         if(model == DECOMP){
-            prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
         }
@@ -1228,7 +1226,7 @@ void update_deletion_rates_lnormal(evo_tree& rtree, int model, double& log_likel
     }
     else{
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -1281,7 +1279,7 @@ void update_duplication_rates_lnormal(evo_tree& rtree, int model, double& log_li
     }
     else{
         if(model == DECOMP){
-            prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
         }
@@ -1302,7 +1300,7 @@ void update_duplication_rates_lnormal(evo_tree& rtree, int model, double& log_li
     }
     else{
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -1354,7 +1352,7 @@ void update_cgain_rates_lnormal(evo_tree& rtree, int model, double& log_likeliho
     }
     else{
         if(model == DECOMP){
-            prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
         }
@@ -1375,7 +1373,7 @@ void update_cgain_rates_lnormal(evo_tree& rtree, int model, double& log_likeliho
     }
     else{
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -1428,7 +1426,7 @@ void update_closs_rates_lnormal(evo_tree& rtree, int model, double& log_likeliho
     }
     else{
         if(model == DECOMP){
-            prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
         }
@@ -1449,7 +1447,7 @@ void update_closs_rates_lnormal(evo_tree& rtree, int model, double& log_likeliho
     }
     else{
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -1502,7 +1500,7 @@ void update_wgd_rates_lnormal(evo_tree& rtree, int model, double& log_likelihood
     }
     else{
         if(model == DECOMP){
-            prev_log_likelihood = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            prev_log_likelihood = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             prev_log_likelihood = get_likelihood_revised(rtree, vobs, lnl_type);
         }
@@ -1523,7 +1521,7 @@ void update_wgd_rates_lnormal(evo_tree& rtree, int model, double& log_likelihood
     }
     else{
         if(model == DECOMP){
-            log_likelihood = get_likelihood_decomp(ntree, vobs, obs_decomp, comps, lnl_type);
+            log_likelihood = get_likelihood_change(ntree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             log_likelihood = get_likelihood_revised(ntree, vobs, lnl_type);
         }
@@ -1811,13 +1809,7 @@ void run_mcmc(evo_tree& rtree, int model, const int n_draws, const int n_burnin,
                             exit(1);
                         }
                     }
-                    // if(model == DECOMP){
-                    //     if(max_wgd == 0) prob_move_wgd = 0;
-                    //     if(max_chr_change == 0){
-                    //         prob_move_gain = 0;
-                    //         prob_move_loss = 0;
-                    //     }
-                    // }
+
                     double probs[5] = {prob_move_dup, prob_move_del, prob_move_gain, prob_move_loss, prob_move_wgd};
                     dis = gsl_ran_discrete_preproc(5, probs);
                     int rate_update_tpye = gsl_ran_discrete(r, dis);
@@ -2121,7 +2113,7 @@ int main (int argc, char ** const argv) {
     double lambda, sigma_blen, lambda_all, lambda_topl, sigma_height;
     double dirichlet_param, tlen_shape, tlen_scale;
     double rate_shape, rate_scale;
-    string datafile, timefile, trace_param_file, trace_tree_file, rtreefile, config_file, seg_file;
+    string data_file, time_file, trace_param_file, trace_tree_file, rtreefile, config_file, seg_file, meta_file;
     string dirichlet_alpha;
     int sample_prior, fix_topology;
     double rmu, rdup_rate, rdel_rate, rgain_rate, rloss_rate, rwgd_rate;
@@ -2135,15 +2127,9 @@ int main (int argc, char ** const argv) {
     int init_tree;
     string file_itree;
 
-    vector<int> sample_num_wgd;  // estimated number of WGD events from observed copy numbers for each sample
-    vector<vector<int>> sample_change_chr;  // estimated change of chromosome gain/loss from observed copy numbers for each sample
-    vector<int> chr_max_change;  
-    vector<vector<int>> sample_change_site;  // estimated change of site duplication/deletion from observed copy numbers for each sample    
-    vector<int> site_max_change;
-    vector<int> sample_max_cn;
-    vector<double> sample_avg_cn;  // estimated sample ploidy
-    vector<map<int, vector<int>>> sample_chr_cn; // chromosome copy numbers grouped by chr for each sample
-
+    int max_wgd_sample = 0;    // maximum number of WGD, add _sample to distinguish from max_wgd which is the user-specified maximum number of WGD allowed in the model, determining the dimension of rate matrix for WGD
+    int max_chr_change = 0; // maximum number of chromosome changes, TODO: haplotype-specific
+    int max_site_change = 0;  // maximum number of site (segment/bin) changes, haplotype-specific
 
     namespace po = boost::program_options;
     po::options_description generic("Generic options");
@@ -2153,14 +2139,20 @@ int main (int argc, char ** const argv) {
     ;
     po::options_description required("Required parameters");
     required.add_options()
-            ("cfile,c", po::value<string>(&datafile)->required(), "input copy number profile file")
+            ("cfile,c", po::value<string>(&data_file)->required(), "input copy number profile file")
     ;
     po::options_description optional("Optional parameters");
     optional.add_options()
-            ("tfile,t", po::value<string>(&timefile)->default_value(""), "input time information file")
+            ("tfile,t", po::value<string>(&time_file)->default_value(""), "input time information file")
             ("config_file", po::value<string>(&config_file)->default_value(""), "configuration file of input parameters")
+            ("meta_file", po::value<string>(&meta_file)->default_value(""), "input meta information file, including known number of WGDs (required when meta_file is provided), chromosome gain/loss (optional, a list of copy number changes for each chromosome separated by comma for each sample), and site duplication/deletion inferred from observed copy numbers (optional, a list of copy number changes for each site on each chromosome (chr name followed by colon and then site changes separated by comma) separated by semi-colon for each sample)")
+
             ("Ns,s", po::value<int>(&Ns)->default_value(5), "number of samples or regions")
             ("cn_max", po::value<int>(&cn_max)->default_value(4), "maximum copy number of a segment")
+            ("max_wgd", po::value<int>(&max_wgd)->default_value(1), "maximum number of WGD allowed, determining the dimension of rate matrix for WGD")
+            ("max_chr_change_haplotype", po::value<int>(&max_chr_change_haplotype)->default_value(1), "maximum number of chromosome gain/loss allowed for each haplotype, determining the dimension of rate matrix for chromosome gain/loss")
+            ("max_site_change_haplotype", po::value<int>(&max_site_change_haplotype)->default_value(2), "maximum number of site duplication/deletion allowed for each haplotype, determining the dimension of rate matrix for site duplication/deletion")
+
             ("is_bin", po::value<int>(&is_bin)->default_value(1), "whether or not the input copy number is for each bin. If not, the input copy number is read as it is")
             ("incl_all", po::value<int>(&incl_all)->default_value(1), "whether or not to include all the input copy numbers without further propressing")
             ("is_total", po::value<int>(&is_total)->default_value(1), "whether or not the input is total copy number")
@@ -2189,9 +2181,6 @@ int main (int argc, char ** const argv) {
             ("file_itree", po::value<string>(&file_itree)->default_value(""), "path of inital tree for MCMC sampling")
 
             ("m_max", po::value<int>(&m_max)->default_value(1), "maximum number of copies of a segment in a chromosome")
-            ("max_wgd", po::value<int>(&max_wgd)->default_value(1), "maximum number of WGD")
-            ("max_chr_change", po::value<int>(&max_chr_change)->default_value(1), "maximum number of chromosome changes")
-            ("max_site_change", po::value<int>(&max_site_change)->default_value(2), "maximum number of segment changes")
 
             ("rtreefile", po::value<string>(&rtreefile)->default_value(""), "reference tree file")
             ("rmu", po::value<double>(&rmu)->default_value(0.02), "mutation rate of the reference tree")
@@ -2331,9 +2320,9 @@ int main (int argc, char ** const argv) {
     }
 
     INPUT_PROPERTY input_property{Ns, cn_max, model, is_total, 0, is_bin, incl_all};
-    INPUT_DATA input_data{num_invar_bins, num_total_bins, Nchar, sample_num_wgd, sample_change_chr, sample_change_site, chr_max_change, site_max_change, sample_max_cn, sample_avg_cn, sample_chr_cn};
+    INPUT_DATA input_data{num_invar_bins, num_total_bins, Nchar, sample_num_wgd, chr_max_change, site_max_change};
 
-    read_data_var_regions_by_chr_state(data, datafile, input_property, input_data, seg_file, debug);
+    read_data_var_regions_by_chr_state(data, data_file, seg_file, input_property, input_data, debug);
     // input vector for tree building
     get_obs_vector_by_chr_state(data, vobs, Ns);
 
@@ -2342,8 +2331,6 @@ int main (int argc, char ** const argv) {
     num_total_bins = input_data.num_total_bins;
     Nchar = input_data.seg_size;
     sample_num_wgd = input_data.sample_num_wgd;
-    sample_change_chr = input_data.sample_change_chr;
-    sample_max_cn = input_data.sample_max_cn;
 
     // internal node indices for likelihood calculation
     int nleaf = Ns + 1;
@@ -2351,7 +2338,7 @@ int main (int argc, char ** const argv) {
     knodes.push_back(nleaf);    // root node
 
     // tobs already defined globally
-    tobs = read_time_info(timefile, Ns, age);
+    tobs = read_time_info(time_file, Ns, age);
     if(cons){
         cout << "The age of patient at the first sampling time: " << age << endl;
     }
@@ -2435,18 +2422,17 @@ int main (int argc, char ** const argv) {
     if(model == DECOMP){
         // adjust_m_max();
         cout << "maximum number of WGD events is " << max_wgd << endl;
-        cout << "maximum number of chromosome gain/loss events on one chromosome is " << max_chr_change << endl;
-        cout << "maximum number of site duplication/deletion events is " << max_site_change << endl;
-        build_decomp_table(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
-        // build_decomp_table_withm(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
+        cout << "maximum number of chromosome gain/loss events on one chromosome is " << max_chr_change_haplotype << endl;
+        cout << "maximum number of site duplication/deletion events is " << max_site_change_haplotype << endl;
+
         cout << "\tNumber of states is " << comps.size() << endl;
-        print_decomp_table(decomp_table);
+        // print_decomp_table(decomp_table);
     }
 
     max_tobs = *max_element(tobs.begin(), tobs.end());
-    lnl_type = {model, cn_max, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, cn_type, infer_wgd, infer_chr, knodes};
+    lnl_type = {model, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, cn_type, knodes};
 
-    obs_decomp = {m_max, max_wgd, max_chr_change, max_site_change, sample_num_wgd, sample_change_chr};
+    obs_decomp = {m_max, max_wgd_sample, max_chr_change_haplotype, max_site_change_haplotype};
 
     vector<double> ref_rates;
     if(model == MK){
@@ -2490,7 +2476,7 @@ int main (int argc, char ** const argv) {
         cout << "\tGetting start tree likelihood" << endl;
         double Ls = 0;
         if(model == DECOMP){
-            Ls = get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
+            Ls = get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, debug);
         }else{
             Ls = get_likelihood_revised(rtree, vobs, lnl_type);
         }

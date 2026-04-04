@@ -32,62 +32,12 @@ struct OBS_DECOMP{
   int max_chr_change;
   int max_site_change;
 
-  // used in initialize_lnl_table_decomp, also defined in INPUT_DATA
-  vector<int> sample_num_wgd;  // possible number of WGD events, used in likelihood table initialization
-  vector<vector<int>> sample_change_chr; // possible number of chr-level events, used in likelihood table initialization
-  // vector<int> sample_max_cn;  // not used in likelihood computation
-
   void print() const {
     cout << "OBS_DECOMP:" << endl;
     cout << "\tm_max: " << m_max << endl;
     cout << "\tmax_wgd: " << max_wgd << endl;
     cout << "\tmax_chr_change: " << max_chr_change << endl;
     cout << "\tmax_site_change: " << max_site_change << endl;
-
-    // cout << "\tsample_num_wgd: ";
-    // for (int v : sample_num_wgd) {
-    //     cout << v << " ";
-    // }
-    // cout << endl;
-
-    // cout << "\tsample_change_chr:" << endl;
-    // for (size_t i = 0; i < sample_change_chr.size(); ++i) {
-    //     cout << "\t\t[" << i << "]: ";
-    //     for (int v : sample_change_chr[i]) {
-    //         cout << v << " ";
-    //     }
-    //     cout << endl;
-    // }
-  }
-};
-
-
-// TODO: merged duplicated data structures
-// information derived from input data, used in ancestral state reconstruction
-struct MAX_DECOMP{
-  int m_max;   // maximum copy of a segment before chr-level events, used in likelihood table initialization
-
-  // used to get dimension of Pmatrix at different levels
-  int max_wgd;
-  int max_chr_change;
-  int max_site_change;
-};
-
-
-// information derived from input data, not used for now
-struct MAX_CHANGE{
-  // used to get dimension of Pmatrix at different levels
-  int max_wgd;
-  int max_chr_change;
-  int max_site_change;
-
-  // TODO: may be extended in the future to distinguish gain/loss and arm-level changes
-
-  void print() const {
-      cout << "MAX_CHANGE:" << endl;
-      cout << "\tMax WGD: " << max_wgd << endl;
-      cout << "\tMax chromosome change: " << max_chr_change << endl;
-      cout << "\tMax site/segment change: " << max_site_change << endl;
   }
 };
 
@@ -257,6 +207,11 @@ struct PROB_DECOMP1{
 struct LNL_TYPE{
   int model;
   int cn_max;
+
+  int max_wgd;
+  int max_chr_change_haplotype;
+  int max_site_change_haplotype;
+  
   int is_total; // whether or not the input is total copy number
 
   // used to check tree validity
@@ -269,9 +224,6 @@ struct LNL_TYPE{
   int num_invar_bins; // used in get_likelihood_*
 
   int cn_type; // type of copy number changes modeled (0: only segmental CNAs; 1: only chromosomal and WGD CNAs; 2: segmental and WGD CNAs; 3: segmental and chromosomal CNAs; 4: all types of CNAs)
-
-  int infer_wgd; // whether or not to infer WGD status of a sample, called in initialize_lnl_table_decomp
-  int infer_chr; // whether or not to infer chromosome gain/loss status of a sample, called in initialize_lnl_table_decomp
 
   vector<int> knodes;
 };
@@ -421,63 +373,30 @@ double extract_tree_lnl(vector<vector<double>>& L_sk_k, int Ns, int model);
 
 /************** functions for model DECOMP (copy number change) **************/
 
-void initialize_lnl_table_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& sample_num_wgd, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug);
-double compute_child_likelihood_wgd(int node, const int num_wgd, vector<vector<double>>& lnl_table_wgd, const double* pbl_wgd, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int debug);
-void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int is_total, int debug);
+void initialize_lnl_table_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& sample_num_wgd, const DIM_DECOMP& dim_decomp, int debug);
+double compute_child_likelihood_wgd(int node, const int num_wgd, vector<vector<double>>& lnl_table_wgd, const double* pbl_wgd, const DIM_DECOMP& dim_decomp, int debug);
+void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug);
 
 
 void set_lnl_table_change(int state_chr, int row, int peak_sum_haplotype, int is_total, vector<vector<double>>& L_sk_k);
-void initialize_lnl_table_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const vector<CN_CHANGE>& obs_change, const DIM_DECOMP& dim_decomp, const OBS_DECOMP&obs_decomp, int debug);
 
 // not used for now due to pointer issues
-void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int debug);
-void build_transition_matrices(PMAT_DECOMP& pmat_decomp, const evo_tree& rtree, const vector<int>& knodes, const QMAT_DECOMP& qmat_decomp, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int debug); 
+void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
+void build_transition_matrices(PMAT_DECOMP& pmat_decomp, const evo_tree& rtree, const vector<int>& knodes, const QMAT_DECOMP& qmat_decomp, const DIM_DECOMP& dim_decomp, int debug); 
 
 
-LNL_VAL compute_child_likelihood_change(int node, const CN_CHANGE& sk, const LNL_TABLE& L_sk_k, const PROB_DECOMP1& prob_decomp, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int debug);
+LNL_VAL compute_child_likelihood_change(int node, const CN_CHANGE& sk, const LNL_TABLE& L_sk_k, const PROB_DECOMP1& prob_decomp, const DIM_DECOMP& dim_decomp, int debug);
 
-LNL_VAL get_prob_children_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const CN_CHANGE& sk, PROB_DECOMP1& prob_decompi, PROB_DECOMP1& prob_decompj, const OBS_DECOMP& obs_decomp, const DIM_DECOMP& dim_decomp, int ni, int nj, int is_total, int debug);
+LNL_VAL get_prob_children_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const CN_CHANGE& sk, PROB_DECOMP1& prob_decompi, PROB_DECOMP1& prob_decompj, const DIM_DECOMP& dim_decomp, int ni, int nj, int debug);
 
-void get_likelihood_site_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, int is_total, int debug);
+void get_likelihood_site_change(LNL_TABLE& L_sk_k, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug);
 
-double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, int is_total, int debug);
+double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, int debug);
 
-double extract_tree_lnl_change(const LNL_TABLE& L_sk_k, const OBS_DECOMP& obs_decomp, int Ns, int debug);  
+double extract_tree_lnl_change(const LNL_TABLE& L_sk_k, int Ns, int debug);  
 
 
 
-
-/************** functions for model DECOMP (copy number state decomposition) **************/
-
-// L_sk_k has one row for each tree node and one column for each possible state; chr starting from 1
-// This function is critical in obtaining correct likelihood. If one tip is not initialized, the final likelihood will be 0.
-// nstate = comps.size();
-vector<vector<double>> initialize_lnl_table_decomp(vector<int>& obs, const OBS_DECOMP& obs_decomp, int chr, const evo_tree& rtree, const set<vector<int>>& comps, int infer_wgd, int infer_chr, int cn_max, int is_total = 1);
-
-
-// Assume the likelihood table is for each total copy number (no WGD order considered, deprecated)
-double get_prob_children_decomp(vector<vector<double>>& L_sk_k, const evo_tree& rtree, map<int, set<vector<int>>>& decomp_table, int sk, int cn_max, int nstate, PROB_DECOMP& prob_decomp, DIM_DECOMP& dim_decomp, int ni, int nj, int bli, int blj, int is_total);
-
-
-// Assume the likelihood table is for each combination of states
-double get_prob_children_decomp2(vector<vector<double>>& L_sk_k, const evo_tree& rtree, const set<vector<int>>& comps, int sk, PROB_DECOMP& prob_decomp, DIM_DECOMP& dim_decomp, int ni, int nj, int bli, int blj, int cn_max, int nstate, int is_total);
-
-
-// Get the likelihood on one site of a chromosome
-// Assuming each observed copy number is composed of three type of events.
-// Sum over all possible states for initial and final nodes
-// Allow at most one WGD event along a branch
-void get_likelihood_site_decomp(vector<vector<double>>& L_sk_k, const evo_tree& rtree, const set<vector<int>>& comps, const vector<int>& knodes, PMAT_DECOMP& pmat_decomp, DIM_DECOMP& dim_decomp, int cn_max, int is_total);
-
-// Used when WGD is considered, dealing with mutations of different types at different levels (no WGD order considered, deprecated)
-double get_likelihood_chr_decomp(const map<int, vector<vector<int>>>& vobs, const OBS_DECOMP& obs_decomp, const evo_tree& rtree, const set<vector<int>>& comps, const vector<int>& knodes, PMAT_DECOMP& pmat_decomp, DIM_DECOMP& dim_decomp, int infer_wgd, int infer_chr, int use_repeat, int cn_max, int is_total);
-
-// Computing likelihood when WGD and chr gain/loss are incorporated
-// Assume likelihood is for haplotype-specific information
-double get_likelihood_decomp(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int debug = 0);
-
-// Get the likelihood of the tree from likelihood table of state combinations
-double extract_tree_lnl_decomp(vector<vector<double>>& L_sk_k, const set<vector<int>>& comps, int Ns);
 
 #endif

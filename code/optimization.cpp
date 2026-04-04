@@ -1076,41 +1076,41 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         }else{ // for other models
           // only update those estimated rates
           switch (lnl_type.cn_type){
-          case ALL:
-            rtree.dup_rate = x[nparams_est + 1];
-            rtree.del_rate = x[nparams_est + 2];
-            rtree.chr_gain_rate = x[nparams_est + 3];
-            rtree.chr_loss_rate = x[nparams_est + 4];
-            rtree.wgd_rate = x[nparams_est + 5];
-            break;
+            case ALL:
+                rtree.dup_rate = x[nparams_est + 1];
+                rtree.del_rate = x[nparams_est + 2];
+                rtree.chr_gain_rate = x[nparams_est + 3];
+                rtree.chr_loss_rate = x[nparams_est + 4];
+                rtree.wgd_rate = x[nparams_est + 5];
+                break;
 
-          case EXCLUDE_WGD:
-            rtree.dup_rate = x[nparams_est + 1];
-            rtree.del_rate = x[nparams_est + 2];
-            rtree.chr_gain_rate = x[nparams_est + 3];
-            rtree.chr_loss_rate = x[nparams_est + 4];
-            break;
+            case EXCLUDE_WGD:
+                rtree.dup_rate = x[nparams_est + 1];
+                rtree.del_rate = x[nparams_est + 2];
+                rtree.chr_gain_rate = x[nparams_est + 3];
+                rtree.chr_loss_rate = x[nparams_est + 4];
+                break;
 
-          case ONLY_SEG:
-            rtree.dup_rate = x[nparams_est + 1];
-            rtree.del_rate = x[nparams_est + 2];
-            break;
+            case ONLY_SEG:
+                rtree.dup_rate = x[nparams_est + 1];
+                rtree.del_rate = x[nparams_est + 2];
+                break;
 
-          case EXCLUDE_SEG:
-            rtree.chr_gain_rate = x[nparams_est + 1];
-            rtree.chr_loss_rate = x[nparams_est + 2];
-            rtree.wgd_rate = x[nparams_est + 3];
-            break;    
+            case EXCLUDE_SEG:
+                rtree.chr_gain_rate = x[nparams_est + 1];
+                rtree.chr_loss_rate = x[nparams_est + 2];
+                rtree.wgd_rate = x[nparams_est + 3];
+                break;    
 
-          case EXCLUDE_CHR:
-            rtree.dup_rate = x[nparams_est + 1];
-            rtree.del_rate = x[nparams_est + 2];
-            rtree.wgd_rate = x[nparams_est + 3];
-            break; 
+            case EXCLUDE_CHR:
+                rtree.dup_rate = x[nparams_est + 1];
+                rtree.del_rate = x[nparams_est + 2];
+                rtree.wgd_rate = x[nparams_est + 3];
+                break; 
 
-          default:
-            cerr << "Unknown CN type" << endl;  
-            exit(EXIT_FAILURE);
+            default:
+                cerr << "Unknown CN type" << endl;  
+                exit(EXIT_FAILURE);
           }
 
           if(debug){
@@ -1274,12 +1274,12 @@ void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const ma
 	}
 
 	switch(trace){
-  	case 2: tr = 0; break;
-  	case 3: tr = nREPORT; break;
-  	case 4: tr = 99; break;
-  	case 5: tr = 100; break;
-  	case 6: tr = 101; break;
-  	default: tr = -1; break;
+        case 2: tr = 0; break;
+        case 3: tr = nREPORT; break;
+        case 4: tr = 99; break;
+        case 5: tr = 100; break;
+        case 6: tr = 101; break;
+        default: tr = -1; break;
 	}
 
 	*fail = 0;
@@ -1294,7 +1294,7 @@ void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const ma
 		setulb(n, m, x, l, u, nbd, &f, g, factr, &pgtol, wa, iwa, task, tr, lsave, isave, dsave);
 		/*    Rprintf("in lbfgsb - %s\n", task);*/
 		if(strncmp(task, "FG", 2) == 0){
-      f = optimGradient(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, n, x, g);
+            f = optimGradient(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, n, x, g);
 			if(!isfinite(f)){
 				cerr << "L-BFGS-B needs finite values of 'fn'" << endl;
 				exit(EXIT_FAILURE);

@@ -984,7 +984,7 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
     nex_tree.close();
 
     // branch length as number of mutations
-    ofile_nex =  ofile + ".nmut.nex";
+    ofile_nex = ofile + ".nmut.nex";
     ofstream nex_tree2(ofile_nex);
     precision = 0;
     newick = min_nlnl_tree.make_newick_nmut(precision, nmuts);
@@ -1138,23 +1138,23 @@ void print_desc(int cons, int estmu, int correct_bias, int use_repeat, int optim
 
     switch(model){
         case MK:{
-            cout << "\nAssuming Mk model " << endl;
+            cout << "\nAssuming Mk model (deprecated) " << endl;
             break;
         }
         case BOUNDT:{
-            cout << "\nAssuming One-step bounded model of total copy number" << endl;
+            cout << "\nAssuming One-step bounded model of total copy number (deprecated)" << endl;
             break;
         }
         case BOUNDA:{
-            cout << "\nAssuming One-step bounded model of haplotype-specific copy number" << endl;
+            cout << "\nAssuming One-step bounded model of haplotype-specific copy number (CNTEML)" << endl;
             break;
         }
         case DECOMP:{
-            cout << "\nAssuming independent Markov chains" << endl;
-            if(!is_total){
-                cout << "This model only supports total copy number for now!" << endl;
-                exit(EXIT_FAILURE);
-            }
+            cout << "\nAssuming independent Markov chains of haplotype-specific copy number changes (CNTEML2)" << endl;
+            // if(!is_total){
+            //     cout << "This model only supports total copy number for now!" << endl;
+            //     exit(EXIT_FAILURE);
+            // }
             break;
         }
         default:{
@@ -1167,6 +1167,7 @@ void print_desc(int cons, int estmu, int correct_bias, int use_repeat, int optim
 
 int main(int argc, char** const argv){
     TimePoint t_program_start = now();
+
     /********* input parameters ***********/
     int debug;
     unsigned seed;
@@ -1179,24 +1180,25 @@ int main(int argc, char** const argv){
     int Ns;   // number of samples
     int age = MAX_AGE;
 
-    int cn_max;
     int is_total; // whether or not the input is total copy number
 
+    int cn_max; // maximum copy number allowed in the model, used in bounded model and converstion of haplotype-specific copy number to state index in rate matrix
+    int max_wgd; // maximum number of WGD allowed, determining the dimension of rate matrix for WGD
+    int max_chr_change_haplotype; // maximum number of chromosome gain/loss allowed for each haplotype, determining the dimension of rate matrix for chromosome gain/loss
+    int max_site_change_haplotype; // maximum number of site duplication/deletion allowed for each haplotype, determining the dimension of rate matrix for segment duplication/deletion
+
     int model;
-    int cons;
-    int estmu;
+    int cons;   // whether or not to constrain branch lengths by sampling time, used in likelihood computation when optimizing branch lengths
+    int estmu;  // whether or not to estimate mutation rates, used in likelihood computation when optimizing branch lengths
 
     int use_repeat;   // whether or not to use repeated site patterns, used in get_likelihood_chr*
     int correct_bias; // Whether or not to correct acquisition bias, used in get_likelihood_*
 
     int cn_type; // type of copy number changes modeled (0: only segmental CNAs; 1: only chromosomal and WGD CNAs; 2: segmental and WGD CNAs; 3: all types of CNAs)
 
-    int infer_wgd; // whether or not to infer WGD status of a sample, called in initialize_lnl_table_decomp
-    int infer_chr; // whether or not to infer chromosome gain/loss status of a sample, called in initialize_lnl_table_decomp
+    int nstate; // number of states in the model, used in likelihood computation
 
-    int nstate;
-
-    double scale_tobs;
+    double scale_tobs;  // scaling factor for input times, used in likelihood computation when branch length is constrained by sampling time
 
     /********* derived from input ***********/
     map<int, vector<vector<int>>> vobs;   // CNP for each site, grouped by chr
@@ -1204,21 +1206,19 @@ int main(int argc, char** const argv){
     vector<double> tobs; // input times for each sample, should be the same for all trees, defined when reading input, used in likelihood computation
     double max_tobs;
 
+    // inferred from observed copy numbers, may also be read from input meta file
+    // use original change values for total copy number and index of rate matrix for haplotype-specific copy number
     vector<int> sample_num_wgd;  // estimated number of WGD events from observed copy numbers for each sample
-    vector<vector<int>> sample_change_chr;  // estimated change of chromosome gain/loss from observed copy numbers for each sample
     vector<int> chr_max_change;  
-    vector<vector<int>> sample_change_site;  // estimated change of site duplication/deletion from observed copy numbers for each sample    
     vector<int> site_max_change;
-    vector<int> sample_max_cn;
-    vector<double> sample_avg_cn;  // estimated sample ploidy
-    vector<map<int, vector<int>>> sample_chr_cn; // chromosome copy numbers grouped by chr for each sample
 
     // Set max_* as global variables to avoid adding more parameters in maximization
     int m_max = 1;   // maximum number of site copies before chromosome gain/loss
-    int max_wgd = 0;    // maximum number of WGD
-    int max_chr_change = 0; // maximum number of chromosome changes
-    int max_site_change = 0;  // maximum number of site (segment/bin) changes
 
+    // estimated from observed copy numbers, may also be read from input meta file, used to set the presence of rate matrix for each type of copy number change
+    int max_wgd_sample = 0;    // maximum number of WGD, add _sample to distinguish from max_wgd which is the user-specified maximum number of WGD allowed in the model, determining the dimension of rate matrix for WGD
+    int max_chr_change = 0; // maximum number of chromosome changes, TODO: haplotype-specific
+    int max_site_change = 0;  // maximum number of site (segment/bin) changes, haplotype-specific
 
     map<int, set<vector<int>>> decomp_table;  // possible state combinations for observed copy numbers
     set<vector<int>> comps;
@@ -1233,7 +1233,7 @@ int main(int argc, char** const argv){
     double ssize;
     double mu, dup_rate, del_rate, chr_gain_rate, chr_loss_rate, wgd_rate, max_rate;
     double beta, gtime;
-    string datafile, timefile, ofile, tree_file, dir_itrees, seg_file;
+    string data_file, time_file, meta_file, ofile, tree_file, dir_itrees, seg_file;
     int is_bin, incl_all, is_rcn;
     int infer_marginal_state, infer_joint_state;
     // double min_asr;
@@ -1246,17 +1246,18 @@ int main(int argc, char** const argv){
     ;
     po::options_description required("Required parameters");
     required.add_options()
-     ("cfile,c", po::value<string>(&datafile)->required(), "input copy number profile file")
+     ("cfile,c", po::value<string>(&data_file)->required(), "input copy number profile file")
      ;
     po::options_description optional("Optional parameters");
     optional.add_options()
-     ("tfile,t", po::value<string>(&timefile)->default_value(""), "input time information file")
+     ("tfile,t", po::value<string>(&time_file)->default_value(""), "input time information file")
+     ("meta_file", po::value<string>(&meta_file)->default_value(""), "input meta information file, including known number of WGDs (required when meta_file is provided), chromosome gain/loss (optional, a list of copy number changes for each chromosome separated by comma for each sample), and site duplication/deletion inferred from observed copy numbers (optional, a list of copy number changes for each site on each chromosome (chr name followed by colon and then site changes separated by comma) separated by semi-colon for each sample)")
 
     ("nsample,s", po::value<int>(&Ns)->default_value(5), "number of samples or regions")
     ("ofile,o", po::value<string>(&ofile)->default_value("maxL-tree.txt"), "output tree file with maximum likelihood")
     ("seg_file", po::value<string>(&seg_file)->default_value(""), "output file with the postprocessed copy number matrix for tree building ")
 
-    ("tree_file", po::value<string>(&tree_file)->default_value(""), "input tree file")
+    ("tree_file", po::value<string>(&tree_file)->default_value(""), "input tree file when the tree is given")
 
     ("mode", po::value<int>(&mode)->default_value(0), "running mode of the program (0: Compute maximum likelihood tree from copy number profile; 1: Test on example data; 2: Compute the likelihood of a given tree with branch length; 3: Compute the maximum likelihood of a given tree; 4: Infer ancestral states of a given tree from copy number profile; 5: get segment file only)")
     ("bootstrap,b", po::value<int>(&bootstrap)->default_value(0), "doing bootstrap or not")
@@ -1267,7 +1268,10 @@ int main(int argc, char** const argv){
     ("optim", po::value<int>(&optim)->default_value(1), "method of optimization (0: Simplex, 1: L-BFGS-B)")
 
     // limits on copy number changes
-    ("cn_max", po::value<int>(&cn_max)->default_value(4), "maximum copy number of a segment allowed by the program")
+    ("cn_max", po::value<int>(&cn_max)->default_value(4), "maximum copy number of a segment allowed by the bounded model, used in likelihood computation")
+    ("max_wgd", po::value<int>(&max_wgd)->default_value(1), "maximum number of WGD allowed, determining the dimension of rate matrix for WGD")
+    ("max_chr_change_haplotype", po::value<int>(&max_chr_change_haplotype)->default_value(1), "maximum number of chromosome gain/loss allowed for each haplotype, determining the dimension of rate matrix for chromosome gain/loss")
+    ("max_site_change_haplotype", po::value<int>(&max_site_change_haplotype)->default_value(2), "maximum number of site duplication/deletion allowed for each haplotype, determining the dimension of rate matrix for site duplication/deletion")
     ("m_max", po::value<int>(&m_max)->default_value(1), "maximum number of copies of a segment in a chromosome")
 
     // types of copy number changes
@@ -1277,9 +1281,6 @@ int main(int argc, char** const argv){
     ("incl_all", po::value<int>(&incl_all)->default_value(1), "whether or not to include all the input copy numbers for phylogeny inference")
 
     ("cn_type", po::value<int>(&cn_type), "Type of copy number changes to consider (0: only segment-level mutations (ONLY_SEG), 1: only chromosome gain/loss and whole genome doubling (EXCLUDE_SEG), 2: only duplication/deletion and whole genome doubling (EXCLUDE_CHR), 3: only duplication/deletion and chromosome gain/loss (EXCLUDE_WGD), 4: all types of mutations (ALL))")
-
-    ("infer_wgd", po::value<int>(&infer_wgd)->default_value(0), "whether or not to infer WGD status of a sample from its ABSOLUTE copy numbers")
-    ("infer_chr", po::value<int>(&infer_chr)->default_value(0), "whether or not to infer chromosome gain/loss status of a sample from its ABSOLUTE copy numbers")
 
     ("use_repeat", po::value<int>(&use_repeat)->default_value(1), "whether or not to use repeated site patterns when computing the likelihood")
     ("correct_bias", po::value<int>(&correct_bias)->default_value(1), "correct bias when excluding invariant sites")
@@ -1310,7 +1311,7 @@ int main(int argc, char** const argv){
     ("scale_tobs", po::value<double>(&scale_tobs)->default_value(1.0), "scale factor to get lower limit of root age when doing constrained optimization (BFGS) based on maximimum sample time difference.")
 
     // mutation rates
-    // TODO: add rate unit 
+    // TODO by wrl: add rate unit 
     ("mu,x", po::value<double>(&mu)->default_value(0.02), "overall mutation rate")
     ("dup_rate", po::value<double>(&dup_rate)->default_value(0.001), "duplication rate")
     ("del_rate", po::value<double>(&del_rate)->default_value(0.001), "deletion rate")
@@ -1358,8 +1359,8 @@ int main(int argc, char** const argv){
     int num_invar_bins = 0;   // number of invariant sites
 
     // tobs already defined globally
-    if(timefile != ""){
-        tobs = read_time_info(timefile, Ns, age);
+    if(time_file != ""){
+        tobs = read_time_info(time_file, Ns, age);
     }else{
         tobs = vector<double>(Ns, 0.0);
     }
@@ -1371,11 +1372,11 @@ int main(int argc, char** const argv){
 
     print_desc(cons, estmu, correct_bias, use_repeat, optim, model, is_total, age, cn_type);
 
-    INPUT_PROPERTY input_property{Ns, cn_max, model, is_total, is_rcn, is_bin, incl_all};
+    INPUT_PROPERTY input_property{Ns, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype, model, is_total, is_rcn, is_bin, incl_all};
     print_input_property(input_property);
 
-    INPUT_DATA input_data{num_invar_bins, num_total_bins, Nchar, sample_num_wgd, sample_change_chr, sample_change_site, chr_max_change, site_max_change, sample_max_cn, sample_avg_cn, sample_chr_cn};
-    if(debug > 1) cout << "Input data before reading files: " << input_data << std::endl;
+    INPUT_DATA input_data{num_invar_bins, num_total_bins, Nchar, sample_num_wgd, chr_max_change, site_max_change};
+    if(debug > 1) cout << "Input data before reading copy numbers: " << input_data << std::endl;
 
 
     map<int, vector<vector<int>>> data;
@@ -1395,8 +1396,9 @@ int main(int argc, char** const argv){
 
     cout << "\nReading copy number profiles for tree inference" << endl;
     if(model == DECOMP){
-        read_data_var_regions_by_chr_change(data_change, datafile, input_property, input_data, seg_file, debug);
+        read_data_var_regions_by_chr_change(data_change, data_file, seg_file, meta_file, input_property, input_data, debug);
         if(debug > 1) print_data_map<int>(data_change);
+
         // convert observed copy numbers into decomposition format
         cout << "\nBuilding decomposition table for observed copy numbers" << endl;        
         get_obs_vector_by_chr_change(data_change, vobs_change, Ns);
@@ -1404,7 +1406,7 @@ int main(int argc, char** const argv){
             print_data_map<CN_CHANGE>(vobs_change);
         }       
     }else{       
-        read_data_var_regions_by_chr_state(data, datafile, input_property, input_data, seg_file, debug);
+        read_data_var_regions_by_chr_state(data, data_file, seg_file, input_property, input_data, debug);
         get_obs_vector_by_chr_state(data, vobs, Ns);
     }
 
@@ -1421,10 +1423,8 @@ int main(int argc, char** const argv){
     num_total_bins = input_data.num_total_bins;
     Nchar = input_data.seg_size;
     sample_num_wgd = input_data.sample_num_wgd;
-    sample_change_chr = input_data.sample_change_chr;
     chr_max_change = input_data.chr_max_change;
     site_max_change = input_data.site_max_change;
-    sample_max_cn = input_data.sample_max_cn;
 
     cout << "\nNumber of invariant bins after reading input is: " << num_invar_bins << endl;
     if(num_total_bins == num_invar_bins){
@@ -1438,25 +1438,19 @@ int main(int argc, char** const argv){
     }
 
     if(model == DECOMP){      
-        // vector<vector<vector<int>>> s_info = read_cn(datafile, Ns, num_total_bins, cn_max, is_total, is_rcn, debug);
-        // adjust_m_max();
         // The estimated values may be non-zero even when no certain events, such as chr gain/loss
-        // Using CN type tag to control the max_* values instead
+        // Using CN type tag to control the max_* values, which will determine the dimensions of rate matrices
 
+        // These estimations are mainly for diagnositics and switch to turn on different rate matrices
+        // The rate dimensions are mainly determined by input parameters
         // 1) WGD per sample and global max_wgd
         if(cn_type != ONLY_SEG && cn_type != EXCLUDE_WGD && !is_rcn){
-            max_wgd = *max_element(sample_num_wgd.begin(), sample_num_wgd.end());
-            if(max_wgd > 0){
-                infer_wgd = 1;
-            }
+            max_wgd_sample = *max_element(sample_num_wgd.begin(), sample_num_wgd.end());
         }
 
         // 2) chromosome change per sample (gain and loss) and global max_chr_change
         if(!is_rcn && (cn_type == EXCLUDE_SEG || cn_type == EXCLUDE_WGD || cn_type == ALL )){ 
             max_chr_change = *max_element(chr_max_change.begin(), chr_max_change.end());
-            if(max_chr_change > 0){
-                infer_chr = 1;
-            }
         }
 
         // 3) site change per sample and global max_site_change
@@ -1468,33 +1462,11 @@ int main(int argc, char** const argv){
             m_max = 0;
         }
 
-        cout << "Parameters used for copy number decomposition model:" << endl;
-        cout << "\tmaximum number of WGD events is " << max_wgd << endl;
+        cout << "Copy number alteration events estimated from observed copy numbers:" << endl;
+        cout << "\tmaximum number of WGD events is " << max_wgd_sample << endl;
         cout << "\tmaximum number of chromosome gain/loss events on one chromosome is " << max_chr_change << endl;
         cout << "\tmaximum number of site duplication/deletion events is " << max_site_change << endl;
         // cout << "\tmaximum number of site duplication/deletion change before chromosome gain/loss is " << m_max << endl;
-
-        // // TimePoint t_decomp_table_start = now();
-
-        // build_decomp_table_3d(decomp_table, comps, cn_max, max_wgd, max_chr_change, max_site_change, is_total);
-        // print_decomp_table(decomp_table);
-        // print_comps(comps);
-
-        // build_decomp_table(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
-        // print_decomp_table(decomp_table);
-        // print_comps(comps);
-
-
-        // build_decomp_table_withm(decomp_table, comps, cn_max, m_max, max_wgd, max_chr_change, max_site_change, is_total);
-        // // cout << "[TIME] build_decomp_table: "
-        // //      << elapsed_seconds(t_decomp_table_start, t_decomp_table_end) << " s" << endl;
-        // cout << "\n Total number of copy number states is " << comps.size() << endl;
-        // print_decomp_table(decomp_table);
-        // print_comps(comps);
-
-        // TimePoint t_print_decomp_end = now();
-        // cout << "[TIME] print_decomp_table: "
-        //      << elapsed_seconds(t_print_decomp_start, t_print_decomp_end) << " s" << endl;
     }
     
     if(model == MK)   mu = 1 / Nchar;
@@ -1502,18 +1474,12 @@ int main(int argc, char** const argv){
     // TODO: may add arm-level rates later
     vector<double> rates{mu, dup_rate, del_rate, chr_gain_rate, chr_loss_rate, wgd_rate};
 
-    if(infer_wgd){
-        for(int i = 0; i < Ns; ++i){
-            cout << "Sample " << i+1 << " probably has " << sample_num_wgd[i] << " WGD events" << endl;
-        }
-    }
-
     max_tobs = *max_element(tobs.begin(), tobs.end());
     // a list of nodes to loop over for bottom-up likelihood computation, and the root is last
     vector<int> knodes(Ns, 0);
-    lnl_type = {model, cn_max, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, cn_type, infer_wgd, infer_chr, knodes};
+    lnl_type = {model, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, cn_type, knodes};
     // important variables for independent Markov chains model
-    obs_decomp = {m_max, max_wgd, max_chr_change, max_site_change, sample_num_wgd, sample_change_chr};
+    obs_decomp = {m_max, max_wgd_sample, max_chr_change, max_site_change};
 
     int opt_one_branch = 0; // optimize all branches by default
     opt_type = {estmu, tolerance, miter, opt_one_branch, tobs, scale_tobs};
@@ -1578,7 +1544,7 @@ int main(int argc, char** const argv){
         input_data.num_total_bins = 0;
         input_data.seg_size = 0;
         cout << "Running data without grouping by chromosome" << endl;
-        vector<vector<int>> data0 = read_data_var_regions(datafile, input_property, input_data, debug);
+        vector<vector<int>> data0 = read_data_var_regions(data_file, input_property, input_data, debug);
         // Construct the CN matrix
         // cout << "The number of sites used in vobs0: " << data0.size() << endl;
         vector<vector<int>> vobs0;
@@ -1634,14 +1600,12 @@ int main(int argc, char** const argv){
 
         vector<int> inodes = get_inodes_bottom_up(tree, debug);
 
-        MAX_DECOMP max_decomp = {m_max, max_wgd, max_chr_change, max_site_change};
-
         if(infer_marginal_state){
             cout << "\nInferring marginal ancestral states" << endl;
             double lnl = 0.0;
             if(model == DECOMP){
                 // TODO: update
-               lnl = reconstruct_marginal_ancestral_state_decomp(tree, vobs, inodes, comps, obs_decomp, use_repeat, infer_wgd, infer_chr, cn_max, ofile, is_total);
+            //    lnl = reconstruct_marginal_ancestral_state_decomp(tree, vobs, inodes, comps, obs_decomp, use_repeat, infer_wgd, infer_chr, cn_max, ofile, is_total);
             }else{
                lnl = reconstruct_marginal_ancestral_state(tree, vobs, inodes, model, cn_max, use_repeat, is_total, ofile);
             }
@@ -1652,7 +1616,7 @@ int main(int argc, char** const argv){
             cout << "\tInferring joint ancestral states" << endl;
             if(model == DECOMP){
                 // TODO: update
-               reconstruct_joint_ancestral_state_decomp(tree, vobs, inodes, comps, max_decomp, use_repeat, cn_max, ofile, is_total);
+            //    reconstruct_joint_ancestral_state_decomp(tree, vobs, inodes, comps, obs_decomp, use_repeat, cn_max, ofile, is_total);
             }else{
                reconstruct_joint_ancestral_state(tree, vobs, inodes, model, cn_max, use_repeat, is_total, m_max, ofile);
             }
