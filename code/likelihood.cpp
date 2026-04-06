@@ -702,21 +702,22 @@ void print_tree_lnl(const evo_tree& rtree, vector<vector<double>>& L_sk_k, int n
 
 
 /************* Funtions when decomposing observed copy numbers onto multiple level changes **********************/
-// state_chr: copy number change state plus 2 to make it non-negative
+// cn_total: copy number change state plus 2 to make it non-negative
 // get the start and end index for the observed total copy number change in the rate matrix
-void get_state_index(int state_chr, int peak_sum_haplotype, int& si, int& ei){
+void get_state_index(int cn_total, int peak_sum_haplotype, int& si, int& ei){
     // number of elements for each state
     vector<int> n_states = make_peak_vector(peak_sum_haplotype); // assume 2 in total and 1 for each haplotype at chr level
-    int last_index = state_chr;
+    int last_index = cn_total;
 
-    if(state_chr < 0){
-        cout << "State index is negative, resetting to 0" << endl;
+    if(cn_total < 0){
+        cout << "Total copy number is negative, resetting to 0" << endl;
         last_index = 0;
     }    
 
-    if(state_chr > 2 * peak_sum_haplotype - 2){
-        cout << "State index " << state_chr << " exceeds the number of states, resetting to maximum valid index" << endl;
-        last_index = 2 * peak_sum_haplotype - 2;
+    int max_tcn = 2 * peak_sum_haplotype - 2;
+    if(cn_total > max_tcn){
+        cout << "Total copy number " << cn_total << " exceeds the allowed maximum value, resetting to maximum valid value" << endl;
+        last_index = max_tcn;
     }
     for (int k = 0; k < last_index; k++){
         si += n_states[k];
@@ -727,12 +728,12 @@ void get_state_index(int state_chr, int peak_sum_haplotype, int& si, int& ei){
 
 // helper function to set likelihood table entries for different levels, considering the indexing of haplotype-specific states
 // peak_sum_haplotype: 3 when at most +1 change for each haplotype, 4 when at most +2 change for each haplotype, and so on
-void set_lnl_table_change(int state_chr, int row, int max_change_haplotype, vector<vector<double>>& L_sk_k){     
+void set_lnl_table_change(int cn_total, int row, int max_change_haplotype, vector<vector<double>>& L_sk_k){     
     // only observed total copy number change
     int si = 0; // compute partial sum to get the index of the observed state
     int ei = 0;
     int peak_sum_haplotype = max_change_haplotype + 2;
-    get_state_index(state_chr, peak_sum_haplotype, si, ei);
+    get_state_index(cn_total, peak_sum_haplotype, si, ei);
 
     for (int k = si; k <= ei; k++){
         L_sk_k[row][k] = 1.0;
@@ -783,7 +784,7 @@ void initialize_lnl_table_chr(vector<vector<double>>& lnl_table_chr, const evo_t
         }else{
             if(debug) cout << "Observed haplotype-specific copy number change state for sample " << i + 1 << " is " << change_chr[i] << endl;
             assert(change_chr[i] >= 0 && change_chr[i] < dim_decomp.dim_chr);   // can gain or lose at most one copy for each haplotype
-            // haplotype-specific observed change, state_chr is the index for rate matrix
+            // haplotype-specific observed change, the index for rate matrix
             lnl_table_chr[i][change_chr[i]] = 1.0;  
         }
 
@@ -1020,7 +1021,7 @@ void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& r
 /**
  * @brief likelihood table initialization for models with WGD, chromosome gain/loss, and site duplication/deletion 
  * 
- * @param L_sk_k: Ns * nstate likelihood tables for WGD, chromosome gain/loss, and site duplication/deletion       
+ * @param lnl_table_seg: Ns * nstate likelihood tables for site duplication/deletion       
  * @param obs_change: observed changes in copy number states at tips
  * @param rtree: evolutionary tree 
  * @param dim_decomp: dimensions for different levels
@@ -1040,22 +1041,13 @@ void initialize_lnl_table_site(vector<vector<double>>& lnl_table_seg, const evo_
         if(lnl_type.is_total){
             if(debug) cout << "Observed total copy number change for sample " << i + 1 << " is " << obs_change[i].cn_change_site << endl;
             // site state is likely -2, -1, 0, 1, 2
-            int state_site = obs_change[i].cn_change_site + 2;                    // can lost at most two copies
+            int state_site = obs_change[i].cn_change_site - MIN_CHANGE;                    // can lost at most two copies
             // TODO: check ambuigous encoding, a bit complicated due to chr-level changes
-            if(state_site < 0) {
-                cout << "State for site change for sample " << i << ": " << state_site << " is negative, resetting to 0" << endl;
-                state_site = 0;
-            }
-            if(state_site > NORM_PLOIDY + MIN_CHANGE) {
-                cout << obs_change[i] << endl;
-                cout << "State for site change for sample " << i << ": " <<  state_site << " exceeds the number of states for site duplication/deletion, resetting to maximum valid index" << endl;
-                state_site = NORM_PLOIDY + MIN_CHANGE;
-            }
             set_lnl_table_change(state_site, i, lnl_type.max_site_change_haplotype,lnl_table_seg);             
         }else{
             if(debug) cout << "Observed haplotype-specific copy number change state for sample " << i + 1 << " is " << obs_change[i].cn_change_site << endl;
             assert(obs_change[i].cn_change_site >= 0 && obs_change[i].cn_change_site < dim_decomp.dim_seg);
-            // haplotype-specific observed change, state_chr is the index for rate matrix
+            // haplotype-specific observed change, index for rate matrix
             lnl_table_seg[i][obs_change[i].cn_change_site] = 1.0; 
         }
          
@@ -1451,7 +1443,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
         
         for(size_t nc = 0; nc < obs_chr.size(); nc++){    // for each site on the chromosome (may be repeated)
             const vector<CN_CHANGE> obs = obs_chr.at(nc);
-            vector<vector<double>> lnl_table_seg;     // one table for one site, can be simiplified in future (TODO)
+            vector<vector<double>> lnl_table_seg;     // one table for one site
 
             assert(obs.size() == rtree.nleaf - 1);  // sanity check, the number of samples should be the same as the number of tips in the tree
             for(size_t i = 0; i < obs.size(); i++){

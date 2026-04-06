@@ -369,7 +369,8 @@ void initialize_lnl_table_site(vector<vector<double>>& lnl_table_seg, const evo_
 void initialize_lnl_table_chr(vector<vector<double>>& lnl_table_chr, const evo_tree& rtree, const vector<int>& change_chr, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 
 
-void set_lnl_table_change(int state_chr, int row, int max_change_haplotype, vector<vector<double>>& L_sk_k);
+void get_state_index(int cn_total, int peak_sum_haplotype, int& si, int& ei);
+void set_lnl_table_change(int cn_total, int row, int max_change_haplotype, vector<vector<double>>& L_sk_k);
 
 // not used for now due to pointer issues
 void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
