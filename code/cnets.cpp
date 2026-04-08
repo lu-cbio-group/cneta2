@@ -1020,8 +1020,7 @@ void print_simulations(int mode, int model, int num_seg, const vector<double>& r
     vector<map<int, vector<int>>> sample_chr_cn; // chromosome copy numbers grouped by chr for each sample
     get_sample_ploidy(s_info, sample_avg_cn, sample_chr_cn, cn_max, is_total, debug);
 
-    vector<int> sample_num_wgd;
-
+    vector<int> sample_num_wgd(test_tree.nleaf - 1, 0);
     // 1) global max_wgd
     int max_wgd = 0;
     if(rate_consts[4] > 0.0){      
@@ -1029,6 +1028,12 @@ void print_simulations(int mode, int model, int num_seg, const vector<double>& r
         max_wgd = *max_element(sample_num_wgd.begin(), sample_num_wgd.end());
     }  
     cout << "[CHECK OVER SAMPLES] max_wgd = " << max_wgd << endl;
+    if(debug > 1){
+        for(size_t i = 0; i < sample_num_wgd.size(); i++){
+            int nwgd = sample_num_wgd[i];
+            cout << "Potential number of WGGs in sample " << i + 1 << " is: " << sample_num_wgd[i] << endl;
+        }
+    }
 
     // 2) global max_chr_change
     int max_chr_change = 0;
@@ -1048,6 +1053,7 @@ void print_simulations(int mode, int model, int num_seg, const vector<double>& r
         vector<int> site_max_change;
         vector<vector<int>> sample_change_site; 
         get_site_change(sample_num_wgd, s_info, sample_avg_cn, sample_change_site, site_max_change, max_site_change_haplotype, debug);
+        assert(site_max_change.size() > 0);
         max_site_change = *max_element(site_max_change.begin(), site_max_change.end());
     }
     cout << "[CHECK OVER SAMPLES] max_site_change = " << max_site_change << endl << endl;

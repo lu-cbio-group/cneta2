@@ -1150,7 +1150,7 @@ void get_sample_mcn(const vector<vector<vector<int>>>& s_info, vector<int>& samp
  *  @brief Compute per-sample site-level max deviation from avg_cn (baseline) using total copy numbers, then take ceiling as an integer bound.
  *  @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
  *  @param site_max_change A vector to store the estimated number of site changes for each sample in the input.
- *  @param max_site_change_haplotype Maximum site-level copy number change for haplotype-specific model.
+ *  @param max_site_change_haplotype Maximum site-level copy number change for haplotype-specific model, not used actually for now
  *  @param debug Debug flag for verbose output.
  */         
 void get_site_change(const vector<int>& sample_num_wgd, 
@@ -1177,7 +1177,7 @@ void get_site_change(const vector<int>& sample_num_wgd,
             int cn = s_cn[j][2];
             // value may differ from lround(cn - avg_cn)
             int cn_change = cn - lround(avg_cn);   // total copy number change, can be positive or negative
-
+            // if(debug > 1) cout << "original copy number change " << cn_change << endl;
             cn_change = adjust_site_change_for_chr_change(cn_change, avg_cn, nwgd);  
 
             // TODO: set those outside limits of rate matrix
