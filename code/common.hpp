@@ -439,9 +439,14 @@ inline vector<pair<int,int>> build_pair_states(int max_allowed) {
 }
 
 // Return the index of (a,b) in the generated state list.
+// Check the index boundaries to obtain correct state indices and reset when needed
 // Returns -1 if not found.
-inline int get_pair_index(int a, int b, const vector<pair<int,int>>& states) {
+inline int get_pair_index(int a, int b, int max_change_haplotype, const vector<pair<int,int>>& states) {
     // vector<pair<int,int>> states = build_pair_states(max_allowed);
+    if(a < MIN_CHANGE_HAPLOTYPE) a = MIN_CHANGE_HAPLOTYPE;
+    if(a > max_change_haplotype) a = max_change_haplotype;
+    if(b < MIN_CHANGE_HAPLOTYPE) b = MIN_CHANGE_HAPLOTYPE;
+    if(b > max_change_haplotype) b = max_change_haplotype;  
 
     for (size_t i = 0; i < states.size(); ++i) {
         if (states[i].first == a && states[i].second == b) {

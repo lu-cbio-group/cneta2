@@ -1379,39 +1379,39 @@ void evo_tree::print_ancestral_edges(const int node_id, ostream& stream) const{
 
 void evo_tree::print_mutation_rates(int model, int cn_type) const{
     if(model == MK){
-      cout << "mutation rate (per allele per site per year):  " << mu << endl;
+      cout << "mutation rate (per haplotype per site per year):  " << mu << endl;
     }else{
       switch(cn_type){
         case ALL:{
-          cout << "site duplication rate (per allele per site per year):  " << dup_rate << endl;
-          cout << "site deletion rate (per allele per site per year):  " << del_rate << endl;
-          cout << "chromosome gain rate (per chromosome per year):  " << chr_gain_rate << endl;
-          cout << "chromosome loss rate (per chromosome per year):  " << chr_loss_rate << endl;
+          cout << "site duplication rate (per haplotype per site per year):  " << dup_rate << endl;
+          cout << "site deletion rate (per haplotype per site per year):  " << del_rate << endl;
+          cout << "chromosome gain rate (per haplotype per chromosome per year):  " << chr_gain_rate << endl;
+          cout << "chromosome loss rate (per haplotype per chromosome per year):  " << chr_loss_rate << endl;
           cout << "whole genome doubling rate (per year):  " << wgd_rate << endl;
           break;
         }
         case ONLY_SEG:{
-          cout << "site duplication rate (per allele per site per year):  " << dup_rate << endl;
-          cout << "site deletion rate (per allele per site per year):  " << del_rate << endl;
+          cout << "site duplication rate (per haplotype per site per year):  " << dup_rate << endl;
+          cout << "site deletion rate (per haplotype per site per year):  " << del_rate << endl;
           break;
         }
         case EXCLUDE_SEG:{
-          cout << "chromosome gain rate (per chromosome per year):  " << chr_gain_rate << endl;
-          cout << "chromosome loss rate (per chromosome per year):  " << chr_loss_rate << endl;
+          cout << "chromosome gain rate (per haplotype per chromosome per year):  " << chr_gain_rate << endl;
+          cout << "chromosome loss rate (per haplotype per chromosome per year):  " << chr_loss_rate << endl;
           cout << "whole genome doubling rate (per year):  " << wgd_rate << endl;
           break;
         }
         case EXCLUDE_CHR:{
-          cout << "site duplication rate (per allele per site per year):  " << dup_rate << endl;
-          cout << "site deletion rate (per allele per site per year):  " << del_rate << endl;
+          cout << "site duplication rate (per haplotype per site per year):  " << dup_rate << endl;
+          cout << "site deletion rate (per haplotype per site per year):  " << del_rate << endl;
           cout << "whole genome doubling rate (per year):  " << wgd_rate << endl;
           break;
         }
         case EXCLUDE_WGD:{
-          cout << "site duplication rate (per allele per site per year):  " << dup_rate << endl;
-          cout << "site deletion rate (per allele per site per year):  " << del_rate << endl;
-          cout << "chromosome gain rate (per chromosome per year):  " << chr_gain_rate << endl;
-          cout << "chromosome loss rate (per chromosome per year):  " << chr_loss_rate << endl;
+          cout << "site duplication rate (per haplotype per site per year):  " << dup_rate << endl;
+          cout << "site deletion rate (per haplotype per site per year):  " << del_rate << endl;
+          cout << "chromosome gain rate (per haplotype per chromosome per year):  " << chr_gain_rate << endl;
+          cout << "chromosome loss rate (per haplotype per chromosome per year):  " << chr_loss_rate << endl;
           break;
         }
         default:

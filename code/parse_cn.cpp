@@ -368,7 +368,7 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,
                         const vector<vector<int>>&  sample_change_chr, 
                         const vector<vector<int>>& sample_change_site, 
                         const vector<int>& sample_num_wgd, 
-                        int is_total, 
+                        const INPUT_PROPERTY& input_property, 
                         int debug){
     if(debug) cout << "\tChanging copy number to multiple level changes" << endl;
     // changes are already indices in rate matrices for haplotype-specific copy number, which are ordered by total copy number and then by haplotype-specific copy number combinations, so can be directly used for decomposition without conversion; for total copy number, the change states are converted to total copy number changes for decomposition
@@ -385,7 +385,7 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,
             }
         }
     }
-
+    assert(s_info.size() == input_property.Ns);
     s_info_change.resize(s_info.size());    // for samples
     for (size_t i = 0; i < s_info.size(); i++) {     // for all segments
         s_info_change[i].resize(s_info[i].size());
@@ -393,26 +393,52 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,
 
     for(size_t i = 0; i < s_info.size(); i++){
         vector<vector<int>> s_cn = s_info[i];   // vector<int>: each segment in the sample, with format [chr, sid, cn]
-
+        // cout << "Copy numbers for sample " << i + 1 << " is";
+        // print_nested_vector<int>(s_cn);
         // get multi-level CN changes for each sample    
         for(size_t j = 0; j < s_cn.size(); j++){
+            // cout << "site " << j << endl;
             int chr = s_cn[j][0];
             int cn  = s_cn[j][2];
+            // cout << sample_change_chr[i][chr - 1] << ", " << sample_change_chr[i][chr - 1] << ", " << sample_change_site[i][j];
 
             CN_CHANGE cc;
             cc.cn_state = cn;  // total CN or haplotype-specific state index
             cc.num_wgd = sample_num_wgd[i];
             cc.cn_change_chr = sample_change_chr[i][chr - 1];   // chr is 1-based in input, but sample_change_chr is 0-based
+            int cn_change_tag = cc.cn_change_chr % CHANGE_CHR;
             // if there is chromosome change, adjust site change accordingly to avoid double counting
             int site_change = sample_change_site[i][j];
             
-            if(is_total){   // adjust for WGD affecting chr gain/loss
-                if(cc.cn_change_chr != 0){   
-                    if(cc.cn_change_chr % CHANGE_CHR != 0){
-                        site_change = site_change - cc.cn_change_chr;
-                    }else{
+            if(input_property.is_total){   // adjust for WGD affecting chr gain/loss
+                if(cc.cn_change_chr != 0){   // chr-level changes occur
+                    if(cn_change_tag == 0){  // not normalized by WGD presence
                         site_change = site_change - cc.cn_change_chr / CHANGE_CHR;
+                    }else{
+                        site_change = site_change - cc.cn_change_chr;
                     }
+                }               
+            }else{  
+                if(cc.cn_change_chr != NO_CHANGE_HAPLOTYPE){   // chr-level changes occur 
+                    vector<pair<int,int>> states_chr = build_pair_states(input_property.max_chr_change_haplotype);    
+                    vector<pair<int,int>> states_site = build_pair_states(input_property.max_site_change_haplotype);   
+                    pair<int, int> cnAB_chr;    
+
+                    if(cn_change_tag == 0){ 
+                        // change state back to total CN and then change it back                     
+                        cnAB_chr = states_chr[cc.cn_change_chr / CHANGE_CHR];
+                    }else{
+                        cnAB_chr = states_chr[cc.cn_change_chr];
+                    }
+
+                    int cnA_chr = cnAB_chr.first;
+                    int cnB_chr = cnAB_chr.second; 
+                
+                    pair<int, int> cnAB_site = states_site[site_change];
+                    int cnA_site = cnAB_site.first - cnA_chr;
+                    int cnB_site = cnAB_site.second - cnB_chr;
+                    site_change = get_pair_index(cnA_site, cnB_site, input_property.max_site_change_haplotype, states_site);
+                    if(debug > 1) cout << "adjust site change by chr change under WGD: " << cnA_chr << ", " << cnB_chr << ", " << cnAB_site.first << ", " << cnAB_site.second << ", " << cnA_site << ", " << cnB_site << endl; 
                 }               
             }
 
@@ -609,7 +635,7 @@ int compute_max_change(const vector<int>& vals, int is_total, const vector<pair<
     if(is_total){
         return max_abs_change(vals);
     }else{
-         return max_abs_change_haplotype(vals, states);
+        return max_abs_change_haplotype(vals, states);
     }
 }
 
@@ -621,7 +647,7 @@ void compute_max_changes(const vector<vector<int>>& sample_change_chr,
                         const vector<pair<int,int>>& states_chr,
                         const vector<pair<int,int>>& states_site,
                         int is_total,
-                        bool debug) {
+                        int debug) {
     if (sample_change_chr.size() != sample_change_site.size()) {
         throw runtime_error("sample_change_chr and sample_change_site must have the same size");
     }
@@ -921,35 +947,41 @@ void get_num_wgd(const vector<double>& sample_avg_cn, vector<int>& sample_num_wg
 
 
 // use multiple of 2 to roughly determine events before or after WGD
-int adjust_chr_change_for_wgd(int rounded_num_change, double avg_cn, int nwgd) {
+bool adjust_chr_change_for_wgd(int& rounded_num_change, double avg_cn, int nwgd) {
     // If one WGD is likely, try to interpret changes in multiples of ploidy
     // as possibly having occurred before WGD, and encode ambiguity.
-    if (avg_cn > WGD_CUTOFF || nwgd == 1) {
+    bool is_adjusted = false;
+    if (rounded_num_change != 0 && (avg_cn > WGD_CUTOFF || nwgd == 1)) {
+        // -2 for one haplotype of chr, likely caused by WGD
         int remainder = rounded_num_change % NORM_PLOIDY;
         // likely occurred before WGD, with copy number change in multiple of 2 or ploidy
         // Another possibility is that the change occurred after WGD but with very large copy number change
         // encode ambiguity by allowing both possibilities        
         if (remainder == 0) {
+            // cout << "Adjust chr-level copy number change " << rounded_num_change << " by NORM_PLOIDY" << endl;
             rounded_num_change = rounded_num_change / NORM_PLOIDY;
             rounded_num_change = rounded_num_change * CHANGE_CHR;
-        }
+            is_adjusted = true;
+        }        
     }
-    return rounded_num_change;
+    return is_adjusted;
 }
 
 
 // TODO: set ambiguity flag and incorporate chr_change into site change for better estimation of site change, instead of directly adjusting site change by chr_change, which may be too strict and miss some real site changes; also consider the possibility of large copy number changes after WGD, which may be misinterpreted as pre-WGD changes by the current adjustment
-int adjust_site_change_for_chr_change(int rounded_num_change, double avg_cn, int nwgd) {
+bool adjust_site_change_for_wgd(int& rounded_num_change, double avg_cn, int nwgd) {
     // If there is a chromosome change, adjust site change accordingly to avoid double counting
     // use multiple of 2 to roughly determine events before or after WGD
-    if(avg_cn > WGD_CUTOFF || nwgd == 1){    // one WGD 
+    bool is_adjusted = false;
+    if(rounded_num_change != 0 && (avg_cn > WGD_CUTOFF || nwgd == 1)){    // one WGD 
         int remainder = rounded_num_change % NORM_PLOIDY;
         
         if(remainder == 0){   // likely occurred before WGD, with copy number change in multiple of 2 or ploidy
             rounded_num_change = rounded_num_change / NORM_PLOIDY;
-        }              
+            is_adjusted = true; 
+        }                    
     }     
-    return rounded_num_change;
+    return is_adjusted;
 }
 
 /** 
@@ -987,16 +1019,11 @@ void get_chr_change(const vector<int>& sample_num_wgd,
             // int round_num_change = (int) (num_change + 0.5 - (num_change < 0));
             int round_num_change = (int) lround(num_change);
 
-            round_num_change = adjust_chr_change_for_wgd(round_num_change, avg_cn, nwgd);
+            bool is_adjusted = adjust_chr_change_for_wgd(round_num_change, avg_cn, nwgd);
  
             if(debug > 1){
                 cout << "Number of segments in chromosome " << c.first << " is " << cp.size() << "; avg cn: " << avg_chr_cn << "; exact num changes: " << num_change  << "; num changes: " << round_num_change << endl;
-            }
-           
-            // This will cancel out CHR_CHANGE factor
-            // if(round_num_change < MIN_CHANGE) round_num_change = MIN_CHANGE;
-            // int max_chr_change = max_chr_change_haplotype * 2;
-            // if(round_num_change > max_chr_change) round_num_change = max_chr_change;    
+            }  
             
             chr_change.push_back(round_num_change);           
         }
@@ -1059,6 +1086,9 @@ void get_chr_change_haplotype(const vector<int>& sample_num_wgd,
         double avg_cnA = sample_avg_cnA[i];
         double avg_cnB = sample_avg_cnB[i];
         double avg_cn = avg_cnA + avg_cnB;
+        if(debug > 1){
+            cout << "Average haplotype-specific copy number of sample " << i + 1 << ": " << avg_cnA << "," << avg_cnB << "; sum: " << avg_cn << endl;
+        }
 
         vector<int> chr_changeA;     // copy number change states for haplotype A across all chromosomes in sample i
         vector<int> chr_changeB;     // copy number change states across all chromosomes in sample i
@@ -1090,24 +1120,32 @@ void get_chr_change_haplotype(const vector<int>& sample_num_wgd,
             int round_num_changeA = (int) lround(num_changeA);
             int round_num_changeB = (int) lround(num_changeB);
 
-            round_num_changeA = adjust_chr_change_for_wgd(round_num_changeA, avg_cn, nwgd);
-            round_num_changeB = adjust_chr_change_for_wgd(round_num_changeB, avg_cn, nwgd);
+            bool is_adjustedA = adjust_chr_change_for_wgd(round_num_changeA, avg_cn, nwgd);
+            bool is_adjustedB = adjust_chr_change_for_wgd(round_num_changeB, avg_cn, nwgd);
 
             if(debug > 1){
-                cout << "Number of segments in chromosome " << chr << " is " << vecA.size() << "; avg cn: " << avg_chr_cnA << "," << avg_chr_cnB << "; exact num changes: " << num_changeA << "," << num_changeB << "; num changes: " << round_num_changeA << "," << round_num_changeB << endl;
+                cout << "Number of segments in chromosome " << chr << " is " << vecA.size() << "; avg cn of chromosome: " << avg_chr_cnA << "," << avg_chr_cnB << "; exact num changes: " << num_changeA << "," << num_changeB << "; num changes: " << round_num_changeA << "," << round_num_changeB << endl;
             }
 
             chr_changeA.push_back(abs(round_num_changeA));
             chr_changeB.push_back(abs(round_num_changeB));
-
-            // need to check boundaries to obtain correct state indices
-            if(round_num_changeA < MIN_CHANGE_HAPLOTYPE) round_num_changeA = MIN_CHANGE_HAPLOTYPE;
-            if(round_num_changeA > max_chr_change_haplotype) round_num_changeA = max_chr_change_haplotype;
-            if(round_num_changeB < MIN_CHANGE_HAPLOTYPE) round_num_changeB = MIN_CHANGE_HAPLOTYPE;
-            if(round_num_changeB > max_chr_change_haplotype) round_num_changeB = max_chr_change_haplotype; 
-
-            int chr_change_state = get_pair_index(round_num_changeA, round_num_changeB, states);
-            chr_change.push_back(chr_change_state);            
+            
+            // -2 will be set to -1 during WGD normalization
+            int chr_change_state = -1;
+            if(is_adjustedA && is_adjustedB){
+                chr_change_state = get_pair_index(round_num_changeA / CHANGE_CHR, round_num_changeB / CHANGE_CHR, max_chr_change_haplotype, states) * CHANGE_CHR; 
+                // cout << "both A and B adjusted " << chr_change_state << endl;
+            }else if(is_adjustedA){
+                chr_change_state = get_pair_index(round_num_changeA / CHANGE_CHR, round_num_changeB, max_chr_change_haplotype, states) * CHANGE_CHR; 
+                // cout << "A adjusted " << chr_change_state << endl;              
+            }else if(is_adjustedB){
+                chr_change_state = get_pair_index(round_num_changeA, round_num_changeB / CHANGE_CHR, max_chr_change_haplotype, states) * CHANGE_CHR;   
+                // cout << "B adjusted " << chr_change_state << endl;  
+            }else{
+                chr_change_state = get_pair_index(round_num_changeA, round_num_changeB, max_chr_change_haplotype, states);  
+                // cout << "No adjustment " << chr_change_state << endl;  
+            }
+            chr_change.push_back(chr_change_state);          
         }
 
         int max_abs_changeA = max(0, *max_element(chr_changeA.begin(), chr_changeA.end()));
@@ -1178,12 +1216,7 @@ void get_site_change(const vector<int>& sample_num_wgd,
             // value may differ from lround(cn - avg_cn)
             int cn_change = cn - lround(avg_cn);   // total copy number change, can be positive or negative
             // if(debug > 1) cout << "original copy number change " << cn_change << endl;
-            cn_change = adjust_site_change_for_chr_change(cn_change, avg_cn, nwgd);  
-
-            // TODO: set those outside limits of rate matrix
-            // if(cn_change < MIN_CHANGE) cn_change = MIN_CHANGE;
-            // int max_site_change = max_site_change_haplotype * 2;
-            // if(cn_change > max_site_change) cn_change = max_site_change;
+            bool is_adjusted = adjust_site_change_for_wgd(cn_change, avg_cn, nwgd);  
 
             // used to set change_site for CN_CHANGE variable for this site on this chr in the sample 
             site_change.push_back(cn_change);
@@ -1256,21 +1289,14 @@ void get_site_change_haplotype(const vector<int>& sample_num_wgd,
             int cn_changeA = cnA - lround(avg_cnA);
             int cn_changeB = cnB - lround(avg_cnB);            
 
-            cn_changeA = adjust_site_change_for_chr_change(cn_changeA, avg_cnA, nwgd);  
-            cn_changeB = adjust_site_change_for_chr_change(cn_changeB, avg_cnB, nwgd);  
+            bool is_adjustedA = adjust_site_change_for_wgd(cn_changeA, avg_cn, nwgd);  
+            bool is_adjustedB = adjust_site_change_for_wgd(cn_changeB, avg_cn, nwgd);  
 
             // used to set change_site for CN_CHANGE variable for this site on this chr in the sample 
             site_changeA.push_back(abs(cn_changeA));
-            site_changeB.push_back(abs(cn_changeB));
+            site_changeB.push_back(abs(cn_changeB)); 
 
-            // change to haplotype-specific change state
-            // set those outside limits of rate matrix
-            if(cn_changeA < MIN_CHANGE_HAPLOTYPE) cn_changeA = MIN_CHANGE_HAPLOTYPE;
-            if(cn_changeA > max_site_change_haplotype) cn_changeA = max_site_change_haplotype;
-            if(cn_changeB < MIN_CHANGE_HAPLOTYPE) cn_changeB = MIN_CHANGE_HAPLOTYPE;
-            if(cn_changeB > max_site_change_haplotype) cn_changeB = max_site_change_haplotype;   
-
-            int site_change_state = get_pair_index(cn_changeA, cn_changeB, states);
+            int site_change_state = get_pair_index(cn_changeA, cn_changeB, max_site_change_haplotype, states);
             assert(site_change_state >= 0);
             site_change.push_back(site_change_state);  
       
@@ -1904,20 +1930,28 @@ void read_data_var_regions_by_chr_change(map<int, vector<vector<int>>>& data_cha
         if(input_data.sample_num_wgd.empty()){
             get_num_wgd(sample_avg_cn, input_data.sample_num_wgd, debug);
         }
-
+        if(debug){
+            cout << "Number of WGD in samples is ";
+            print_vector<int>(input_data.sample_num_wgd);
+        }
+        
         if(!input_property.is_total){
             get_sample_ploidy_haplotype(s_info, sample_avg_cnA, sample_chr_cnA, sample_avg_cnB, sample_chr_cnB, input_property.cn_max, input_property.is_total, debug);
         }
-      
-        if(sample_change_chr.empty()){
+
+        bool all_zero = std::all_of(input_data.chr_max_change.begin(), input_data.chr_max_change.end(), [](int x) { return x == 0; });
+        if(all_zero){
+            sample_change_chr.clear();
             if(input_property.is_total){
                 get_chr_change(input_data.sample_num_wgd, sample_avg_cn, sample_chr_cn, sample_change_chr, input_data.chr_max_change, input_property.max_chr_change_haplotype, debug);
             }else{
                 get_chr_change_haplotype(input_data.sample_num_wgd, sample_avg_cnA, sample_avg_cnB, sample_chr_cnA, sample_chr_cnB, sample_change_chr, input_data.chr_max_change, input_property.max_chr_change_haplotype, debug);
             }
         }
-        
-        if(sample_change_site.empty()){
+ 
+        all_zero = std::all_of(input_data.site_max_change.begin(), input_data.site_max_change.end(), [](int x) { return x == 0; });        
+        if(all_zero){
+            sample_change_site.clear();
              if(input_property.is_total){
                 get_site_change(input_data.sample_num_wgd, s_info, sample_avg_cn, sample_change_site, input_data.site_max_change, input_property.max_site_change_haplotype, debug);
             }else{
@@ -1926,7 +1960,7 @@ void read_data_var_regions_by_chr_change(map<int, vector<vector<int>>>& data_cha
         }
        
         cout << "Converting total copy number changes or haplotype-specific copy number states to copy number changes for decomposition model" << endl;
-        cn_to_decomposition(s_info, s_info_change, sample_change_chr, sample_change_site, input_data.sample_num_wgd, input_property.is_total, debug);
+        cn_to_decomposition(s_info, s_info_change, sample_change_chr, sample_change_site, input_data.sample_num_wgd, input_property, debug);
     }else{
         cout << "Converting relative copy numbers to copy number changes for decomposition model" << endl;
         rcn_to_decomposition(s_info, s_info_change, sample_change_site, input_data.site_max_change, debug);

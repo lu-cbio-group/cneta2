@@ -196,7 +196,7 @@ void evolve_sequences(gsl_rng* r, map<int, copy_number>& cn_matrix, const int no
                 }
             }
             // number of mutations is not available when evolving sequencing along the tree. If counting changed sites, multiple hits may be overlooked
-            // Compute the number of mutations by Poisson distribution, rate: per allele per site per year
+            // Compute the number of mutations by Poisson distribution, rate: per haplotype per site per year
             int num_mut_mean = num_seg * rate * blen * NORM_PLOIDY;
             int num_mut = gsl_ran_poisson(r, num_mut_mean);
             num_muts[edge_id] = num_mut;

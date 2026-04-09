@@ -326,13 +326,13 @@ inline double get_prob_children(vector<vector<double>>& L_sk_k, const evo_tree& 
 // z: possible changes in copy number caused by chromosome gain/loss
 // only used in get_likelihood_chr
 // extracted as a function to avoid duplication in selection statement
-void get_likelihood_site(vector<vector<double>>& L_sk_k, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int has_wgd, const int z, const int model, const int nstate);
+void get_likelihood_site(vector<vector<double>>& L_sk_k, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, int has_wgd, int z, int model, int nstate);
 
 
 // Get the likelihood on a set of chromosomes
 // only used in get_likelihood_revised
 // extracted as a function to avoid duplication in selection statement
-double get_likelihood_chr(const map<int, vector<vector<int>>>& vobs, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, const int has_wgd, const int cn_type, const int use_repeat, const int model, const int nstate, const int is_total);
+double get_likelihood_chr(const map<int, vector<vector<int>>>& vobs, const evo_tree& rtree, const vector<int>& knodes, const vector<double>& blens, const vector<double*>& pmat_per_blen, int has_wgd, int cn_type, int use_repeat, int model, int nstate, int is_total);
 
 
 
@@ -360,7 +360,7 @@ double extract_tree_lnl(vector<vector<double>>& L_sk_k, int Ns, int model);
 /************** functions for model DECOMP (copy number change) **************/
 
 void initialize_lnl_table_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& sample_num_wgd, const DIM_DECOMP& dim_decomp, int debug);
-double compute_child_likelihood_wgd(int node, const int num_wgd, vector<vector<double>>& lnl_table_wgd, const double* pbl_wgd, const DIM_DECOMP& dim_decomp, int debug);
+double compute_child_likelihood_wgd(int node, int num_wgd, vector<vector<double>>& lnl_table_wgd, const double* pbl_wgd, const DIM_DECOMP& dim_decomp, int debug);
 void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug);
 
 

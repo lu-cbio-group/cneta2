@@ -51,10 +51,14 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,
                         const vector<vector<int>>&  sample_change_chr, 
                         const vector<vector<int>>& sample_change_site, 
                         const vector<int>& sample_num_wgd, 
-                        int is_total, 
+                        const INPUT_PROPERTY& input_property, 
                         int debug);
 
 
+bool adjust_chr_change_for_wgd(int& rounded_num_change, double avg_cn, int nwgd);
+
+bool adjust_site_change_for_wgd(int& rounded_num_change, double avg_cn, int nwgd);
+ 
 // Find the potential number of WGDs for each sample
 void get_num_wgd(const vector<double>& sample_avg_cn, vector<int>& sample_num_wgd, int debug = 0);
 
@@ -208,7 +212,7 @@ void compute_max_changes(const vector<vector<int>>& sample_change_chr,
                         const vector<pair<int,int>>& states_chr,
                         const vector<pair<int,int>>& states_site,
                         int is_total,
-                        bool debug);
+                        int debug);
 
 
 // Format of input total copy number: sample, chr, seg, copy_number
