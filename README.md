@@ -6,11 +6,11 @@ This repository contains a set of programs to simulate and build phylogenetic tr
 
 There are mainly 3 programs:
 * cnets: simulating CNAs along a phylogenetic (coalescence) tree
-* cnetml: building phylogenetic trees from copy numbers with maximum likelihood approach, capable of jointly inferring the tree topoloy, node ages, and muation rates from total copy number of longitudinal samples
+* cnetml: building phylogenetic trees from copy numbers with maximum likelihood approach, capable of jointly inferring the tree topology, node ages, and mutation rates from total copy number of longitudinal samples
 * cnetmcmc (still under development): building phylogenetic trees from copy numbers with Bayesian MCMC approach
 
 The first two programs are described in the paper:
-- [Lu B, Curtius K, Graham TA, Yang Z, Barnes CP. CNETML: Maximum likelihood inference of phylogeny from copy number profiles of spatio-temporal samples. bioRxiv. 2022 Mar 20:2022-03.](https://www.biorxiv.org/content/10.1101/2022.03.18.484889v1)
+- [Lu B, Curtius K, Graham TA, Yang Z, Barnes CP. CNETML: maximum likelihood inference of phylogeny from copy number profiles of multiple samples. Genome Biol 24, 144 (2023).](https://doi.org/10.1186/s13059-023-02983-0)
 
 
 # Installation
@@ -129,7 +129,7 @@ The maximum copy number of the mutated genome is constrained by a user-specified
 
 There are three models of evolution for the copy number profiles:
 <!-- * model 0: Mk model (extension of JC69 model) -->
-* model 1: bounded model of total copy number
+* model 1: bounded model of total copy number (deprecated)
 * model 2: bounded model of haplotype-specific copy number (default)
 * model 3: infinite sites model
 
