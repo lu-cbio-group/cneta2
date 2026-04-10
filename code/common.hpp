@@ -23,6 +23,7 @@
 #include <vector>
 #include <set>
 #include <stack>
+#include <unordered_map>
 
 #include <boost/format.hpp>   // used in newick format
 #include <boost/algorithm/string.hpp>
