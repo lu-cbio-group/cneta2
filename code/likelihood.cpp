@@ -1605,11 +1605,9 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
     // TODO:may consider gain/loss separately and arm-level changes in the future
     // based on maximum haplotype-specific change: +1: 9; +2: 16; +3: 25: +4: 36
     if(obs_decomp.max_chr_change > 0){      
-        // dim_chr = 9; 
         dim_chr = get_matrix_dim(lnl_type.max_chr_change_haplotype);
     }
     if(obs_decomp.max_site_change > 0){
-        // dim_seg = 16;
         dim_seg = get_matrix_dim(lnl_type.max_site_change_haplotype);
     }
 
