@@ -85,9 +85,14 @@ void get_rate_matrix_site_change(double* m, double dup_rate, double del_rate, in
 // rate matrix for chr-level CNAs
 void get_rate_matrix_chr_change(double* m, double chr_gain_rate, double chr_loss_rate, int chr_change_max);
 
-void get_rate_matrix_site_change_haplotype(double* m, double dup_rate, double del_rate,  int max_site_change_haplotype = 2);
+// void get_rate_matrix_site_change_haplotype(double* m, double dup_rate, double del_rate,  int max_site_change_haplotype = 2);
 
-void get_rate_matrix_chr_change_haplotype(double* m, double chr_gain_rate, double chr_loss_rate,  int max_chr_change_haplotype = 1);
+// void get_rate_matrix_chr_change_haplotype(double* m, double chr_gain_rate, double chr_loss_rate,  int max_chr_change_haplotype = 1);
+
+vector<Transition> build_transitions(const vector<pair<int,int>>& states, const map<pair<int,int>, int>& idx, int max_allowed_cn_change, double cn_increase_rate, double cn_decrease_rate);
+
+void get_rate_matrix_change_haplotype(double* m, double cn_increase_rate, double cn_decrease_rate,  int max_change_haplotype = 1);
+
 
 // Maximum allowed number of WGD events over a time interval: 2
 void get_rate_matrix_wgd(double* m, double wgd_rate, int max_wgd = 2);

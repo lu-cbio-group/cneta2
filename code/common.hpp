@@ -46,7 +46,7 @@ const int NUM_CHR = 22; // only consider autosome for now, TODD: add ChrX and ch
 const int NORM_PLOIDY = 2;
 const int NORM_ALLElE_STATE = 4;    // state 4 represents 1/1 in haplotype-specific copy number model BOUNDA
 const int NO_CHANGE_WGD = 0; // index of rate matrix for no change at WGD level
-const int NO_CHANGE_HAPLOTYPE = 5;   // index of rate matrix for no change at chr-level and site-level
+const int NO_CHANGE_HAPLOTYPE = 4;   // index of rate matrix for no change at chr-level and site-level
 const int CHANGE_CHR = 1000;   // used to represent chromosome gain/loss in the change state, so that site-level changes can be adjusted accordingly to avoid double counting
 
 // limits on rate matrix dimension
@@ -87,6 +87,13 @@ struct INPUT_PROPERTY{
     int incl_all;
 };
 
+// to store decomposition information for an observed copy number, store all values for convenience of access and adaption
+struct Transition {
+    int from;
+    int to;
+    double rate;
+    string label;
+};
 
 inline void print_input_property(const INPUT_PROPERTY& p) {
     std::cout
@@ -372,68 +379,118 @@ inline void print_data_map(const map<int, vector<vector<T>>>& data) {
 }
 
 
-// Build the ordered list of pairs for a given maximum allowed positive value.
-// Allowed values are always from -1 up to max_allowed.
-// Used to get the state index for haplotype-specific copy number changes in the rate matrices of multiple-level Markov model.
+// // Build the ordered list of pairs for a given maximum allowed positive value.
+// // Allowed values are always from -1 up to max_allowed.
+// // Used to get the state index for haplotype-specific copy number changes in the rate matrices of multiple-level Markov model.
+// inline vector<pair<int,int>> build_pair_states(int max_allowed) {
+//     if (max_allowed < 1) {
+//         throw std::invalid_argument("max_allowed must be >= 1");
+//     }
+
+//     // Base order for max_allowed = 1
+//     vector<pair<int,int>> states = {
+//         {-1,-1}, {-1,0}, {0,-1}, {-1,1}, {1,-1},
+//         {0,0}, {0,1}, {1,0}, {1,1}
+//     };
+
+//     // Extend from 2, 3, ..., max_allowed
+//     for (int k = 2; k <= max_allowed; ++k) {
+//         vector<pair<int,int>> new_states;
+
+//         // Add all new states involving k:
+//         // (k, x) and (x, k), where x runs from -1 to k
+//         // avoiding duplicate (k, k)
+//         for (int x = -1; x <= k; ++x) {
+//             if (x < k) {
+//                 new_states.push_back({x, k});
+//                 new_states.push_back({k, x});
+//             } else {
+//                 new_states.push_back({k, k});
+//             }
+//         }
+
+//         // Sort new states by:
+//         // 1) increasing sum a+b
+//         // 2) increasing first component a
+//         std::sort(new_states.begin(), new_states.end(),
+//                   [](const pair<int,int>& p1, const pair<int,int>& p2) {
+//                       int s1 = p1.first + p1.second;
+//                       int s2 = p2.first + p2.second;
+//                       if (s1 != s2) return s1 < s2;
+//                       return p1.first < p2.first;
+//                   });
+
+//         // Merge old states and new states by sum,
+//         // keeping old states first when sums are equal
+//         vector<pair<int,int>> merged;
+//         merged.reserve(states.size() + new_states.size());
+
+//         size_t i = 0, j = 0;
+//         while (i < states.size() && j < new_states.size()) {
+//             int sum_old = states[i].first + states[i].second;
+//             int sum_new = new_states[j].first + new_states[j].second;
+
+//             if (sum_old <= sum_new) {
+//                 merged.push_back(states[i++]);   // old states first on tie
+//             } else {
+//                 merged.push_back(new_states[j++]);
+//             }
+//         }
+
+//         while (i < states.size()) merged.push_back(states[i++]);
+//         while (j < new_states.size()) merged.push_back(new_states[j++]);
+
+//         states.swap(merged);
+//     }
+
+//     return states;
+// }
+
+
+// states for abosulute haplotype-specific copy number changes: -1/-1   -1/0    0/-1    -1/1    0/0 
 inline vector<pair<int,int>> build_pair_states(int max_allowed) {
     if (max_allowed < 1) {
         throw std::invalid_argument("max_allowed must be >= 1");
     }
 
-    // Base order for max_allowed = 1
-    vector<pair<int,int>> states = {
-        {-1,-1}, {-1,0}, {0,-1}, {-1,1}, {1,-1},
-        {0,0}, {0,1}, {1,0}, {1,1}
-    };
+    vector<pair<int,int>> states;
+    int max_hap_cn = NORM_PLOIDY / 2 + max_allowed;  // maximum copy number on one haplotype, used to determine the state space
 
-    // Extend from 2, 3, ..., max_allowed
-    for (int k = 2; k <= max_allowed; ++k) {
-        vector<pair<int,int>> new_states;
+     for (int total = 0; total <= max_allowed; ++total) {
+        for (int a = 0; a <= total; ++a) {
+            int b = total - a;
 
-        // Add all new states involving k:
-        // (k, x) and (x, k), where x runs from -1 to k
-        // avoiding duplicate (k, k)
-        for (int x = -1; x <= k; ++x) {
-            if (x < k) {
-                new_states.push_back({x, k});
-                new_states.push_back({k, x});
-            } else {
-                new_states.push_back({k, k});
+            if (a >= 0 && a <= max_hap_cn &&
+                b >= 0 && b <= max_hap_cn) {
+                states.push_back({a - NORM_PLOIDY / 2, b - NORM_PLOIDY / 2});
             }
         }
+    }
 
-        // Sort new states by:
-        // 1) increasing sum a+b
-        // 2) increasing first component a
-        std::sort(new_states.begin(), new_states.end(),
-                  [](const pair<int,int>& p1, const pair<int,int>& p2) {
-                      int s1 = p1.first + p1.second;
-                      int s2 = p2.first + p2.second;
-                      if (s1 != s2) return s1 < s2;
-                      return p1.first < p2.first;
-                  });
+    return states;    
 
-        // Merge old states and new states by sum,
-        // keeping old states first when sums are equal
-        vector<pair<int,int>> merged;
-        merged.reserve(states.size() + new_states.size());
+}
 
-        size_t i = 0, j = 0;
-        while (i < states.size() && j < new_states.size()) {
-            int sum_old = states[i].first + states[i].second;
-            int sum_new = new_states[j].first + new_states[j].second;
 
-            if (sum_old <= sum_new) {
-                merged.push_back(states[i++]);   // old states first on tie
-            } else {
-                merged.push_back(new_states[j++]);
+// replace build_pair_states above with this one - RL
+// states for abosulute haplotype-specific copy numbers: 0/0     0/1     1/0     0/2     1/1
+inline vector<pair<int,int>> build_pair_states_cn(int max_allowed) {
+    if (max_allowed < 1) {
+        throw std::invalid_argument("max_allowed must be >= 1");
+    }
+
+    vector<pair<int,int>> states;
+    int max_hap_cn = NORM_PLOIDY / 2 + max_allowed;  // maximum copy number on one haplotype, used to determine the state space
+
+     for (int total = 0; total <= max_allowed; ++total) {
+        for (int a = 0; a <= total; ++a) {
+            int b = total - a;
+
+            if (a >= 0 && a <= max_hap_cn &&
+                b >= 0 && b <= max_hap_cn) {
+                states.push_back({a, b});
             }
         }
-
-        while (i < states.size()) merged.push_back(states[i++]);
-        while (j < new_states.size()) merged.push_back(new_states[j++]);
-
-        states.swap(merged);
     }
 
     return states;

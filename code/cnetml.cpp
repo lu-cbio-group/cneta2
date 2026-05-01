@@ -1524,7 +1524,7 @@ int main(int argc, char** const argv){
           // cout << " the string representation is " << real_tstring << endl;
 
           double lnl = compute_tree_likelihood(real_tree, vobs, vobs_change, obs_decomp, comps, lnl_type, debug);
-          cout << "   The log likelihood of the real tree using initial ratesis " << lnl << endl;
+          cout << "   The log likelihood of the real tree using initial rates is " << lnl << endl;
       }
 
       // nodes are in an order suitable for dynamic programming (lower nodes at first, which may be changed after topolgy change)

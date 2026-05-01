@@ -1100,13 +1100,15 @@ void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const 
     if(dim_chr > 0){
         qmat_chr = new double[dim_mat_chr];   // chromosome gain/loss
         memset(qmat_chr, 0.0, dim_mat_chr * sizeof(double));
-        get_rate_matrix_chr_change_haplotype(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate, lnl_type.max_chr_change_haplotype);
+        // get_rate_matrix_chr_change_haplotype(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate, lnl_type.max_chr_change_haplotype);
+        get_rate_matrix_change_haplotype(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate, lnl_type.max_chr_change_haplotype);
     }
 
     if(dim_seg > 0){
         qmat_seg = new double[dim_mat_seg];  // site duplication/deletion
         memset(qmat_seg, 0.0, dim_mat_seg * sizeof(double));
-        get_rate_matrix_site_change_haplotype(qmat_seg, rtree.dup_rate, rtree.del_rate, lnl_type.max_site_change_haplotype);
+        // get_rate_matrix_site_change_haplotype(qmat_seg, rtree.dup_rate, rtree.del_rate, lnl_type.max_site_change_haplotype);
+        get_rate_matrix_change_haplotype(qmat_seg, rtree.dup_rate, rtree.del_rate, lnl_type.max_site_change_haplotype);
     }
 
     qmat_decomp.free_all();
