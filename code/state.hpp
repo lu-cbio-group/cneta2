@@ -79,9 +79,6 @@ void write_pattern_all(const map<int, vector<vector<int>>>& vobs);
 
 /******************* functions for independent chain model on multi-level CNAs *************/
 
-void set_pmat_decomp(const evo_tree& rtree, OBS_DECOMP& obs_decomp, int nstate, const vector<int>& knodes, DIM_DECOMP& dim_decomp, PMAT_DECOMP& pmat_decomp, ofstream& fout);
-
-
 // Create likelihood vectors and state vectors at the tip node for reconstructing joint ancestral state, for independent chain model
 // L_sk_k (S_sk_k) has one row for each tree node and one column for each possible state
 void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, LNL_TABLE& lnl_table, STATE_TABLE& state_table, const LNL_TYPE& lnl_type, int debug);

@@ -105,7 +105,11 @@ struct QMAT_DECOMP{
   void free_all() noexcept {
       delete [] qmat_wgd;
       delete [] qmat_chr;
-      delete [] qmat_seg;    
+      delete [] qmat_seg;  
+
+      qmat_wgd = nullptr;
+      qmat_chr = nullptr;
+      qmat_seg = nullptr;       
   }
 
   ~QMAT_DECOMP() {
@@ -361,7 +365,8 @@ void initialize_lnl_table_chr(vector<vector<double>>& lnl_table_chr, const evo_t
 
 void set_lnl_table_change(int cn_total, int row, int max_change_haplotype, vector<vector<double>>& L_sk_k);
 
-// not used for now due to pointer issues
+
+void set_pmat_decomp_dim(const OBS_DECOMP& obs_decomp, DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 void build_transition_matrices(PMAT_DECOMP& pmat_decomp, const evo_tree& rtree, const vector<int>& knodes, const QMAT_DECOMP& qmat_decomp, const DIM_DECOMP& dim_decomp, int debug); 
 
@@ -370,11 +375,11 @@ double compute_child_likelihood_change(int node, const CN_CHANGE& sk, const vect
 
 double get_prob_children_change(vector<vector<double>>& lnl_table_seg, const evo_tree& rtree, const CN_CHANGE& sk, const double* pbli_seg, const double* pblj_seg, const DIM_DECOMP& dim_decomp, int ni, int nj, int debug);
 
-void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
+void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 
 void get_likelihood_per_chr(vector<vector<double>>& lnl_table_chr, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug);
 
-double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
+double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 
 double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, int debug);
 

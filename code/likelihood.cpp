@@ -1038,6 +1038,33 @@ void initialize_lnl_table_site(vector<vector<double>>& lnl_table_seg, const evo_
 }
 
 
+void set_pmat_decomp_dim(const OBS_DECOMP& obs_decomp, DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug){
+    int dim_wgd = 0;
+    int dim_chr = 0;
+    int dim_seg = 0;
+
+    // only consider states when changes are observed 
+    if(obs_decomp.max_wgd > 0) dim_wgd = lnl_type.max_wgd + 1;
+    // TODO:may consider gain/loss separately and arm-level changes in the future
+    // based on maximum haplotype-specific change: +1: 9; +2: 16; +3: 25: +4: 36
+    if(obs_decomp.max_chr_change > 0){      
+        dim_chr = get_matrix_dim(lnl_type.max_chr_change_haplotype);
+    }
+    if(obs_decomp.max_site_change > 0){
+        dim_seg = get_matrix_dim(lnl_type.max_site_change_haplotype);
+    }
+
+    dim_decomp.dim_wgd = dim_wgd;
+    dim_decomp.dim_chr = dim_chr;
+    dim_decomp.dim_seg = dim_seg;
+
+    if(debug){
+        cout << "Dimensions of rate/transition matrices for WGD, chr gain/loss, site gain/loss: " << dim_wgd << "\t" << dim_chr << "\t" << dim_seg << endl;        
+    }
+
+}
+
+
 /**
  * @brief Build rate matrices for different levels of copy number changes.
  * 
@@ -1126,6 +1153,7 @@ void build_transition_matrices(PMAT_DECOMP& pmat_decomp, const evo_tree& rtree, 
 
     for(size_t kn = 0; kn < knodes.size(); ++kn){
          int k = knodes[kn];
+         assert(rtree.nodes[k].e_ot.size() >= 2);
          double bli = rtree.edges[rtree.nodes[k].e_ot[0]].length;
          double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
 
@@ -1266,21 +1294,19 @@ double get_prob_children_change(vector<vector<double>>& lnl_table_seg, const evo
  * 
  * @param L_sk_k: likelihood table for each node and each possible state at each copy number change level
  * @param rtree: evolutionary tree
- * @param comps: set of possible decomposed component combinations
- * @param knodes: list of internal nodes in post-order traversal
  * @param pmat_decomp: transition probability matrices for different levels
  * @param dim_decomp: dimensions of different levels
  * @param debug: debug flag
  */
 // Sum over all possible states for internal nodes
 // only need to calculate WGD likelihood for one site, as it is the same for all sites in the sample
-void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug){
+void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug){
   if(debug){
       cout << "Computing likelihood for one site with rate matrix dimensions: " << dim_decomp.dim_wgd << "\t" << dim_decomp.dim_chr << "\t"  << dim_decomp.dim_seg << endl;
   }
 
-  for(size_t kn = 0; kn < knodes.size(); ++kn){
-        int k = knodes[kn];
+  for(size_t kn = 0; kn < lnl_type.knodes.size(); ++kn){
+        int k = lnl_type.knodes[kn];
         int ni = rtree.edges[rtree.nodes[k].e_ot[0]].end;
         double bli = rtree.edges[rtree.nodes[k].e_ot[0]].length;
         int nj = rtree.edges[rtree.nodes[k].e_ot[1]].end;
@@ -1332,7 +1358,7 @@ void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo
   }
   
   if(debug > 0){
-    cout << "The likelihood tables after get_likelihood_site_change:" << endl;
+    cout << "The likelihood tables for site changes:" << endl;
     print_tree_lnl(rtree, lnl_table_seg, dim_decomp.dim_seg);
   }
 }
@@ -1376,14 +1402,13 @@ double extract_tree_lnl_change(const vector<vector<double>>& lnl_table_seg, int 
  * @brief Compute the likelihood by chromosome, assuming each observed copy number is decomposed into three types of events
  * @param rtree: the evolutionary tree 
  * @param vobs_change: observed copy number changes at different chromosomes, real change for total CN and state index for haplotype-specific CN
- * @param knodes: list of internal nodes in post-order traversal
  * @param pmat_decomp: transition probability matrices for different levels
  * @param dim_decomp: dimensions of different levels
  * @param lnl_type: tags when computing likelihood, such as indicator of whether to use repeated sites to speed up computation
  * @param is_total: whether to consider total copy number only
  * @return double: log likelihood value
  */
-double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug){
+double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug){
     double logL = 0.0;    // for all chromosomes
     // recompute to save parameter change, also do sanity check   
     vector<int> sample_num_wgd(rtree.nleaf - 1, -1);         // use -1 to indicate uninitialized
@@ -1439,7 +1464,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
                     if(sites_lnl_map.find(obs) == sites_lnl_map.end()){
                         if(debug) cout << "sites new" << endl;
                         initialize_lnl_table_site(lnl_table_seg, rtree, obs, dim_decomp, lnl_type, debug);
-                        get_likelihood_site_change(lnl_table_seg, rtree, knodes, pmat_decomp, dim_decomp, lnl_type, debug);
+                        get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
                         sites_lnl_map[obs] = lnl_table_seg;
                     }else{
                         if(debug) cout << "sites repeated" << endl;
@@ -1448,7 +1473,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
                 }else{
                     if(debug) cout << "sites no repeat consideration" << endl;
                     initialize_lnl_table_site(lnl_table_seg, rtree, obs, dim_decomp, lnl_type, debug);
-                    get_likelihood_site_change(lnl_table_seg, rtree, knodes, pmat_decomp, dim_decomp, lnl_type, debug);
+                    get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
                 }
 
                 site_logL += extract_tree_lnl_change(lnl_table_seg, rtree.nleaf - 1, debug);
@@ -1478,7 +1503,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
                         print_vector<int>(change_chr);
                     }
                     initialize_lnl_table_chr(lnl_table_chr, rtree, change_chr, dim_decomp, lnl_type, debug);
-                    get_likelihood_per_chr(lnl_table_chr, rtree, knodes, pmat_decomp, dim_decomp, debug);
+                    get_likelihood_per_chr(lnl_table_chr, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, debug);
                     chr_lnl_map[change_chr] = lnl_table_chr;
                 }else{
                     if(debug){
@@ -1493,7 +1518,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
                     print_vector<int>(change_chr);
                 }
                 initialize_lnl_table_chr(lnl_table_chr, rtree, change_chr, dim_decomp, lnl_type, debug);
-                get_likelihood_per_chr(lnl_table_chr, rtree, knodes, pmat_decomp, dim_decomp, debug);
+                get_likelihood_per_chr(lnl_table_chr, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, debug);
             }
 
             assert(lnl_table_chr[rtree.nleaf][NO_CHANGE_HAPLOTYPE] > 0.0);
@@ -1511,7 +1536,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
     if(dim_decomp.dim_wgd > 0){
         vector<vector<double>> lnl_table_wgd;  // only one table for WGD, as it is the same for all sites in the sample
         initialize_lnl_table_wgd(lnl_table_wgd, rtree, sample_num_wgd, dim_decomp, debug);    
-        get_likelihood_wgd(lnl_table_wgd, rtree, knodes, pmat_decomp, dim_decomp, debug);  
+        get_likelihood_wgd(lnl_table_wgd, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, debug);  
         double wgd_logL = log(lnl_table_wgd[rtree.nleaf][0]);
         logL += wgd_logL;   // likelihood for WGD is the same for all sites, so only compute once
 
@@ -1553,59 +1578,30 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
         return SMALL_LNL;
     }
 
-    int model = lnl_type.model;
-    int is_total = lnl_type.is_total;
-
-    int dim_wgd = 0;
-    int dim_chr = 0;
-    int dim_seg = 0;
-
-    // only consider states when changes are observed 
-    if(obs_decomp.max_wgd > 0) dim_wgd = lnl_type.max_wgd + 1;
-    // TODO:may consider gain/loss separately and arm-level changes in the future
-    // based on maximum haplotype-specific change: +1: 9; +2: 16; +3: 25: +4: 36
-    if(obs_decomp.max_chr_change > 0){      
-        dim_chr = get_matrix_dim(lnl_type.max_chr_change_haplotype);
-    }
-    if(obs_decomp.max_site_change > 0){
-        dim_seg = get_matrix_dim(lnl_type.max_site_change_haplotype);
-    }
-
-    int dim_mat_wgd = dim_wgd * dim_wgd;
-    int dim_mat_chr = dim_chr * dim_chr;
-    int dim_mat_seg = dim_seg * dim_seg;  
-
     DIM_DECOMP dim_decomp;
-    dim_decomp.dim_wgd = dim_wgd;
-    dim_decomp.dim_chr = dim_chr;
-    dim_decomp.dim_seg = dim_seg;
-
-    if(debug){
-        cout << "Dimensions of rate/transition matrices for WGD, chr gain/loss, site gain/loss: " << dim_wgd << "\t" << dim_chr << "\t" << dim_seg << endl;
-        cout << "\tBuilding Q rate matrices for multiple levels" << endl;
-    }
+    set_pmat_decomp_dim(obs_decomp, dim_decomp, lnl_type, debug);
 
     QMAT_DECOMP qmat_decomp;
+    if(debug) cout << "\tBuilding Q rate matrices for multiple levels" << endl;
     build_rate_matrices(qmat_decomp, rtree, dim_decomp, lnl_type, debug);
 
     if(debug) cout << "\tBuilding P transition matrices for multiple levels" << endl;
     PMAT_DECOMP pmat_decomp;
     build_transition_matrices(pmat_decomp, rtree, lnl_type.knodes, qmat_decomp, dim_decomp, debug);
 
-    // TODO: simplify parameters
-    double logL = get_likelihood_chr_change(rtree, vobs_change, lnl_type.knodes, pmat_decomp, dim_decomp, lnl_type, debug);
+    double logL = get_likelihood_chr_change(rtree, vobs_change, pmat_decomp, dim_decomp, lnl_type, debug);
 
     if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;
     if(lnl_type.correct_bias){
         if(debug) cout << "Correcting for the skip of invariant sites" << endl;          
         vector<vector<double>> lnl_table_seg;
         CN_CHANGE invariant{2, 0, 0, 0};   // real copy number change for total CN
-        if (!is_total) {
+        if (!lnl_type.is_total) {
             invariant = {2, 0, NO_CHANGE_HAPLOTYPE, NO_CHANGE_HAPLOTYPE};  // state index for haplotype-specific CN
         }
         vector<CN_CHANGE> obs(rtree.nleaf - 1, invariant);
         initialize_lnl_table_site(lnl_table_seg, rtree, obs, dim_decomp, lnl_type, debug);
-        get_likelihood_site_change(lnl_table_seg, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, lnl_type, debug);
+        get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
 
         double lnl_invar = extract_tree_lnl_change(lnl_table_seg, rtree.nleaf - 1, debug);
 
@@ -1707,7 +1703,7 @@ double get_likelihood_change_variable_rate(evo_tree& rtree, const map<int, vecto
     PMAT_DECOMP pmat_decomp;
     build_transition_matrices(pmat_decomp, rtree, lnl_type.knodes, qmat_decomp, dim_decomp, debug);
 
-    double logL = get_likelihood_chr_change(rtree, vobs_change, lnl_type.knodes, pmat_decomp, dim_decomp, lnl_type, debug);
+    double logL = get_likelihood_chr_change(rtree, vobs_change, pmat_decomp, dim_decomp, lnl_type, debug);
 
     if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;
     if(lnl_type.correct_bias){
@@ -1721,7 +1717,7 @@ double get_likelihood_change_variable_rate(evo_tree& rtree, const map<int, vecto
 
         vector<vector<double>> lnl_table_seg;
         initialize_lnl_table_site(lnl_table_seg, rtree, obs, dim_decomp, lnl_type, debug);   
-        get_likelihood_site_change(lnl_table_seg, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, lnl_type, debug);
+        get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
         double lnl_invar = extract_tree_lnl_change(lnl_table_seg, rtree.nleaf - 1, debug);
 
         double bias = lnl_type.num_invar_bins * lnl_invar;
