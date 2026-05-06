@@ -43,6 +43,8 @@ int change_state_to_total_cn(int state, int max_change_haplotype);
 // Change the allele specific copy number to the state used in substitution rate matrix
 int allele_cn_to_state(int cnA, int cnB);
 
+void get_tcn_state_index(int cn_total, int peak_sum_haplotype, int& si, int& ei);
+
 void rcn_to_decomposition(const vector<vector<vector<int>>>& s_info, vector<vector<CN_CHANGE>>& s_info_change, vector<vector<int>>& sample_change_site, vector<int>& site_max_change, int debug);
 
 // Convert the copy number matrix to decomposition format

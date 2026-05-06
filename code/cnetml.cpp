@@ -1217,8 +1217,8 @@ int main(int argc, char** const argv){
 
     // estimated from observed copy numbers, may also be read from input meta file, used to set the presence of rate matrix for each type of copy number change
     int max_wgd_sample = 0;    // maximum number of WGD, add _sample to distinguish from max_wgd which is the user-specified maximum number of WGD allowed in the model, determining the dimension of rate matrix for WGD
-    int max_chr_change = 0; // maximum number of chromosome changes, TODO: haplotype-specific
-    int max_site_change = 0;  // maximum number of site (segment/bin) changes, haplotype-specific
+    int max_chr_change = 0; // maximum number of chromosome changes
+    int max_site_change = 0;  // maximum number of site (segment/bin) changes
 
     map<int, set<vector<int>>> decomp_table;  // possible state combinations for observed copy numbers
     set<vector<int>> comps;
@@ -1604,9 +1604,9 @@ int main(int argc, char** const argv){
             cout << "\nInferring marginal ancestral states" << endl;
             double lnl = 0.0;
             if(model == DECOMP){
-                // TODO: update
-            //    lnl = reconstruct_marginal_ancestral_state_decomp(tree, vobs, inodes, comps, obs_decomp, use_repeat, infer_wgd, infer_chr, cn_max, ofile, is_total);
+               lnl = reconstruct_marginal_ancestral_state_decomp(tree, vobs_change, inodes, obs_decomp, lnl_type, ofile, debug);
             }else{
+            //    assert(model == BOUNDA);
                lnl = reconstruct_marginal_ancestral_state(tree, vobs, inodes, model, cn_max, use_repeat, is_total, ofile);
             }
             cout << "The log likelihood of the input tree computed during state reconstruction is " << lnl << endl;
@@ -1615,9 +1615,9 @@ int main(int argc, char** const argv){
         if(infer_joint_state){
             cout << "\tInferring joint ancestral states" << endl;
             if(model == DECOMP){
-                // TODO: update
-            //    reconstruct_joint_ancestral_state_decomp(tree, vobs, inodes, comps, obs_decomp, use_repeat, cn_max, ofile, is_total);
+               reconstruct_joint_ancestral_state_decomp(tree, vobs_change, inodes, obs_decomp, lnl_type, ofile, debug);
             }else{
+            //    assert(model == BOUNDA);
                reconstruct_joint_ancestral_state(tree, vobs, inodes, model, cn_max, use_repeat, is_total, m_max, ofile);
             }
         }

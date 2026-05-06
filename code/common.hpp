@@ -63,11 +63,11 @@ const double SMALL_VAL = 1.0e-10;   // used to compare floats
 const float WGD_CUTOFF = 3.0;    // genome ploidy to determine WGD
 const double WGD_WEIGHT = 0.001;   // used to represent very large negative log likelihood
 
-// key: chr, seg, copy_number
+// key: chr, seg, copy_number, shortname for convenience of access and printing
 typedef map<int, map<int, int>> copy_number;
 // typedef vector<vector<double>> lnl_table;
 
-const string VERSION = "1.0";
+const string VERSION = "2.0";
 
 
 // read-only, important input properties that will be used in multiple functions, wrapped in a struct for easier access and passing to functions
@@ -164,18 +164,6 @@ struct CN_CHANGE{
     int cn_change_chr;      // encoded as either total change (multiple indices in the rate matrix) or index in the haplotype-specific rate matrix
     int cn_change_site; 
 
-    static constexpr int HAP_TAG = 10000; // tag for encoding haplotype-specific copy number states, should be larger than TOTAL_TAG
-
-
-    static int encode_hap(int a, int b, int min_change, int span) {
-        return HAP_TAG + (a - min_change) * span + (b - min_change);
-    }
-
-    static CN_CHANGE decode_hap(int x, int min_change, int span) {
-        int v = x - HAP_TAG;
-        return {v / span + min_change, v % span + min_change};
-    }   
-
     vector<int> to_vector() const {
         return {
             cn_state,
@@ -185,6 +173,14 @@ struct CN_CHANGE{
         };
     }    
 
+    string to_string() const {
+        return "CN_CHANGE("
+            "cn_state="       + std::to_string(cn_state)       + ", "
+            "num_wgd="        + std::to_string(num_wgd)        + ", "
+            "cn_change_chr="  + std::to_string(cn_change_chr)  + ", "
+            "cn_change_site=" + std::to_string(cn_change_site) + ")";
+    }
+
     bool operator<(const CN_CHANGE& other) const {
         return to_vector() < other.to_vector();
     }
@@ -192,14 +188,12 @@ struct CN_CHANGE{
 
 
 inline std::ostream& operator<<(std::ostream& os, const CN_CHANGE& cc) {
-    os << "CN_CHANGE("
-       << "cn_state=" << cc.cn_state
-       << ", num_wgd=" << cc.num_wgd
-       << ", cn_change_chr=" << cc.cn_change_chr
-       << ", cn_change_site=" << cc.cn_change_site
-       << ")";
+    os << cc.to_string();   
     return os;
 }
+
+// key: chr, seg, copy_number_change, shortname for convenience of access and printing
+typedef map<int, map<int, CN_CHANGE>> copy_number_change;
 
 
 // Read strings separated by space into a vector.
@@ -456,7 +450,7 @@ inline vector<pair<int,int>> build_pair_states(int max_allowed) {
     vector<pair<int,int>> states;
     int max_hap_cn = NORM_PLOIDY / 2 + max_allowed;  // maximum copy number on one haplotype, used to determine the state space
 
-     for (int total = 0; total <= max_allowed; ++total) {
+     for (int total = 0; total <= 2 * max_hap_cn; ++total) {
         for (int a = 0; a <= total; ++a) {
             int b = total - a;
 
@@ -468,12 +462,10 @@ inline vector<pair<int,int>> build_pair_states(int max_allowed) {
     }
 
     return states;    
-
 }
 
 
-// replace build_pair_states above with this one - RL
-// states for abosulute haplotype-specific copy numbers: 0/0     0/1     1/0     0/2     1/1
+// states for absolute haplotype-specific copy numbers: 0/0     0/1     1/0     0/2     1/1
 inline vector<pair<int,int>> build_pair_states_cn(int max_allowed) {
     if (max_allowed < 1) {
         throw std::invalid_argument("max_allowed must be >= 1");
@@ -482,7 +474,7 @@ inline vector<pair<int,int>> build_pair_states_cn(int max_allowed) {
     vector<pair<int,int>> states;
     int max_hap_cn = NORM_PLOIDY / 2 + max_allowed;  // maximum copy number on one haplotype, used to determine the state space
 
-     for (int total = 0; total <= max_allowed; ++total) {
+     for (int total = 0; total <= 2 * max_hap_cn; ++total) {
         for (int a = 0; a <= total; ++a) {
             int b = total - a;
 
@@ -500,7 +492,6 @@ inline vector<pair<int,int>> build_pair_states_cn(int max_allowed) {
 // Check the index boundaries to obtain correct state indices and reset when needed
 // Returns -1 if not found.
 inline int get_pair_index(int a, int b, int max_change_haplotype, const vector<pair<int,int>>& states) {
-    // vector<pair<int,int>> states = build_pair_states(max_allowed);
     if(a < MIN_CHANGE_HAPLOTYPE) a = MIN_CHANGE_HAPLOTYPE;
     if(a > max_change_haplotype) a = max_change_haplotype;
     if(b < MIN_CHANGE_HAPLOTYPE) b = MIN_CHANGE_HAPLOTYPE;
@@ -516,8 +507,6 @@ inline int get_pair_index(int a, int b, int max_change_haplotype, const vector<p
 
 
 inline pair<int,int> get_pair_from_index(int index, const vector<pair<int,int>>& states) {
-    // vector<pair<int,int>> states = build_pair_states(max_allowed);
-
     if (index < 0 || index >= static_cast<int>(states.size())) {
         throw std::out_of_range("Pair index out of range");
     }
@@ -527,7 +516,6 @@ inline pair<int,int> get_pair_from_index(int index, const vector<pair<int,int>>&
 
 // Optional helper: build lookup map for faster repeated queries
 inline map<pair<int,int>, int> build_pair_index_map(const vector<pair<int,int>>& states) {
-    // vector<pair<int,int>> states = build_pair_states(max_allowed);
     map<pair<int,int>, int> idx;
     for (size_t i = 0; i < states.size(); ++i) {
         idx[states[i]] = static_cast<int>(i);
@@ -554,6 +542,13 @@ inline int encode_change_pair(int a, int b, int max_allowed) {
 }
 
 
+inline void print_pair_states(const vector<pair<int,int>>& states) {
+    cout << "Haplotype-specific change states:" << endl;
+    for (size_t i = 0; i < states.size(); ++i) {
+        cout << "Index " << i << ": " << states[i].first << "/" << states[i].second << endl;
+    }
+}
+
 inline int max_abs_change(const vector<int>& vals) {
     int m = 0;
     for (int x : vals) m = max(m, std::abs(x));
@@ -566,6 +561,16 @@ inline double mean_int_vector(const vector<int>& v) {
         throw runtime_error("Cannot compute mean of empty vector.");
     }
     return static_cast<double>(accumulate(v.begin(), v.end(), 0)) / v.size();
+}
+
+// Function to round a floating point value to a specified precision
+// https://www.geeksforgeeks.org/cpp/floating-point-values-as-keys-in-std-map/
+inline double round_to_precision(double value, int precision){
+    // Calculate the factor to scale the value
+    double factor = pow(10, precision);
+    // Round the value to the nearest integer after scaling,
+    // then scale it back
+    return round(value * factor) / factor;
 }
 
 

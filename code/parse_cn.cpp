@@ -181,6 +181,31 @@ int allele_cn_to_state(int cnA, int cnB){
 }
 
 
+// cn_total: copy number change state plus 2 to make it non-negative
+// get the start and end index for the observed total copy number change in the rate matrix
+// seems no formula due to the piecewise nature of the number of states for each total copy number, need to compute the partial sum to get the index
+void get_tcn_state_index(int cn_total, int peak_sum_haplotype, int& si, int& ei){
+    // number of elements for each state
+    vector<int> n_states = make_peak_vector(peak_sum_haplotype); // assume 2 in total and 1 for each haplotype at chr level
+    int last_index = cn_total;
+
+    if(cn_total < 0){
+        cout << "Total copy number is negative, resetting to 0" << endl;
+        last_index = 0;
+    }    
+
+    int max_tcn = 2 * peak_sum_haplotype - 2;
+    if(cn_total > max_tcn){
+        cout << "Total copy number " << cn_total << " exceeds the allowed maximum value, resetting to maximum valid value" << endl;
+        last_index = max_tcn;
+    }
+    for (int k = 0; k < last_index; k++){
+        si += n_states[k];
+    }
+    ei = si + n_states[last_index] - 1;
+}
+
+
 // Example:
 // max_change_haplotype = 1 -> make_peak_vector(3) -> 1,2,3,2,1
 // max_change_haplotype = 2 -> make_peak_vector(4) -> 1,2,3,4,3,2,1
@@ -242,27 +267,6 @@ int change_state_to_total_cn(int state, int max_change_haplotype){
     return 0;
 }
 
-
-
-int allele_cn_to_change_state(int cnA, int cnB){
-    int tcn = cnA + cnB;
-    int s = 0;
-
-    int nprev = 0;
-    // There are i+1 combinations for a total copy number of i
-    for(int i = 0; i < tcn; i++){
-        nprev += i + 1;
-    }
-    // cout << nprev << " cases before " << cnA << "," << cnB << endl;
-    s = nprev;
-
-    for(int j = 0; j < cnA; j++){
-        // cout << j << endl;
-        s += 1;
-    }
-    // cout << "State is " << s << endl;
-    return s;
-}
 
 /** 
  * @brief Decompose relative total copy number into multi-level changes (WGD, chromosome, segment) given original data and computed changes.
@@ -1076,7 +1080,8 @@ void get_chr_change_haplotype(const vector<int>& sample_num_wgd,
                                 int debug){
     cout << "\nGetting the potential number of chromosome changes for each sample" << endl;
     vector<pair<int,int>> states = build_pair_states(max_chr_change_haplotype);
-
+    print_pair_states(states);   
+                                 
     for(size_t i = 0; i < sample_avg_cnA.size(); i++){
         int nwgd = sample_num_wgd[i];
 

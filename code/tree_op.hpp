@@ -234,6 +234,9 @@ void initialize_knodes(vector<int>& knodes, int Ns);
 
 vector<int> get_inodes_bottom_up(evo_tree& tree, int debug);
 
+void print_branch_lengths(const vector<double>& blens);
+
+
 // vector<double> get_blens_from_intervals(evo_tree& rtree, double *x){
 //     vector<double> intervals;
 //     // The estimated value may be nan
