@@ -84,7 +84,7 @@ void set_pmat_decomp(const evo_tree& rtree, OBS_DECOMP& obs_decomp, int nstate, 
 
 // Create likelihood vectors and state vectors at the tip node for reconstructing joint ancestral state, for independent chain model
 // L_sk_k (S_sk_k) has one row for each tree node and one column for each possible state
-// void initialize_asr_table_decomp(const vector<int>& obs, const evo_tree& rtree, const set<vector<int>>& comps, OBS_DECOMP& obs_decomp, PMAT_DECOMP& pmat_decomp, vector<vector<double>>& L_sk_k, vector<vector<int>>& S_sk_k, int nstate, int is_total = 1);
+void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, LNL_TABLE& lnl_table, STATE_TABLE& state_table, const LNL_TYPE& lnl_type, int debug);
 
 // Assume the likelihood table is for each combination of states
 double get_max_children_decomp2(const vector<vector<double>>& L_sk_k, vector<vector<int>>& S_sk_k, const evo_tree& rtree, const set<vector<int>>& comps, int k, int nstate, double* pbli_wgd, double* pbli_chr, double* pbli_seg, DIM_DECOMP& dim_decomp, int sp, int ni, int nj, int blen);

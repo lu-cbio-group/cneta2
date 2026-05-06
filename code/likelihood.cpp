@@ -1592,6 +1592,7 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
     PMAT_DECOMP pmat_decomp;
     build_transition_matrices(pmat_decomp, rtree, lnl_type.knodes, qmat_decomp, dim_decomp, debug);
 
+    // TODO: simplify parameters
     double logL = get_likelihood_chr_change(rtree, vobs_change, lnl_type.knodes, pmat_decomp, dim_decomp, lnl_type, debug);
 
     if(debug) cout << "Final likelihood before correcting acquisition bias: " << logL << endl;

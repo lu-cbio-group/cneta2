@@ -532,7 +532,7 @@ void get_rate_matrix_chr_change_haplotype(double* m, double chr_gain_rate, doubl
  * 
  */
 void get_rate_matrix_change_haplotype(double* m, double cn_increase_rate, double cn_decrease_rate,  int max_change_haplotype) {    
-    int debug = 1;
+    int debug = 0;
 
     vector<pair<int,int>> states = build_pair_states_cn(max_change_haplotype);
     int n_states = states.size();

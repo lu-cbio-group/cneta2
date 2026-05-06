@@ -766,7 +766,7 @@ void write_pattern_all(const map<int, vector<vector<int>>>& vobs)
 /*************** functions for independent chain model on multiple levels of CNAs *****************/
 
 
-void set_pmat_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, PMAT_DECOMP& pmat_decomp, DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug){
+void set_pmat_decomp_dim(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug){
     int model = lnl_type.model;
     int is_total = lnl_type.is_total;
 
@@ -797,12 +797,6 @@ void set_pmat_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHAN
         cout << "Dimensions of rate/transition matrices for WGD, chr gain/loss, site gain/loss: " << dim_wgd << "\t" << dim_chr << "\t" << dim_seg << endl;
         cout << "\tBuilding Q rate matrices for multiple levels" << endl;
     }
-
-    QMAT_DECOMP qmat_decomp;
-    build_rate_matrices(qmat_decomp, rtree, dim_decomp, lnl_type, debug);
-
-    if(debug) cout << "\tBuilding P transition matrices for multiple levels" << endl;
-    build_transition_matrices(pmat_decomp, rtree, lnl_type.knodes, qmat_decomp, dim_decomp, debug);
 
 }
 
@@ -938,10 +932,17 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
 
     double logL = 0.0;    // for all chromosomes
 
-    PMAT_DECOMP pmat_decomp;
     DIM_DECOMP dim_decomp;
-    set_pmat_decomp(rtree, vobs_change, obs_decomp, pmat_decomp, dim_decomp, lnl_type, debug);
+    set_pmat_decomp_dim(rtree, vobs_change, obs_decomp, dim_decomp, lnl_type, debug);
 
+    QMAT_DECOMP qmat_decomp;
+    build_rate_matrices(qmat_decomp, rtree, dim_decomp, lnl_type, debug);
+
+    if(debug) cout << "\tBuilding P transition matrices for multiple levels" << endl;
+    PMAT_DECOMP pmat_decomp; 
+    build_transition_matrices(pmat_decomp, rtree, lnl_type.knodes, qmat_decomp, dim_decomp, debug);
+
+   
     // Use a map to store computed log likelihood for each level of CNAs
     // recompute to save parameter change, also do sanity check   
     vector<int> sample_num_wgd(rtree.nleaf - 1, -1);         // use -1 to indicate uninitialized
@@ -1177,8 +1178,7 @@ void set_tip_states_decomp(CN_CHANGE obs_val, vector<int>& tip_states_chr, vecto
  */
 // Add vectors to store tip states
 // pmat_decomp: multiple P matrices for each branches for multiple CNA types
-void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, LNL_TABLE& lnl_table, STATE_TABLE& state_table, const LNL_TYPE& lnl_type){
-    int debug = 0;
+void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, LNL_TABLE& lnl_table, STATE_TABLE& state_table, const LNL_TYPE& lnl_type, int debug){
     if(debug){
         cout << "Initializing tables for reconstructing joint ancestral state under independent chain model" << endl;
     }
@@ -1405,9 +1405,15 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<i
 
     int ntotn = 2 * rtree.nleaf - 1;
 
-    PMAT_DECOMP pmat_decomp;
     DIM_DECOMP dim_decomp;
-    set_pmat_decomp(rtree, vobs_change, obs_decomp, pmat_decomp, dim_decomp, lnl_type, debug);
+    set_pmat_decomp_dim(rtree, vobs_change, obs_decomp, dim_decomp, lnl_type, debug);
+
+    QMAT_DECOMP qmat_decomp;
+    build_rate_matrices(qmat_decomp, rtree, dim_decomp, lnl_type, debug);
+
+    if(debug) cout << "\tBuilding P transition matrices for multiple levels" << endl;
+    PMAT_DECOMP pmat_decomp; 
+    build_transition_matrices(pmat_decomp, rtree, lnl_type.knodes, qmat_decomp, dim_decomp, debug);
 
     // A state/likelihood table for each level of CNAs
     LNL_TABLE lnl_table;
@@ -1438,7 +1444,7 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<i
 
           if(lnl_type.use_repeat){
               if(sites_lnl_map.find(obs) == sites_lnl_map.end()){
-                  initialize_asr_table_decomp(obs, rtree, pmat_decomp, dim_decomp, lnl_table, state_table, lnl_type);
+                  initialize_asr_table_decomp(obs, rtree, pmat_decomp, dim_decomp, lnl_table, state_table, lnl_type, debug);
                   get_ancestral_states_site_decomp(lnl_table, state_table, rtree, knodes, pmat_decomp, dim_decomp);
                   sites_lnl_map[obs] = lnl_table;
               }else{
@@ -1446,7 +1452,7 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<i
                   lnl_table = sites_lnl_map[obs];
               }
           }else{
-              initialize_asr_table_decomp(obs, rtree, pmat_decomp, dim_decomp, lnl_table, state_table, lnl_type);
+              initialize_asr_table_decomp(obs, rtree, pmat_decomp, dim_decomp, lnl_table, state_table, lnl_type, debug);
               get_ancestral_states_site_decomp(lnl_table, state_table, rtree, knodes, pmat_decomp, dim_decomp);
           }
 
