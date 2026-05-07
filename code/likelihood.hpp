@@ -368,8 +368,8 @@ void set_lnl_table_change(int cn_total, int row, int max_change_haplotype, vecto
 
 void set_pmat_decomp_dim(const OBS_DECOMP& obs_decomp, DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
-void build_transition_matrices(PMAT_DECOMP& pmat_decomp, const evo_tree& rtree, const vector<int>& knodes, const QMAT_DECOMP& qmat_decomp, const DIM_DECOMP& dim_decomp, int debug); 
-
+void build_transition_matrices(PMAT_DECOMP &pmat_decomp, const evo_tree &rtree, const vector<int> &knodes, const QMAT_DECOMP &qmat_decomp, const DIM_DECOMP &dim_decomp, int debug);
+void print_pmatrix_map(const map<double, double*>& pmats, int dim, string name);
 
 double compute_child_likelihood_change(int node, const CN_CHANGE& sk, const vector<vector<double>>& lnl_table_seg, const double* pbl_seg, const DIM_DECOMP& dim_decomp, int debug);
 

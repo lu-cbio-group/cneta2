@@ -839,8 +839,8 @@ void get_likelihood_per_chr(vector<vector<double>>& lnl_table_chr, const evo_tre
         double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
     
         map<double, double*> pmats_chr = pmat_decomp.pmats_chr;
-        double* pbli_chr = pmats_chr[bli];
-        double* pblj_chr = pmats_chr[blj];
+        double* pbli_chr = pmats_chr.at(bli);
+        double* pblj_chr = pmats_chr.at(blj);
         
         if(debug > 1) cout << "node: " << rtree.nodes[k].id + 1 << " -> " << ni + 1 << " , " << bli << "\t" <<  nj + 1 << " , " << blj << endl;
 
@@ -963,8 +963,8 @@ void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& r
         double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
    
         map<double, double*> pmats_wgd = pmat_decomp.pmats_wgd;
-        double* pbli_wgd = pmats_wgd[bli];
-        double* pblj_wgd = pmats_wgd[blj];
+        double* pbli_wgd = pmats_wgd.at(bli);
+        double* pblj_wgd = pmats_wgd.at(blj);
 
         if(debug > 1) cout << "node: " << rtree.nodes[k].id + 1 << " -> " << ni + 1 << " , " << bli << "\t" <<  nj + 1 << " , " << blj << endl;
 
@@ -1080,8 +1080,7 @@ void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const 
     int dim_mat_wgd = dim_wgd * dim_wgd;
     int dim_mat_chr = dim_chr * dim_chr;
     int dim_mat_seg = dim_seg * dim_seg;
-
-    
+   
     double *qmat_wgd = nullptr;
     double *qmat_chr = nullptr;
     double *qmat_seg = nullptr;
@@ -1095,14 +1094,14 @@ void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const 
     if(dim_chr > 0){
         qmat_chr = new double[dim_mat_chr];   // chromosome gain/loss
         memset(qmat_chr, 0.0, dim_mat_chr * sizeof(double));
-        // get_rate_matrix_chr_change_haplotype(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate, lnl_type.max_chr_change_haplotype);
+        // get_rate_matrix_chr_change_haplotype(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate, lnl_type.max_chr_change_haplotype); // fix matrix dimesion of 9
         get_rate_matrix_change_haplotype(qmat_chr, rtree.chr_gain_rate, rtree.chr_loss_rate, lnl_type.max_chr_change_haplotype);
     }
 
     if(dim_seg > 0){
         qmat_seg = new double[dim_mat_seg];  // site duplication/deletion
         memset(qmat_seg, 0.0, dim_mat_seg * sizeof(double));
-        // get_rate_matrix_site_change_haplotype(qmat_seg, rtree.dup_rate, rtree.del_rate, lnl_type.max_site_change_haplotype);
+        // get_rate_matrix_site_change_haplotype(qmat_seg, rtree.dup_rate, rtree.del_rate, lnl_type.max_site_change_haplotype);     // fix matrix dimension of 16
         get_rate_matrix_change_haplotype(qmat_seg, rtree.dup_rate, rtree.del_rate, lnl_type.max_site_change_haplotype);
     }
 
@@ -1207,21 +1206,9 @@ void build_transition_matrices(PMAT_DECOMP& pmat_decomp, const evo_tree& rtree, 
    }
 
     if(debug){
-      for(auto it = pmats_wgd.begin(); it != pmats_wgd.end(); ++it){
-          double key = it->first;
-          cout << "Get P matrix for branch length " << key << endl;
-          r8mat_print(dim_wgd, dim_wgd, it->second, "  P-WGD matrix:");
-      }
-      for(auto it = pmats_chr.begin(); it != pmats_chr.end(); ++it){
-          double key = it->first;
-          cout << "Get P matrix for branch length " << key << endl;
-          r8mat_print(dim_chr, dim_chr, it->second, "  P-CHR matrix:");
-      }
-      for(auto it = pmats_seg.begin(); it != pmats_seg.end(); ++it){
-          double key = it->first;
-          cout << "Get P matrix for branch length " << key << endl;
-          r8mat_print(dim_seg, dim_seg, it->second, "  P-SEG matrix:");
-      }
+        print_pmatrix_map(pmats_wgd, dim_wgd, "WGD");
+        print_pmatrix_map(pmats_chr, dim_chr, "CHR");
+        print_pmatrix_map(pmats_seg, dim_seg, "SEG");
     }
 
     pmat_decomp.free_all();  // or equivalent manual loop
@@ -1232,6 +1219,14 @@ void build_transition_matrices(PMAT_DECOMP& pmat_decomp, const evo_tree& rtree, 
 }
 
 
+void print_pmatrix_map(const map<double, double*>& pmats, int dim, string name){
+    for (auto it = pmats.begin(); it != pmats.end(); ++it)
+    {
+        double key = it->first;
+        cout << "P matrix - " << name << " for branch length " << key << endl;
+        r8mat_print(dim, dim, it->second, "  P matrix:");
+    }
+}
 
 /** 
  * @brief Compute the likelihood at a child node given the state at the parent node in a decomposed model 
@@ -1305,6 +1300,8 @@ void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo
       cout << "Computing likelihood for one site with rate matrix dimensions: " << dim_decomp.dim_wgd << "\t" << dim_decomp.dim_chr << "\t"  << dim_decomp.dim_seg << endl;
   }
 
+  assert(dim_decomp.dim_seg > 0);
+
   for(size_t kn = 0; kn < lnl_type.knodes.size(); ++kn){
         int k = lnl_type.knodes[kn];
         int ni = rtree.edges[rtree.nodes[k].e_ot[0]].end;
@@ -1312,26 +1309,12 @@ void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo
         int nj = rtree.edges[rtree.nodes[k].e_ot[1]].end;
         double blj = rtree.edges[rtree.nodes[k].e_ot[1]].length;
 
-        double *pbli_wgd, *pblj_wgd;
-        double *pbli_chr, *pblj_chr;
         double *pbli_seg, *pblj_seg;
 
-        if(dim_decomp.dim_wgd > 0){
-            map<double, double*> pmats_wgd = pmat_decomp.pmats_wgd;
-            pbli_wgd = pmats_wgd[bli];
-            pblj_wgd = pmats_wgd[blj];
-        }
-        if(dim_decomp.dim_chr > 0){
-            map<double, double*> pmats_chr = pmat_decomp.pmats_chr;
-            pbli_chr = pmats_chr[bli];
-            pblj_chr = pmats_chr[blj];
-        }
-        if(dim_decomp.dim_seg > 0){
-            map<double, double*> pmats_seg = pmat_decomp.pmats_seg;
-            pbli_seg = pmats_seg[bli];
-            pblj_seg = pmats_seg[blj];
-        }
-
+        map<double, double*> pmats_seg = pmat_decomp.pmats_seg;
+        pbli_seg = pmats_seg.at(bli);
+        pblj_seg = pmats_seg.at(blj);
+        
         if(debug  > 1) cout << "node: " << rtree.nodes[k].id + 1 << " -> " << ni + 1 << " , " << bli << "\t" <<  nj + 1 << " , " << blj << endl;
 
         // loop over possible states of internal nodes

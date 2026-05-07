@@ -30,7 +30,11 @@ struct STATE_TABLE{
 
 /******************* functions for bounded model on site duplication/deletion *************/
 
-void set_pmat(const evo_tree& rtree, int Ns, int nstate, int model, int cn_max, const vector<int>& knodes, vector<double>& blens, vector<double*>& pmat_per_blen, ofstream& fout);
+void set_pmat(const evo_tree &rtree, int Ns, int nstate, int model, int cn_max, const vector<int> &knodes, vector<double> &blens, vector<double *> &pmat_per_blen, ofstream &fout);
+
+void get_prob_line_orig(const vector<vector<double>> &L_sk_k, int nid, string &line);
+
+void get_prob_line_orig(const vector<vector<double>> &L_sk_k, int nid, string &line);
 
 void print_tree_state(const evo_tree& rtree, const vector<vector<int>>& S_sk_k, int nstate);
 
@@ -47,7 +51,7 @@ void initialize_asr_table(const vector<int>& obs, const evo_tree& rtree, map<dou
 
 // Find the most likely state for a node under each possible state, assuming current node has state nsk and parent node (connected by branch of length blen) has state np
 // Step 2 of algorithm of Pupko (2000)
-double get_max_prob_children(const vector<vector<double>>& L_sk_k, vector<vector<int>>& S_sk_k, const evo_tree&rtree, double* pblen, int k, int nstate, int sp, int ni, int nj, int blen, int model);
+double get_max_prob_children(const vector<vector<double>>& L_sk_k, vector<vector<int>>& S_sk_k, const evo_tree&rtree, double* pblen, int k, int nstate, int sp, int ni, int nj, double blen, int model, int debug);
 
 void set_tip_states_tcn_decomp(int state_chr, int peak_sum_haplotype, int& si, int& ei, vector<int>& tip_states);
 
@@ -66,10 +70,14 @@ void get_site_cnp(const vector<vector<double>>& L_sk_k, int nid, int nchr, int n
 void print_node_cnp(ofstream& fout, const copy_number& cnp, int nid, int cn_max, int is_total);
 
 // Infer the copy number of the MRCA given a tree at a site, assuming only site duplication/deletion
-double reconstruct_marginal_ancestral_state(const evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const vector<int>& knodes, int model, int cn_max, int use_repeat, int is_total, string ofile);
+double reconstruct_marginal_ancestral_state(const evo_tree &rtree, const map<int, vector<vector<int>>> &vobs, const vector<int> &knodes, int model, int cn_max, int use_repeat, int is_total, string ofile);
+
+void set_prob_line_header(int nstate, string& header);
 
 // Infer the copy number of all internal nodes given a tree at a site, assuming only site duplication/deletion
-void reconstruct_joint_ancestral_state(const evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, vector<int>& knodes, int model, int cn_max, int use_repeat, int is_total, int m_max, string ofile);
+void reconstruct_joint_ancestral_state(const evo_tree &rtree, const map<int, vector<vector<int>>> &vobs, vector<int> &knodes, int model, int cn_max, int use_repeat, int is_total, int m_max, string ofile);
+
+void get_inode_cnp(int max_id, int Ns, map<int, int> &asr_states, int is_total, int cn_max, map<int, copy_number> &cnps, int nchr, int nc);
 
 void write_joint_state_line(int max_id, int Ns, map<int, int>& asr_states, int nchr, int nc, int is_total, int cn_max, ofstream& fout);
 
@@ -91,15 +99,17 @@ double get_max_children_decomp2(const vector<vector<double>>& L_sk_k, vector<vec
 // Assuming each observed copy number is composed of three type of events.
 // Sum over all possible states for initial and final nodes
 // Allow at most one WGD event along a branch
-void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_table, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp);
+void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_table, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug);
 
 
 // Infer the copy number of the MRCA given a tree at a site, assuming independent Markov chains
-double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const vector<int>& knodes, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, string ofile, int debug);
+double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const vector<int>& knodes, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type_orig, string ofile, int debug);
 
 
 // Infer the copy number of all internal nodes given a tree at a site, assuming independent Markov chains
-void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, vector<int>& knodes, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, string ofile, int debug);
+void reconstruct_joint_ancestral_state_decomp(const evo_tree &rtree, const map<int, vector<vector<CN_CHANGE>>> &vobs_change, vector<int> &knodes, const OBS_DECOMP &obs_decomp, const LNL_TYPE &lnl_type_orig, string ofile, int debug);
+
+void initialize_lnl_state_table(LNL_TABLE& lnl_table, STATE_TABLE& state_table, int ntotn, DIM_DECOMP& dim_decomp);
 
 void set_change_wgd_chr(const vector<CN_CHANGE>& obs, const evo_tree& rtree, vector<int>& sample_num_wgd, vector<int>& change_chr);
 

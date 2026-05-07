@@ -48,6 +48,7 @@ const int NORM_ALLElE_STATE = 4;    // state 4 represents 1/1 in haplotype-speci
 const int NO_CHANGE_WGD = 0; // index of rate matrix for no change at WGD level
 const int NO_CHANGE_HAPLOTYPE = 4;   // index of rate matrix for no change at chr-level and site-level
 const int CHANGE_CHR = 1000;   // used to represent chromosome gain/loss in the change state, so that site-level changes can be adjusted accordingly to avoid double counting
+const int NONE_STATE = -100;   // used to check if state table is initialized for a state
 
 // limits on rate matrix dimension
 const int MIN_CHANGE = -2;   // minimum copy number change at a level

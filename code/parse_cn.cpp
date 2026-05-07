@@ -239,16 +239,7 @@ void set_nstates(int max_change_haplotype,
  * @param cn_max The maximum copy number allowed by the program.
  * @return The total copy number corresponding to the given state.
  * When max_change_haplotype = 1, 9 states
- * 0	1	2	3	4	5	6	7	8
-// 0	1	1	2	2	2	3	3	4
-// 0/0	0/1	1/0	0/2	2/0	 1/1	 1/2	 2/1	 2/2
-// -2	-1	-1	0	0	0	+1	+1	+2
-// -1/-1	-1/0	0/-1	-1/+1	+1/-1	0/0	0/+1	+1/0	+1/+1
  * When max_change_haplotype = 2, 16 states
-// 0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15
-// 0	1	1	2	2	2	3	3	3	3	4	4	4	5	5	6
-// 0/0	0/1	1/0	0/2	2/0	 1/1	 1/2	 2/1	0/3	3/0	  2/2	 1/3	 3/1	2/3	3/2	3/3
-// -1/-1	-1/0	0/-1	-1/+1	+1/-1	0/0	0/+1	+1/0	-1/+2	+1/+1	+1/+1	0/+2	+2/0	+1/+2	+2/+1	+2/+2
  */
 int change_state_to_total_cn(int state, int max_change_haplotype){
     vector<int> sums;

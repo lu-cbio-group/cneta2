@@ -1598,6 +1598,7 @@ int main(int argc, char** const argv){
             cout << "All the sites are included in likelihood computation" << endl;
         }
 
+        // only internal nodes
         vector<int> inodes = get_inodes_bottom_up(tree, debug);
 
         if(infer_marginal_state){
@@ -1613,7 +1614,7 @@ int main(int argc, char** const argv){
         }
 
         if(infer_joint_state){
-            cout << "\tInferring joint ancestral states" << endl;
+            cout << "\nInferring joint ancestral states" << endl;
             if(model == DECOMP){
                reconstruct_joint_ancestral_state_decomp(tree, vobs_change, inodes, obs_decomp, lnl_type, ofile, debug);
             }else{
