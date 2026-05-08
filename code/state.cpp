@@ -350,8 +350,8 @@ string get_prob_line(const vector<vector<double>>& L_sk_k, int nid, int nchr, in
     if(nchr > 0){
         line += "\t" + to_string(nchr);
     }
-    if(nc > 0){
-        line += "\t_" + to_string(nc + 1);
+    if(nc >= 0){
+        line += "_" + to_string(nc + 1);
     }
 
     if(is_total && (model == BOUNDA || model == DECOMP)){   // need to convert state probability to cn probability under BOUNDA and DECOMP
@@ -453,6 +453,15 @@ int get_node_change_state(const vector<vector<double>>& L_sk_k, int nid, int is_
 }
 
 
+string get_prob_line_header(int nstate){
+    string header = "";
+    for (int i = 0; i < nstate; i++)
+    {
+        header += "\tprobablity_" + to_string(i);
+    }
+    return(header);
+}
+
 
 
 double reconstruct_marginal_ancestral_state(const evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const vector<int>& knodes, int model, int cn_max, int use_repeat, int is_total, string ofile){
@@ -472,12 +481,13 @@ double reconstruct_marginal_ancestral_state(const evo_tree& rtree, const map<int
     if(model == BOUNDA) nstate = (cn_max + 1) * (cn_max + 2) / 2;
 
     string header="node\tsite";
+    string prob_header = "";
     if(is_total && model == BOUNDA){
-        set_prob_line_header(cn_max + 1, header);
+        prob_header = get_prob_line_header(cn_max + 1);
     }else{
-        set_prob_line_header(nstate, header);
+        prob_header = get_prob_line_header(nstate);
     }
-    fout << header << endl;
+    fout << header << prob_header << endl;
 
     // Find the transition probability matrix for each branch
     vector<double> blens;
@@ -551,14 +561,6 @@ double reconstruct_marginal_ancestral_state(const evo_tree& rtree, const map<int
     for_each(pmat_per_blen.begin(), pmat_per_blen.end(), DeleteObject());
 
     return logL;
-}
-
-
-void set_prob_line_header(int nstate, string &header){
-    for (int i = 0; i < nstate; i++)
-    {
-        header += "\tprobablity_" + to_string(i);
-    }
 }
 
 // Infer the copy number of all internal nodes given a tree at a site, assuming only site duplication/deletion
@@ -938,30 +940,31 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
     if(dim_decomp.dim_wgd > 0) fout_wgd.open(ofile_mrca);
 
     string header="node\tsite";
+    string prob_header = "";
     if(lnl_type.is_total){
         if(dim_decomp.dim_seg > 0){
-            set_prob_line_header(get_tcn_max_from_haplotype_change(lnl_type.max_site_change_haplotype) + 1, header);
-            fout_seg << header << endl;
+            prob_header = get_prob_line_header(get_tcn_max_from_haplotype_change(lnl_type.max_site_change_haplotype) + 1);
+            fout_seg << header << prob_header << endl;
         }
         if(dim_decomp.dim_chr > 0){
-            set_prob_line_header(get_tcn_max_from_haplotype_change(lnl_type.max_chr_change_haplotype) + 1, header);
-            fout_chr << header << endl; 
+            prob_header = get_prob_line_header(get_tcn_max_from_haplotype_change(lnl_type.max_chr_change_haplotype) + 1);
+            fout_chr << header << prob_header << endl; 
         }       
     }else{
         if(dim_decomp.dim_seg > 0){
-            set_prob_line_header(dim_decomp.dim_seg, header);
-            fout_seg << header << endl;
+            prob_header = get_prob_line_header(dim_decomp.dim_seg);
+            fout_seg << header << prob_header << endl;
         }
         if(dim_decomp.dim_chr > 0){
-            set_prob_line_header(dim_decomp.dim_chr, header);
-            fout_chr << header << endl;
+            prob_header = get_prob_line_header(dim_decomp.dim_chr);
+            fout_chr << header << prob_header << endl;
         }
     }
     
     if(dim_decomp.dim_wgd > 0){
         header="node";
-        set_prob_line_header(dim_decomp.dim_wgd, header);
-        fout_wgd << header << endl;
+        prob_header = get_prob_line_header(dim_decomp.dim_wgd);
+        fout_wgd << header << prob_header << endl;
     }
   
     // Use a map to store computed log likelihood for each level of CNAs
