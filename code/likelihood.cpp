@@ -1351,24 +1351,25 @@ void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo
  *  @brief Extract the log likelihood from the likelihood table at the root for decomposed model
  *
  *  @param L_sk_k Likelihood tables for WGD, chromosome gain/loss, and site duplication/deletion
- *  @param Ns Number of samples
+ *  @param num_leaves Number of leaves
  */
 // Get the likelihood of the tree from likelihood table of state combinations
-double extract_tree_lnl_change(const vector<vector<double>>& lnl_table_seg, int Ns, int debug){
+double extract_tree_lnl_change(const vector<vector<double>>& lnl_table, int num_leaves, int normal_state, int debug){
     if(debug) cout << "Extracting likelihood for the root" << endl;
 
     double log_lnl = 0.0;
 
     // Segment, no duplication/deletion
-    if(!lnl_table_seg.empty()){
-        double prob_seg = lnl_table_seg[Ns + 1][NO_CHANGE_HAPLOTYPE]; 
+    if(!lnl_table.empty()){
+
+        double prob_seg = lnl_table[num_leaves][normal_state]; 
         if (prob_seg > 0.0) {
             log_lnl += log(prob_seg);
         } else {
             if (debug) cout << "Zero likelihood at root: segment change" << endl;
         } 
     } else {
-        if (debug) cout << "No segment duplication/deletion events in the tree" << endl;
+        if (debug) cout << "No events in the tree" << endl;
     }
 
     if(log_lnl == 0.0){
@@ -1459,7 +1460,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
                     get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
                 }
 
-                site_logL += extract_tree_lnl_change(lnl_table_seg, rtree.nleaf - 1, debug);
+                site_logL += extract_tree_lnl_change(lnl_table_seg, rtree.nleaf, NO_CHANGE_HAPLOTYPE, debug);
 
                 if(debug > 1){
                     cout << "\nLikelihood computed for site: ";
@@ -1504,8 +1505,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
                 get_likelihood_per_chr(lnl_table_chr, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, debug);
             }
 
-            assert(lnl_table_chr[rtree.nleaf][NO_CHANGE_HAPLOTYPE] > 0.0);
-            double chr_logL = log(lnl_table_chr[rtree.nleaf][NO_CHANGE_HAPLOTYPE]);   // likelihood for no 
+            double chr_logL = extract_tree_lnl_change(lnl_table_chr, rtree.nleaf, NO_CHANGE_HAPLOTYPE, debug);   // likelihood for no 
             logL += chr_logL;   
 
             if(debug){
@@ -1520,7 +1520,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
         vector<vector<double>> lnl_table_wgd;  // only one table for WGD, as it is the same for all sites in the sample
         initialize_lnl_table_wgd(lnl_table_wgd, rtree, sample_num_wgd, dim_decomp, debug);    
         get_likelihood_wgd(lnl_table_wgd, rtree, lnl_type.knodes, pmat_decomp, dim_decomp, debug);  
-        double wgd_logL = log(lnl_table_wgd[rtree.nleaf][0]);
+        double wgd_logL = extract_tree_lnl_change(lnl_table_wgd, rtree.nleaf, 0, debug);
         logL += wgd_logL;   // likelihood for WGD is the same for all sites, so only compute once
 
         if(debug){
@@ -1586,7 +1586,7 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
         initialize_lnl_table_site(lnl_table_seg, rtree, obs, dim_decomp, lnl_type, debug);
         get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
 
-        double lnl_invar = extract_tree_lnl_change(lnl_table_seg, rtree.nleaf - 1, debug);
+        double lnl_invar = extract_tree_lnl_change(lnl_table_seg, rtree.nleaf, NO_CHANGE_HAPLOTYPE, debug);
 
         double bias = lnl_type.num_invar_bins * lnl_invar;
         logL = logL + bias;
@@ -1701,7 +1701,7 @@ double get_likelihood_change_variable_rate(evo_tree& rtree, const map<int, vecto
         vector<vector<double>> lnl_table_seg;
         initialize_lnl_table_site(lnl_table_seg, rtree, obs, dim_decomp, lnl_type, debug);   
         get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
-        double lnl_invar = extract_tree_lnl_change(lnl_table_seg, rtree.nleaf - 1, debug);
+        double lnl_invar = extract_tree_lnl_change(lnl_table_seg, rtree.nleaf, NO_CHANGE_HAPLOTYPE, debug);
 
         double bias = lnl_type.num_invar_bins * lnl_invar;
         logL = logL + bias;

@@ -841,7 +841,7 @@ double compute_site_likelihood(
         get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
     }
 
-    double site_logL = extract_tree_lnl_change(lnl_table_seg, rtree.nleaf - 1, debug);
+    double site_logL = extract_tree_lnl_change(lnl_table_seg, rtree.nleaf, NO_CHANGE_HAPLOTYPE, debug);
 
     return site_logL;
 }

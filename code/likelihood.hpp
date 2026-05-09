@@ -383,7 +383,7 @@ double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<ve
 
 double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, int debug);
 
-double extract_tree_lnl_change(const vector<vector<double>>& lnl_table_seg, int Ns, int debug);  
+double extract_tree_lnl_change(const vector<vector<double>>& lnl_table, int num_leaves, int normal_state, int debug);  
 
 
 
