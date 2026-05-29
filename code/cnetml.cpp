@@ -1272,7 +1272,7 @@ int main(int argc, char** const argv){
     ("max_wgd", po::value<int>(&max_wgd)->default_value(1), "maximum number of WGD allowed, determining the dimension of rate matrix for WGD")
     ("max_chr_change_haplotype", po::value<int>(&max_chr_change_haplotype)->default_value(1), "maximum number of chromosome gain/loss allowed for each haplotype, determining the dimension of rate matrix for chromosome gain/loss")
     ("max_site_change_haplotype", po::value<int>(&max_site_change_haplotype)->default_value(2), "maximum number of site duplication/deletion allowed for each haplotype, determining the dimension of rate matrix for site duplication/deletion")
-    ("m_max", po::value<int>(&m_max)->default_value(1), "maximum number of copies of a segment in a chromosome")
+    ("m_max", po::value<int>(&m_max)->default_value(1), "maximum number of copies of a segment in a chromosome (not used for now)")
 
     // types of copy number changes
     ("is_total", po::value<int>(&is_total)->default_value(1), "whether or not the input is total copy number")

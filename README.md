@@ -161,7 +161,7 @@ Please see run-cnets.sh to learn how to set different parameters.
 
 * `--tdiff delta_t`: The tip nodes of an initial tree may have the same time. This parameter can be used to introduce different times at the tip nodes. The terminal branches are increased by random multiples of delta_t. The maximum multiple is the number of samples.
 
-* `--cn_max cn_max`: The maximum copy number allowed in the program depends on the heap space.
+* `--cn_max cn_max`: The maximum copy number allowed in the program depends on the heap space (used for bounded model).
 
 * `--cons 1/0`: Whether or not the tree is constrained by patient age. If yes (1), the initial branch lengths will be adjusted by specified patient age so that the tree height is smaller than patient age.
 
@@ -231,7 +231,7 @@ There are four models of evolution for building trees from the copy number profi
 * model 0: Mk model (deprecated)
 * model 1: bounded model of total copy number (deprecated)
 * model 2: bounded model of haplotype-specific copy number
-* model 3: independent Markov chain model (with 3 chains, in development)
+* model 3: independent Markov chain model (with 3 chains, in development, at test branch)
 
 The first three models are the same as those for simulation.
 The last one (model of independent Markov chains) should be used for tree reconstruction on data with chromosome gain/loss and WGD.
@@ -274,7 +274,7 @@ You may check the copy number counts in the input data using similar command as 
   
   * The sample_ID has to be __ordered__ from 1 to the number of patient samples.
 
-  * The chr_ID and site_ID together determine a unique site along the genome of a sample, __ordering__ from 1 to the largest number.
+  * The chr_ID and site_ID together determine a unique site along the genome of a sample, __ordering__ from 1 to the largest number (1, 2, 3, ...).
 
   * The site_ID can be consecutive numbers from 1 to the total number of sites along the genome, or consecutive numbers from 1 to the total number of sites along each chromosome of the genome.
 
@@ -329,8 +329,8 @@ Only the implementation under the bounded model of haplotype-specific copy numbe
 
 ## Output
 * *.(mrca|joint).cn: The reconstructed copy numbers in tab-delimited format for the most recent common ancestor node of all tumour samples (mrca) and all internal nodes (joint) respectively. When the input are total copy numbers, there are four columns:  node ID, chromosome ID, site ID, CN. When the input are haplotype-specific copy numbers, there are five columns: node ID, chromosome ID, site ID, cnA, cnB.
-* *.mrca.state: A tab-delimited file containing the posterior probability of each possible copy number state on a unique variant site (containing at least one atypical copy number across all samples) for MRCA node. The columns are: node ID, site ID (chromosomeID_siteID), probability_stateID. The copy number state ID is the same as the state index in the rate matrix of the Markov model.
-* *.joint.state: A tab-delimited file containing the possible copy number state on a unique variant site for all internal nodes. The columns are: node ID, site ID (chromosomeID_siteID), cn_stateID.
+* *.mrca.state: A tab-delimited file containing the posterior probability of each possible copy number state on a __unique__ variant site (containing at least one atypical copy number across all samples) for MRCA node. The columns are: node ID, site ID (chromosomeID_siteID), probability_stateID. The copy number state ID is the same as the state index in the rate matrix of the Markov model.
+* *.joint.state: A tab-delimited file containing the possible copy number state on a __unique__ variant site for all internal nodes. The columns are: node ID, site ID (chromosomeID_siteID), cn_stateID.
 
 
 
