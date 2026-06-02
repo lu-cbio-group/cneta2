@@ -355,7 +355,10 @@ void rcn_to_decomposition(const vector<vector<vector<int>>>& s_info, vector<vect
  * @brief Decompose total copy number into multi-level changes (WGD, chromosome, segment) given original data and computed changes.
  * @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
  * @param s_info_change A vector of CN_CHANGE structs to store the decomposed copy number changes for each sample, same dimensions as s_info.
- * @param input_data INPUT_DATA struct containing sample-level information needed for decomposition.
+ * @param sample_change_chr A vector of vectors containing chromosome-level change states for each sample, indexed by chromosome id (0-based).
+ * @param sample_change_site A vector of vectors containing site-level change states for each sample, indexed by segment id.
+ * @param sample_num_wgd A vector containing the number of WGD events for each sample.
+ * @param input_property struct containing sample-level information needed for decomposition.
  * @param debug Debug flag for verbose output.
  */
 void cn_to_decomposition(const vector<vector<vector<int>>>& s_info, 
@@ -400,6 +403,14 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,
             CN_CHANGE cc;
             cc.cn_state = cn;  // total CN or haplotype-specific state index
             cc.num_wgd = sample_num_wgd[i];
+            // assert(chr >= 1 && chr <= NUM_CHR);
+            if (chr < 1 || chr > NUM_CHR || chr - 1 >= sample_change_chr[i].size()) {
+                cerr << "Invalid chromosome lookup: sample=" << i + 1
+                    << " chr=" << chr
+                    << " sample_change_chr size=" << sample_change_chr[i].size()
+                    << endl;
+                exit(EXIT_FAILURE);
+            }            
             cc.cn_change_chr = sample_change_chr[i][chr - 1];   // chr is 1-based in input, but sample_change_chr is 0-based
             int cn_change_tag = cc.cn_change_chr % CHANGE_CHR;
             // if there is chromosome change, adjust site change accordingly to avoid double counting
@@ -1001,7 +1012,7 @@ void get_chr_change(const vector<int>& sample_num_wgd,
         int nwgd = sample_num_wgd[i];
         map<int, vector<int>> chr_cn = sample_chr_cn[i];
         double avg_cn = sample_avg_cn[i];
-        vector<int> chr_change;     // copy number changes across all chromosomes in sample i
+        vector<int> chr_change(NUM_CHR, 0);     // copy number changes across all chromosomes in sample i
           
         for(auto c : chr_cn){
             vector<int> cp = c.second;
@@ -1020,7 +1031,7 @@ void get_chr_change(const vector<int>& sample_num_wgd,
                 cout << "Number of segments in chromosome " << c.first << " is " << cp.size() << "; avg cn: " << avg_chr_cn << "; exact num changes: " << num_change  << "; num changes: " << round_num_change << endl;
             }  
             
-            chr_change.push_back(round_num_change);           
+            chr_change[c.first - 1] = round_num_change;           
         }
 
         if(debug){
@@ -1086,9 +1097,9 @@ void get_chr_change_haplotype(const vector<int>& sample_num_wgd,
             cout << "Average haplotype-specific copy number of sample " << i + 1 << ": " << avg_cnA << "," << avg_cnB << "; sum: " << avg_cn << endl;
         }
 
-        vector<int> chr_changeA;     // copy number change states for haplotype A across all chromosomes in sample i
-        vector<int> chr_changeB;     // copy number change states across all chromosomes in sample i
-        vector<int> chr_change;      // combined change state for both haplotypes across all chromosomes in sample i, used for determining the state index in the rate matrix
+        vector<int> chr_changeA(NUM_CHR, 0);;     // copy number change states for haplotype A across all chromosomes in sample i
+        vector<int> chr_changeB(NUM_CHR, 0);     // copy number change states across all chromosomes in sample i
+        vector<int> chr_change(NUM_CHR, NO_CHANGE_HAPLOTYPE);      // combined change state for both haplotypes across all chromosomes in sample i, used for determining the state index in the rate matrix
 
         auto itA = chr_cnA.begin();
         auto itB = chr_cnB.begin();
@@ -1123,8 +1134,8 @@ void get_chr_change_haplotype(const vector<int>& sample_num_wgd,
                 cout << "Number of segments in chromosome " << chr << " is " << vecA.size() << "; avg cn of chromosome: " << avg_chr_cnA << "," << avg_chr_cnB << "; exact num changes: " << num_changeA << "," << num_changeB << "; num changes: " << round_num_changeA << "," << round_num_changeB << endl;
             }
 
-            chr_changeA.push_back(abs(round_num_changeA));
-            chr_changeB.push_back(abs(round_num_changeB));
+            chr_changeA[chr - 1] = (abs(round_num_changeA));
+            chr_changeB[chr - 1] = (abs(round_num_changeB));
             
             // -2 will be set to -1 during WGD normalization
             int chr_change_state = -1;
@@ -1141,7 +1152,7 @@ void get_chr_change_haplotype(const vector<int>& sample_num_wgd,
                 chr_change_state = get_pair_index(round_num_changeA, round_num_changeB, max_chr_change_haplotype, states);  
                 // cout << "No adjustment " << chr_change_state << endl;  
             }
-            chr_change.push_back(chr_change_state);          
+            chr_change[chr - 1] = chr_change_state;          
         }
 
         int max_abs_changeA = max(0, *max_element(chr_changeA.begin(), chr_changeA.end()));

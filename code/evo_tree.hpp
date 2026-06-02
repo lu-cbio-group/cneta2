@@ -32,6 +32,15 @@ root node: Ns + 2
 internal node: Ns + 3 to 2 * Ns + 1, small to larger from bottom to up
 */
 
+struct RateSet {
+    double mu = 0.0;
+    double dup = 0.0;
+    double del = 0.0;
+    double chr_gain = 0.0;
+    double chr_loss = 0.0;
+    double wgd = 0.0;
+};
+
 
 class Node;
 

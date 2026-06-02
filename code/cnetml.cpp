@@ -119,6 +119,7 @@ vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int
         assert(dir_itrees != "");
         string fname;
         boost::filesystem::path p(dir_itrees);
+        // boost::filesystem::directory_iterator order can differ across computers, so “same seed” may still mean different tree order, but the same set of trees should be generated
         for (auto&& x : boost::filesystem::directory_iterator(p)){
             fname = x.path().string();
             evo_tree rtree = read_parsimony_tree(fname, Ns, rates, tobs, r, age, cons);
