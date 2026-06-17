@@ -795,9 +795,9 @@ double get_total_rates_haplotype_specific(genome& g, vector<double>& site_dup_ra
              << (2 * max_cn_g > cn_max) << endl;
     }
 
-    cout << "WGD rate before " << wgd_rate << endl; // debug
+    // cout << "WGD rate before " << wgd_rate << endl; // debug
     update_wgd_rate(g,  wgd_rate, cn_max, debug);
-    cout << "WGD rate after " << wgd_rate << endl; // debug
+    // cout << "WGD rate after " << wgd_rate << endl; // debug
     rate += wgd_rate;
 
     type_rates.insert(type_rates.end(), {dup_rate_all, del_rate_all, gain_rate_all, loss_rate_all, wgd_rate});

@@ -149,7 +149,12 @@ There are two ways of simulating mutations along a tree:
 2. Simulating sequences at the end of a branch. This is appropriate when the mutational events are not of interest. Only duplication and deletion are supported.
 
 Note that when simulating waiting times, only haplotype-specific model is allowed. If model of total copy number is specified, it will automatically be converted to model of haplotype-specific copy number.
-The copy number changes can be caused by at most five types of mutational events (duplication, deletion, chromosomal gain, chromosomal loss and whole genome doubling) along this tree for now. The mutation process is the same at all branches and across all sites.
+The copy number changes can be caused by at most five types of mutational events (duplication, deletion, chromosomal gain, chromosomal loss and whole genome doubling) along this tree for now.
+
+By default, the mutation process is the same on all branches (`--bsr_mode 0`; constant-rate model). Branch-specific rate variation can be enabled with `--bsr_mode 1`, `2`, or `3`. In mode 1, each branch receives a single multiplier that is applied to all global mutation rates, allowing branches to evolve at different overall speeds while preserving the relative proportions of mutation types. In mode 2, each branch receives event-specific rates, allowing both the overall evolutionary rate and the relative proportions of event types to vary among branches. In mode 3 (random local clock), rates are inherited top-down: at each node, a rate change occurs with probability `--bsr_p`, in which case new rates are drawn from the same distribution as mode 2; otherwise the parent's rates are passed unchanged to the child.
+
+The distribution used to generate branch-rate variation is controlled by `--bsr_dist`. With `--bsr_dist 0`, branch multipliers or event-specific rates are drawn from log-normal distributions. With `--bsr_dist 1`, branch multipliers or event-specific rates are drawn from Gamma distributions. The Gamma option is useful for simulating Gamma-Poisson-style rate heterogeneity. Both distributions are parameterised by a single variance supplied via `--bsr_variance`, which controls the variance of the mean-1 multiplier applied to each rate; the distribution-specific shape and scale parameters are derived internally from this multiplier variance.
+
 The mutation probability of each site is limited by its current copy number state.
 Chromosomal gain is ONLY possible when the maximum copy number in the chromosome is smaller than the specified maximum copy number.
 The units of mutation rates are different at site, chromosome, and whole genome levels. When computing the relative rates of a specific mutation type, they are summarized at different scales: total duplication/deletion rates obtained by summarizing over all sites, chromosome gain/loss rates obtained by summarizing over all chromosomes.
@@ -164,6 +169,20 @@ Please see run-cnets.sh to learn how to set different parameters.
 * `--cn_max cn_max`: The maximum copy number allowed in the program depends on the heap space (used for bounded model).
 
 * `--cons 1/0`: Whether or not the tree is constrained by patient age. If yes (1), the initial branch lengths will be adjusted by specified patient age so that the tree height is smaller than patient age.
+
+* `--bsr_mode 0/1/2/3`: Controls whether and how branch-specific rate variation is used in simulation.
+  * `0`: Constant-rate simulation. All branches share the same global mutation rates specified by `--dup_rate`, `--del_rate`, `--chr_gain`, `--chr_loss`, and `--wgd`.
+  * `1`: Shared branch-multiplier simulation. For each branch, a single multiplier is drawn and applied to all global event rates. This changes the overall evolutionary speed of a branch while preserving the relative proportions among duplication, deletion, chromosome gain, chromosome loss, and WGD.
+  * `2`: Independent event-specific branch-rate simulation. For each branch, each event type is assigned its own branch-specific rate. This allows both the overall evolutionary rate and the relative proportions of event types to vary among branches.
+  * `3`: Random local clock. Rates are inherited top-down along the tree. At each node, a rate change occurs with probability `--bsr_p`; if a change occurs, new rates are drawn as in mode 2 centred on the global mean rates. Otherwise the child branch inherits the parent's rates unchanged.
+
+* `--bsr_dist 0/1`: Distribution used to generate branch-rate variation. Used only when `--bsr_mode` is 1, 2, or 3.
+  * `0`: Log-normal distribution.
+  * `1`: Gamma distribution.
+
+* `--bsr_variance v`: Variance of the mean-1 multiplier used to scale branch-specific rates (must be > 0). Used for both log-normal and Gamma distributions; the distribution-specific shape and scale parameters are derived internally from this value. Larger values produce stronger branch-rate heterogeneity. Default: 0.25.
+
+* `--bsr_p p`: Probability of a rate change at each node, in the range (0, 1). Used only when `--bsr_mode 3`. Smaller values produce clock-like trees where most branches share rates; larger values produce highly heterogeneous rate trees.
 
 
 ## Output

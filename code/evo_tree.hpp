@@ -2,6 +2,7 @@
 #define EVO_TREE_HPP
 
 #include "common.hpp"
+#include <gsl/gsl_rng.h>
 
 
 const double BLEN_MIN = 1e-3;   // The shortest branch length allowed (in year), about 9h (<1 cell cycle)
@@ -39,6 +40,14 @@ struct RateSet {
     double chr_gain = 0.0;
     double chr_loss = 0.0;
     double wgd = 0.0;
+
+    RateSet() = default;
+    RateSet(double mu, double dup, double del, double chr_gain, double chr_loss, double wgd)
+        : mu(mu), dup(dup), del(del), chr_gain(chr_gain), chr_loss(chr_loss), wgd(wgd) {}
+
+    RateSet operator*(double m) const {
+        return {mu*m, dup*m, del*m, chr_gain*m, chr_loss*m, wgd*m};
+    }
 };
 
 
@@ -278,6 +287,8 @@ public:
   double chr_loss_rate;
   double wgd_rate;
 
+  vector<RateSet> edge_rates; // one entry per edge, indexed by edge.id
+
   // The chosen branch for NNI (used in Brent optimization)
   int current_eid;
   Neighbor* current_it;
@@ -308,6 +319,20 @@ public:
 
   void scale_time(double ratio);
   void scale_time_internal(double ratio);   // used in cnets
+  void init_edge_rates(const RateSet& global);
+  vector<double> get_edge_rate_vec(int edge_id) const;
+  // BSR mode 1: one shared branch multiplier.
+  // bsr_dist controls whether the multiplier is lognormal or gamma; bsr_variance is its target variance (mean=1).
+  void init_edge_rates_shared(const RateSet& mean_rates, int bsr_dist, double bsr_variance, gsl_rng* r);
+  // BSR mode 2: independent event-specific branch rates.
+  // Each event type gets its own mean-1 multiplier; bsr_variance is the variance of that multiplier.
+  void init_edge_rates_independent(const RateSet& mean_rates, int bsr_dist, double bsr_variance, gsl_rng* r);
+  // BSR mode 3: Random Local Clock (not autocorrelated).
+  // Each child branch starts a new rate regime with probability bsr_p;
+  // otherwise it inherits the parent's rate regime.
+  // New rates are drawn around the global mean rates, not around the parent branch rates.
+  // bsr_variance is the variance of the mean-1 multiplier.
+  void init_edge_rates_rlc(const RateSet& mean_rates, int bsr_dist, double bsr_variance, double bsr_p, gsl_rng* r);
 
   // update node ages of a node and its ancestor (after the relevant edge is updated)
   void update_node_age(int node_id, double delta);

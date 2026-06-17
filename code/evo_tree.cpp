@@ -1,4 +1,52 @@
 #include "evo_tree.hpp"
+#include "stats.hpp"
+
+// Sample a positive multiplier or rate value from a lognormal or gamma distribution.
+// bsr_dist: 0 = lognormal, 1 = gamma.
+// bsr_variance: target variance. Must be > 0.
+static double sample_bsr_value(double mean, int bsr_dist, double bsr_variance, gsl_rng* r) {
+  if(mean <= 0.0) return mean;
+  
+  if(bsr_variance <= 0.0){
+    cerr << "Error: bsr_variance must be > 0 when sampling branch-specific rates." << endl;
+    exit(EXIT_FAILURE);
+  }
+  
+  if(bsr_dist == 0){
+    double sigma = sqrt(log(1.0 + bsr_variance / (mean * mean)));
+    double zeta  = log(mean) - 0.5 * sigma * sigma;
+    return gsl_ran_lognormal(r, zeta, sigma);
+  }else if(bsr_dist == 1){
+    double scale = bsr_variance / mean;
+    double shape = (mean * mean) / bsr_variance;
+    return gsl_ran_gamma(r, shape, scale);
+  }else{
+    cerr << "Error: unknown bsr_dist " << bsr_dist
+         << ". Use 0 for lognormal or 1 for gamma." << endl;
+         exit(EXIT_FAILURE);
+        }
+}
+
+// Apply a mean-1 multiplier to a single rate. Returns mean unchanged when mean <= 0.
+static double sample_rate_by_multiplier(double mean, int bsr_dist, double bsr_variance, gsl_rng* r) {
+  if(mean <= 0.0) return mean;
+  double m = sample_bsr_value(1.0, bsr_dist, bsr_variance, r);
+  // cout << "Sampled multiplier: " << m << endl;
+  return mean * m;
+}
+
+// Sample each event-specific rate using an independent mean-1 multiplier.
+// mu is left at its default (0.0) as it is not used by get_edge_rate_vec.
+static RateSet sample_rateset_by_multiplier(const RateSet& mean, int bsr_dist, double bsr_variance, gsl_rng* r) {
+  RateSet rs;
+  rs.mu       = sample_rate_by_multiplier(mean.mu,       bsr_dist, bsr_variance, r); // though not used
+  rs.dup      = sample_rate_by_multiplier(mean.dup,      bsr_dist, bsr_variance, r);
+  rs.del      = sample_rate_by_multiplier(mean.del,      bsr_dist, bsr_variance, r);
+  rs.chr_gain = sample_rate_by_multiplier(mean.chr_gain, bsr_dist, bsr_variance, r);
+  rs.chr_loss = sample_rate_by_multiplier(mean.chr_loss, bsr_dist, bsr_variance, r);
+  rs.wgd      = sample_rate_by_multiplier(mean.wgd,      bsr_dist, bsr_variance, r);
+  return rs;
+}
 
 
 /**
@@ -332,6 +380,8 @@ evo_tree::evo_tree(const evo_tree& _t2){
 
   edges.assign(_t2.edges.begin(), _t2.edges.end());
   nodes.assign(_t2.nodes.begin(), _t2.nodes.end());
+
+  edge_rates.assign(_t2.edge_rates.begin(), _t2.edge_rates.end());
 }
 
 
@@ -358,7 +408,83 @@ evo_tree& evo_tree::operator=(const evo_tree& _t2){
     edges.assign(_t2.edges.begin(), _t2.edges.end());
     nodes.assign(_t2.nodes.begin(), _t2.nodes.end());
 
+    edge_rates.assign(_t2.edge_rates.begin(), _t2.edge_rates.end());
+
     return *this;
+}
+
+// Initialize all edges to the same global rates (no branch-specific variation).
+void evo_tree::init_edge_rates(const RateSet& global) {
+  edge_rates.assign(edges.size(), global);
+}
+
+// Return a vector of rates for the specified edge, in the order: dup, del, chr_gain, chr_loss, wgd.
+vector<double> evo_tree::get_edge_rate_vec(int edge_id) const {
+  if(edge_id < 0 || edge_id >= (int)edge_rates.size()){
+    cerr << "Error: edge_rates has not been initialized correctly, or edge_id is out of range." << endl;
+    exit(EXIT_FAILURE);
+  }
+  const RateSet& rs = edge_rates[edge_id];
+  return {rs.dup, rs.del, rs.chr_gain, rs.chr_loss, rs.wgd};
+}
+
+// Populate edge_rates with branch-specific rates drawn from a shared multiplier.
+// One multiplier m (mean=1) is drawn per edge and applied uniformly to all event types in mean_rates,
+// so relative proportions among event types are preserved across branches.
+// mean_rates:   global mean rates used as the baseline.
+// bsr_dist:     0 = lognormal, 1 = gamma.
+// bsr_variance: target variance of the multiplier (mean=1).
+void evo_tree::init_edge_rates_shared(const RateSet& mean_rates, int bsr_dist, double bsr_variance, gsl_rng* r) {
+  edge_rates.resize(edges.size());
+  // One multiplier per edge (mean=1), applied uniformly to all event types.
+  for(int i = 0; i < (int)edges.size(); i++){
+    double m = sample_bsr_value(1.0, bsr_dist, bsr_variance, r); // using 1.0 here to get a multiplier with mean=1 and the specified variance, so that the overall rate can vary across branches while preserving relative proportions among event types.
+    edge_rates[i] = mean_rates * m;
+  }
+}
+
+// Populate edge_rates with branch-specific rates drawn independently per event type per edge.
+// Each event type gets its own mean-1 multiplier, so both the overall rate and the relative
+// proportions among event types can vary across branches.
+// mean_rates:   global mean rates used as the per-event distribution centres.
+// bsr_dist:     0 = lognormal, 1 = gamma.
+// bsr_variance: variance of the mean-1 multiplier. Must be > 0; validated by the caller.
+void evo_tree::init_edge_rates_independent(const RateSet& mean_rates, int bsr_dist, double bsr_variance, gsl_rng* r) {
+  edge_rates.resize(edges.size());
+  for(int i = 0; i < (int)edges.size(); i++){
+    edge_rates[i] = sample_rateset_by_multiplier(mean_rates, bsr_dist, bsr_variance, r);
+  }
+}
+
+// Populate edge_rates using a simple random local clock assigned top-down along the tree.
+// Each child branch either inherits the parent's rate regime or starts a new regime.
+// When a new regime starts, event-specific rates are generated using independent mean-1 multipliers.
+// This is not an autocorrelated-rate model: new rates are drawn around the global mean rates,
+// not around the parent branch rates.
+// mean_rates:   global mean rates used as distribution centres when a rate change occurs.
+// bsr_dist:     0 = lognormal, 1 = gamma.
+// bsr_variance: variance of the mean-1 multiplier.
+// bsr_p:        probability of a rate change at each node; must be in (0, 1), validated by the caller.
+void evo_tree::init_edge_rates_rlc(const RateSet& mean_rates, int bsr_dist, double bsr_variance, double bsr_p, gsl_rng* r) {
+  edge_rates.resize(edges.size());
+  
+  vector<RateSet> node_rates(nodes.size(), mean_rates);
+
+  stack<int> stk;
+  stk.push(root_node_id);
+  while(!stk.empty()){
+    int nid = stk.top();
+    stk.pop();
+    for(int child : nodes[nid].daughters){
+      int eid = nodes[child].e_in;
+      RateSet child_rates = gsl_ran_bernoulli(r, bsr_p)
+      ? sample_rateset_by_multiplier(mean_rates, bsr_dist, bsr_variance, r)
+      : node_rates[nid];
+      edge_rates[eid]   = child_rates;
+      node_rates[child] = child_rates;
+      stk.push(child);
+    }
+  }
 }
 
 

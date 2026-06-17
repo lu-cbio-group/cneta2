@@ -1051,9 +1051,16 @@ void get_chr_change(const vector<int>& sample_num_wgd,
             loss_cn = min(0, *min_element(chr_change.begin(), chr_change.end()));
             max_abs_change = max(abs(gain_cn), abs(loss_cn));
         }
-        cout << "   Maximum gain on a chromosome in sample " << i+1 << " is " << gain_cn << endl;
-        cout << "   Maximum loss on a chromosome in sample " << i+1 << " is " << loss_cn << endl;
-        cout << "   Maximum absolute change on a chromosome in sample " << i+1 << " is " << max_abs_change << endl;
+        // values encoded as multiples of CHANGE_CHR indicate WGD-normalized changes; decode for display only
+        auto decode_chr = [](int v) -> int {
+            return (v != 0 && v % CHANGE_CHR == 0) ? v / CHANGE_CHR : v;
+        };
+        auto wgd_note = [](int v) -> string {
+            return (v != 0 && v % CHANGE_CHR == 0) ? " (potential WGD in this sample; chromosome change likely pre-WGD)" : "";
+        };
+        cout << "   Maximum gain on a chromosome in sample " << i+1 << " is " << decode_chr(gain_cn) << wgd_note(gain_cn) << endl;
+        cout << "   Maximum loss on a chromosome in sample " << i+1 << " is " << decode_chr(loss_cn) << wgd_note(loss_cn) << endl;
+        cout << "   Maximum absolute change on a chromosome in sample " << i+1 << " is " << decode_chr(max_abs_change) << wgd_note(max_abs_change) << endl;
 
         chr_max_change.push_back(max_abs_change);
         sample_change_chr.push_back(chr_change);
