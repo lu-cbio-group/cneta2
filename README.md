@@ -1,8 +1,9 @@
-Copy Number Evolutionary Tree Analysis
+Copy Number Evolutionary Tree Analysis (Version 2)
 =============
 
 # Introduction
 This repository contains a set of programs to simulate and build phylogenetic trees from copy number alterations (CNAs) detected from whole genome sequencing of multiple samples of a patient.
+The first version is at https://github.com/ucl-cssb/cneta
 
 There are mainly 3 programs:
 * cnets: simulating CNAs along a phylogenetic (coalescence) tree
