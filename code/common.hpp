@@ -17,6 +17,7 @@
 #include <cassert>
 
 #include <algorithm>
+#include <limits>
 #include <random>
 
 #include <map>

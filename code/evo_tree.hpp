@@ -288,6 +288,9 @@ public:
   double wgd_rate;
 
   vector<RateSet> edge_rates; // one entry per edge, indexed by edge.id
+  vector<int> rlc_shift_eids;
+  double rlc_raw_logL = std::numeric_limits<double>::quiet_NaN();
+  double rlc_penalized_score = std::numeric_limits<double>::quiet_NaN();
 
   // The chosen branch for NNI (used in Brent optimization)
   int current_eid;
@@ -371,6 +374,7 @@ public:
 
   void write(ofstream& of) const;
   void write_with_mut(ofstream& of, const vector<int>& nmuts) const;
+  void write_with_mut(ofstream& of, const vector<int>& nmuts, int bsr_mode, int cn_type = 4) const;
 
   string make_newick(int precision = PRINT_PRECISION);
   string make_newick_nmut(int precision, const vector<int>& nmuts);

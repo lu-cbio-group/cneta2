@@ -382,6 +382,9 @@ evo_tree::evo_tree(const evo_tree& _t2){
   nodes.assign(_t2.nodes.begin(), _t2.nodes.end());
 
   edge_rates.assign(_t2.edge_rates.begin(), _t2.edge_rates.end());
+  rlc_shift_eids.assign(_t2.rlc_shift_eids.begin(), _t2.rlc_shift_eids.end());
+  rlc_raw_logL = _t2.rlc_raw_logL;
+  rlc_penalized_score = _t2.rlc_penalized_score;
 }
 
 
@@ -409,6 +412,9 @@ evo_tree& evo_tree::operator=(const evo_tree& _t2){
     nodes.assign(_t2.nodes.begin(), _t2.nodes.end());
 
     edge_rates.assign(_t2.edge_rates.begin(), _t2.edge_rates.end());
+    rlc_shift_eids.assign(_t2.rlc_shift_eids.begin(), _t2.rlc_shift_eids.end());
+    rlc_raw_logL = _t2.rlc_raw_logL;
+    rlc_penalized_score = _t2.rlc_penalized_score;
 
     return *this;
 }
@@ -1480,6 +1486,65 @@ void evo_tree::write_with_mut(ofstream& of, const vector<int>& nmuts) const{
   int nedge = 2 * nleaf - 2;
   for(int i = 0; i < nedge; ++i){
     of << edges[i].start + 1 << "\t" << edges[i].end + 1 << "\t" << edges[i].length << "\t" << nmuts[i] << endl;
+  }
+}
+
+void evo_tree::write_with_mut(ofstream& of, const vector<int>& nmuts, int bsr_mode, int cn_type) const{
+  bool has_edge_rates = bsr_mode > 0 && (int)edge_rates.size() == (int)edges.size();
+
+  // Build list of (name, global_rate, RateSet::field) for active types
+  struct Slot { const char* name; double global; double RateSet::* field; };
+  vector<Slot> slots;
+  if(has_edge_rates){
+    auto add = [&](const char* n, double g, double RateSet::* f){ if(g > 0) slots.push_back({n,g,f}); };
+    switch(cn_type){
+      case 0:  add("dup",dup_rate,&RateSet::dup); add("del",del_rate,&RateSet::del); break;  // ONLY_SEG
+      case 1:  add("chr_gain",chr_gain_rate,&RateSet::chr_gain);                             // EXCLUDE_SEG
+               add("chr_loss",chr_loss_rate,&RateSet::chr_loss);
+               add("wgd",wgd_rate,&RateSet::wgd); break;
+      case 2:  add("dup",dup_rate,&RateSet::dup); add("del",del_rate,&RateSet::del);         // EXCLUDE_CHR
+               add("wgd",wgd_rate,&RateSet::wgd); break;
+      case 3:  add("dup",dup_rate,&RateSet::dup); add("del",del_rate,&RateSet::del);         // EXCLUDE_WGD
+               add("chr_gain",chr_gain_rate,&RateSet::chr_gain);
+               add("chr_loss",chr_loss_rate,&RateSet::chr_loss); break;
+      default: add("dup",dup_rate,&RateSet::dup); add("del",del_rate,&RateSet::del);         // ALL
+               add("chr_gain",chr_gain_rate,&RateSet::chr_gain);
+               add("chr_loss",chr_loss_rate,&RateSet::chr_loss);
+               add("wgd",wgd_rate,&RateSet::wgd);
+    }
+  }
+
+  // header
+  of << "start\tend\tlength\tnmut";
+  if(bsr_mode == 1){
+    of << "\tmultiplier";
+    for(auto& s : slots) of << "\trate_" << s.name;
+  } else if(bsr_mode == 2){
+    for(auto& s : slots) of << "\tm_" << s.name << "\trate_" << s.name;
+  } else if(bsr_mode == 3){
+    // RLC: show the actual local rate inherited/shifted on each edge
+    for(auto& s : slots) of << "\trate_" << s.name;
+  }
+  of << endl;
+
+  int nedge = 2 * nleaf - 2;
+  for(int i = 0; i < nedge; ++i){
+    of << edges[i].start+1 << "\t" << edges[i].end+1 << "\t" << edges[i].length << "\t" << nmuts[i];
+    if(has_edge_rates){
+      if(bsr_mode == 1){
+        double m = slots.empty() ? 1.0 : edge_rates[i].*(slots[0].field) / slots[0].global;
+        of << "\t" << m;
+        for(auto& s : slots) of << "\t" << edge_rates[i].*(s.field);
+      } else if(bsr_mode == 2){
+        for(auto& s : slots)
+          of << "\t" << edge_rates[i].*(s.field) / s.global
+             << "\t" << edge_rates[i].*(s.field);
+      } else if(bsr_mode == 3){
+        // local rate on this edge after root-to-tip RLC propagation
+        for(auto& s : slots) of << "\t" << edge_rates[i].*(s.field);
+      }
+    }
+    of << endl;
   }
 }
 

@@ -20,20 +20,25 @@ const double ERROR_X = 1.0e-4;
 const double MIN_MRATE = 1.0e-20;
 // The maximum mutation rates allowed
 const double MAX_MRATE = 1;
+// Bounds for mode-3 RLC multipliers (not absolute mutation rates — rates can be multiplied up or down)
+const double RLC_MULT_MIN = 1e-6;
+const double RLC_MULT_MAX = 1e6;
 
 
 // bundle of variables used in optimization (values from input)
 struct OPT_TYPE{
   int estmu;   // used to determine optimization function
-
+  int bsr_mode;  // 0: constant rate, 1: shared multiplier per branch, 2: independent per-event rates, 3: random local clock
   double tolerance;
   int miter;
-
   int opt_one_branch;
-
   vector<double> tobs;  // sample times, used to get constaints in optimization
-
   double scale_tobs;   // scale factor to get lower limit of root age when doing constrained optimization (BFGS) based on maximimum sample time difference
+  // bsr_mode=3 (ML-RLC) fields
+  vector<int> rlc_shift_eids;  // current δ=1 shift edges selected by stepwise outer search
+  double rlc_lambda;           // penalty per shift edge: score = logL - rlc_lambda * K
+  double rlc_raw_logL = std::numeric_limits<double>::quiet_NaN();
+  double rlc_penalized_score = std::numeric_limits<double>::quiet_NaN();
 };
 
 struct GSL_PARAM{
@@ -121,9 +126,21 @@ double optimize_all_branches(evo_tree& rtree, const map<int, vector<vector<int>>
 *****************************************************/
 
 // The number of parameters to estimate, different when the mutation rates are estimated
-inline int get_ndim(int estmu, int nparams_est, int model, int cn_type){
+// n_bsr_edges: number of edges receiving a multiplier (active_eids.size()).
+// Defaults to -1, which falls back to nparams_est (correct for cons=0; wrong for cons=1 — see TODO).
+inline int get_ndim(int estmu, int nparams_est, int model, int cn_type, int n_types_per_edge = 0, int n_bsr_edges = -1){
     int ndim = 0;
 
+    // variable rate: estimate n_types_per_edge multipliers per active branch
+    // bsr_mode=1: n_types_per_edge=1, one shared multiplier per branch
+    // bsr_mode=2: n_types_per_edge = number of active rate types for cn_type (1-5), one multiplier per type per branch
+    // bsr_mode=3 (RLC): not handled here, requires different parameterisation
+    if(n_types_per_edge > 0){
+        int n_edges = (n_bsr_edges >= 0) ? n_bsr_edges : nparams_est;
+        return nparams_est + n_types_per_edge * n_edges;
+    }
+
+    // bsr_mode=0: n_types_per_edge=0, constant rate, handled by estmu logic below
     if(!estmu){
       ndim = nparams_est;
     }else{
@@ -211,9 +228,119 @@ void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const ma
 */
 double L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, double* x, double* l, double* u);
 
+// One active CNA rate type for BSR optimisation.
+// tree_rate: pointer-to-member on evo_tree (e.g. &evo_tree::dup_rate) — the global reference.
+// edge_field: pointer-to-member on RateSet (e.g. &RateSet::dup) — the per-branch field.
+// Pairing is enforced by construction in get_bsr_rate_slots, not by a raw double snapshot.
+struct BsrRateSlot {
+    const char*         name;
+    double evo_tree::*  tree_rate;   // global reference rate on rtree
+    double RateSet::*   edge_field;  // corresponding field in edge_rates
+};
+
+// Returns the active rate slots for the given cn_type.
+// bsr_mode=1: use slots to know which rates are active, share one multiplier across all.
+// bsr_mode=2: each slot gets its own independent multiplier.
+inline vector<BsrRateSlot> get_bsr_rate_slots(const evo_tree& rtree, int cn_type){
+    vector<BsrRateSlot> slots;
+    auto add = [&](const char* name, double evo_tree::* tr, double RateSet::* ef){
+        if(rtree.*tr > 0) slots.push_back({name, tr, ef});
+    };
+    switch(cn_type){
+        case ONLY_SEG:
+            add("dup", &evo_tree::dup_rate, &RateSet::dup);
+            add("del", &evo_tree::del_rate, &RateSet::del);
+            break;
+        case EXCLUDE_SEG:
+            add("chr_gain", &evo_tree::chr_gain_rate, &RateSet::chr_gain);
+            add("chr_loss", &evo_tree::chr_loss_rate, &RateSet::chr_loss);
+            add("wgd",      &evo_tree::wgd_rate,      &RateSet::wgd);
+            break;
+        case EXCLUDE_CHR:
+            add("dup", &evo_tree::dup_rate, &RateSet::dup);
+            add("del", &evo_tree::del_rate, &RateSet::del);
+            add("wgd", &evo_tree::wgd_rate, &RateSet::wgd);
+            break;
+        case EXCLUDE_WGD:
+            add("dup",      &evo_tree::dup_rate,      &RateSet::dup);
+            add("del",      &evo_tree::del_rate,      &RateSet::del);
+            add("chr_gain", &evo_tree::chr_gain_rate, &RateSet::chr_gain);
+            add("chr_loss", &evo_tree::chr_loss_rate, &RateSet::chr_loss);
+            break;
+        default: // ALL
+            add("dup",      &evo_tree::dup_rate,      &RateSet::dup);
+            add("del",      &evo_tree::del_rate,      &RateSet::del);
+            add("chr_gain", &evo_tree::chr_gain_rate, &RateSet::chr_gain);
+            add("chr_loss", &evo_tree::chr_loss_rate, &RateSet::chr_loss);
+            add("wgd",      &evo_tree::wgd_rate,      &RateSet::wgd);
+    }
+    return slots;
+}
+
+// Returns edge IDs that receive per-branch rate multipliers (excludes the normal-sample edge).
+inline vector<int> get_active_bsr_eids(const evo_tree& rtree){
+    vector<int> eids;
+    for(int eid = 0; eid < (int)rtree.edges.size(); ++eid){
+        if(rtree.edges[eid].start == rtree.nleaf - 1 ||
+           rtree.edges[eid].end   == rtree.nleaf - 1) continue;
+        eids.push_back(eid);
+    }
+    return eids;
+}
+
 // Using BFGS method to get the maximum likelihood with lower and upper bounds (minimalize negative likelihood function)
 // Note: the topology of rtree is fixed, yet its branch lengths may be updated in the optimization process
 void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double &min_nlnl,int debug = 0);
+
+/****** bsr_mode=3 ML-RLC functions ******/
+
+// Propagate local rates from root to tips given shift edges and their multipliers.
+// Non-shift edges inherit parent's local RateSet exactly.
+// Shift edges scale parent's local RateSet by multipliers[k].
+// Writes rtree.edge_rates[eid] for every edge.
+void update_edge_rates_rlc(
+    evo_tree& rtree,
+    const vector<int>& shift_eids,
+    const vector<double>& multipliers
+);
+
+// Convenience wrapper: reads multipliers from optimizer vector x[].
+// Multiplier for shift_eids[k] is at x[nparams_est + k + 1].
+void update_edge_rates_rlc_from_x(
+    evo_tree& rtree,
+    const vector<int>& shift_eids,
+    double* x,
+    int nparams_est
+);
+
+// Outer stepwise greedy search for shift edges under ML-RLC.
+// At each step adds the shift edge that most improves: logL - rlc_lambda * K.
+// Updates rtree, opt_type.rlc_shift_eids, and min_nlnl in place.
+void stepwise_search_shift_edges(
+    evo_tree& rtree,
+    const map<int, vector<vector<int>>>& vobs,
+    const map<int, vector<vector<CN_CHANGE>>>& vobs_change,
+    const OBS_DECOMP& obs_decomp,
+    const set<vector<int>>& comps,
+    LNL_TYPE& lnl_type,
+    OPT_TYPE& opt_type,
+    double& min_nlnl,
+    int debug = 0
+);
+
+// Wrapper: dispatches to stepwise_search_shift_edges for bsr_mode=3,
+// or max_likelihood_BFGS for all other modes.
+void optimize_tree_by_bsr_mode(
+    evo_tree& rtree,
+    const map<int, vector<vector<int>>>& vobs,
+    const map<int, vector<vector<CN_CHANGE>>>& vobs_change,
+    const OBS_DECOMP& obs_decomp,
+    const set<vector<int>>& comps,
+    LNL_TYPE& lnl_type,
+    OPT_TYPE& opt_type,
+    double& min_nlnl,
+    int debug = 0
+);
 
 // Optimizing the branch length of (node1, node2) with BFGS to incorporate constraints imposed by patient age and tip timings.
 // Optimize mutation rates if necessary

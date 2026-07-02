@@ -119,9 +119,12 @@ struct QMAT_DECOMP{
 
 
 struct PMAT_DECOMP{
-  map<double, double*> pmats_wgd;
+  map<double, double*> pmats_wgd;       // constant rate: keyed by branch length
   map<double, double*> pmats_chr;
   map<double, double*> pmats_seg;
+  map<int, double*> pmats_wgd_var;      // variable rate: keyed by edge_id
+  map<int, double*> pmats_chr_var;
+  map<int, double*> pmats_seg_var;
 
   PMAT_DECOMP() = default;
   // forbid copying (owning raw memory)
@@ -132,46 +135,59 @@ struct PMAT_DECOMP{
   PMAT_DECOMP(PMAT_DECOMP&& other) noexcept
       : pmats_wgd(std::move(other.pmats_wgd)),
         pmats_chr(std::move(other.pmats_chr)),
-        pmats_seg(std::move(other.pmats_seg))
+        pmats_seg(std::move(other.pmats_seg)),
+        pmats_wgd_var(std::move(other.pmats_wgd_var)),
+        pmats_chr_var(std::move(other.pmats_chr_var)),
+        pmats_seg_var(std::move(other.pmats_seg_var))
   {
-      // other maps are left in a valid but unspecified state (usually empty)
-      // we do NOT delete pointers in 'other' because we stole them
       other.pmats_wgd.clear();
       other.pmats_chr.clear();
       other.pmats_seg.clear();
+      other.pmats_wgd_var.clear();
+      other.pmats_chr_var.clear();
+      other.pmats_seg_var.clear();
   }
 
   // delete all owned pointers and clear maps
   void free_all() noexcept {
-      auto free_map = [](std::map<double, double*>& m) noexcept {
-          for (auto& kv : m) {
-              delete [] kv.second;   // assumes allocation with new[]
-              kv.second = nullptr;
-          }
+      auto free_map_bl = [](std::map<double, double*>& m) noexcept {
+          for (auto& kv : m) { delete [] kv.second; kv.second = nullptr; }
+          m.clear();
+      };
+      auto free_map_var = [](std::map<int, double*>& m) noexcept {
+          for (auto& kv : m) { delete [] kv.second; kv.second = nullptr; }
           m.clear();
       };
 
-      free_map(pmats_wgd);
-      free_map(pmats_chr);
-      free_map(pmats_seg);
+      free_map_bl(pmats_wgd);
+      free_map_bl(pmats_chr);
+      free_map_bl(pmats_seg);
+      free_map_var(pmats_wgd_var);
+      free_map_var(pmats_chr_var);
+      free_map_var(pmats_seg_var);
   }
 
   // move assignment
   PMAT_DECOMP& operator=(PMAT_DECOMP&& other) noexcept {
       if (this != &other) {
-          free_all();  // free currently owned memory
+          free_all();
 
           pmats_wgd = std::move(other.pmats_wgd);
           pmats_chr = std::move(other.pmats_chr);
           pmats_seg = std::move(other.pmats_seg);
+          pmats_wgd_var = std::move(other.pmats_wgd_var);
+          pmats_chr_var = std::move(other.pmats_chr_var);
+          pmats_seg_var = std::move(other.pmats_seg_var);
 
           other.pmats_wgd.clear();
           other.pmats_chr.clear();
           other.pmats_seg.clear();
+          other.pmats_wgd_var.clear();
+          other.pmats_chr_var.clear();
+          other.pmats_seg_var.clear();
       }
       return *this;
   }
-
 
   ~PMAT_DECOMP() {
       free_all();
@@ -357,6 +373,8 @@ double extract_tree_lnl(vector<vector<double>>& L_sk_k, int Ns, int model);
 void initialize_lnl_table_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& sample_num_wgd, const DIM_DECOMP& dim_decomp, int debug);
 double compute_child_likelihood_wgd(int node, int num_wgd, vector<vector<double>>& lnl_table_wgd, const double* pbl_wgd, const DIM_DECOMP& dim_decomp, int debug);
 void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug);
+// variable rate version: looks up P matrices by edge_id (pmats_wgd_var) instead of branch length
+void get_likelihood_wgd_variable(vector<vector<double>>& lnl_table_wgd, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug);
 
 
 void initialize_lnl_table_site(vector<vector<double>>& lnl_table_seg, const evo_tree& rtree, const vector<CN_CHANGE>& obs_change, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
@@ -369,6 +387,8 @@ void set_lnl_table_change(int cn_total, int row, int max_change_haplotype, vecto
 void set_pmat_decomp_dim(const OBS_DECOMP& obs_decomp, DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 void build_rate_matrices(QMAT_DECOMP& qmat_decomp, const evo_tree& rtree, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 void build_transition_matrices(PMAT_DECOMP &pmat_decomp, const evo_tree &rtree, const vector<int> &knodes, const QMAT_DECOMP &qmat_decomp, const DIM_DECOMP &dim_decomp, int debug);
+// variable rate: build one P matrix per edge using edge_rates[edge_id], stored by edge_id
+void build_transition_matrices_variable(PMAT_DECOMP& pmat_decomp, const evo_tree& rtree, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 void print_pmatrix_map(const map<double, double*>& pmats, int dim, string name);
 
 double compute_child_likelihood_change(int node, const CN_CHANGE& sk, const vector<vector<double>>& lnl_table_seg, const double* pbl_seg, const DIM_DECOMP& dim_decomp, int debug);
@@ -376,12 +396,19 @@ double compute_child_likelihood_change(int node, const CN_CHANGE& sk, const vect
 double get_prob_children_change(vector<vector<double>>& lnl_table_seg, const evo_tree& rtree, const CN_CHANGE& sk, const double* pbli_seg, const double* pblj_seg, const DIM_DECOMP& dim_decomp, int ni, int nj, int debug);
 
 void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
+// variable rate version: looks up P matrices by edge_id (pmats_seg_var) instead of branch length
+void get_likelihood_site_change_variable(vector<vector<double>>& lnl_table_seg, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 
 void get_likelihood_per_chr(vector<vector<double>>& lnl_table_chr, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug);
+// variable rate version: looks up P matrices by edge_id (pmats_chr_var) instead of branch length
+void get_likelihood_per_chr_variable(vector<vector<double>>& lnl_table_chr, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug);
 
 double get_likelihood_chr_change(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
+// variable rate version: calls the _variable traversal functions
+double get_likelihood_chr_change_variable(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, const LNL_TYPE& lnl_type, int debug);
 
 double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, int debug);
+double get_likelihood_change_variable_rate(evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, int debug);
 
 double extract_tree_lnl_change(const vector<vector<double>>& lnl_table, int num_leaves, int normal_state, int debug);  
 

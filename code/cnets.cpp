@@ -999,9 +999,192 @@ void run_test(gsl_rng* r, int mode, string dir, unsigned seed, const ITREE_PARAM
     }
 }
 
+string report_sim_double(double value){
+    if(std::isfinite(value)){
+        ostringstream os;
+        os << setprecision(PRINT_PRECISION) << value;
+        return os.str();
+    }
+    return "NA";
+}
+
+double infer_shared_multiplier_from_reference(const RateSet& reference, const RateSet& rs){
+    if(reference.dup > 0.0) return rs.dup / reference.dup;
+    if(reference.del > 0.0) return rs.del / reference.del;
+    if(reference.chr_gain > 0.0) return rs.chr_gain / reference.chr_gain;
+    if(reference.chr_loss > 0.0) return rs.chr_loss / reference.chr_loss;
+    if(reference.wgd > 0.0) return rs.wgd / reference.wgd;
+    return std::numeric_limits<double>::quiet_NaN();
+}
+
+struct EdgeObservedCounts {
+    int total;
+    int dup;
+    int del;
+    int chr_gain;
+    int chr_loss;
+    int wgd;
+};
+
+EdgeObservedCounts count_observed_mutations_on_edge(const vector<mutation>& edge_muts){
+    EdgeObservedCounts out{0, 0, 0, 0, 0, 0};
+    for(const mutation& m : edge_muts){
+        out.total += 1;
+        if(m.type == DUP) out.dup += 1;
+        else if(m.type == DEL) out.del += 1;
+        else if(m.type == GAIN) out.chr_gain += 1;
+        else if(m.type == LOSS) out.chr_loss += 1;
+        else if(m.type == WGD) out.wgd += 1;
+    }
+    return out;
+}
+
+void write_simulation_edge_rate_table(const evo_tree& tree, int bsr_mode, const vector<double>& rate_consts, const map<int, vector<mutation>>& muts, const string& ofile, int num_total_bins){
+    ofstream out(ofile);
+    out << "eid\tstart\tend\tlength\tnmut_expected\tdup_expected\tdel_expected\tchr_gain_expected\tchr_loss_expected\twgd_expected\tnmut_observed\tdup_observed\tdel_observed\tchr_gain_observed\tchr_loss_observed\twgd_observed\tdup_rate\tdel_rate\tchr_gain_rate\tchr_loss_rate\twgd_rate\ttotal_rate\tm_shared\tm_dup\tm_del\tm_chr_gain\tm_chr_loss\tm_wgd\tis_shift_edge\tlocal_clock_id\n";
+
+    RateSet reference(0.0, rate_consts[0], rate_consts[1], rate_consts[2], rate_consts[3], rate_consts[4]);
+    bool has_edge_rates = (int)tree.edge_rates.size() == (int)tree.edges.size();
+
+    vector<string> m_shared(tree.edges.size(), "NA");
+    vector<string> m_dup(tree.edges.size(), "NA");
+    vector<string> m_del(tree.edges.size(), "NA");
+    vector<string> m_chr_gain(tree.edges.size(), "NA");
+    vector<string> m_chr_loss(tree.edges.size(), "NA");
+    vector<string> m_wgd(tree.edges.size(), "NA");
+    vector<string> is_shift_edge(tree.edges.size(), "NA");
+    vector<string> local_clock_id(tree.edges.size(), "NA");
+
+    if(has_edge_rates){
+        if(bsr_mode == 0){
+            for(int eid = 0; eid < (int)tree.edges.size(); ++eid){
+                m_shared[eid] = "1";
+                if(reference.dup > 0.0) m_dup[eid] = "1";
+                if(reference.del > 0.0) m_del[eid] = "1";
+                if(reference.chr_gain > 0.0) m_chr_gain[eid] = "1";
+                if(reference.chr_loss > 0.0) m_chr_loss[eid] = "1";
+                if(reference.wgd > 0.0) m_wgd[eid] = "1";
+            }
+        }else if(bsr_mode == 1){
+            for(int eid = 0; eid < (int)tree.edges.size(); ++eid){
+                double shared = infer_shared_multiplier_from_reference(reference, tree.edge_rates[eid]);
+                string sm = report_sim_double(shared);
+                m_shared[eid] = sm;
+                if(reference.dup > 0.0) m_dup[eid] = sm;
+                if(reference.del > 0.0) m_del[eid] = sm;
+                if(reference.chr_gain > 0.0) m_chr_gain[eid] = sm;
+                if(reference.chr_loss > 0.0) m_chr_loss[eid] = sm;
+                if(reference.wgd > 0.0) m_wgd[eid] = sm;
+            }
+        }else if(bsr_mode == 2){
+            for(int eid = 0; eid < (int)tree.edges.size(); ++eid){
+                m_dup[eid] = reference.dup > 0.0 ? report_sim_double(tree.edge_rates[eid].dup / reference.dup) : "NA";
+                m_del[eid] = reference.del > 0.0 ? report_sim_double(tree.edge_rates[eid].del / reference.del) : "NA";
+                m_chr_gain[eid] = reference.chr_gain > 0.0 ? report_sim_double(tree.edge_rates[eid].chr_gain / reference.chr_gain) : "NA";
+                m_chr_loss[eid] = reference.chr_loss > 0.0 ? report_sim_double(tree.edge_rates[eid].chr_loss / reference.chr_loss) : "NA";
+                m_wgd[eid] = reference.wgd > 0.0 ? report_sim_double(tree.edge_rates[eid].wgd / reference.wgd) : "NA";
+            }
+        }else if(bsr_mode == 3){
+            vector<RateSet> node_rate(tree.nodes.size(), reference);
+            vector<int> node_clock(tree.nodes.size(), 0);
+            int next_clock_id = 1;
+            stack<int> stk;
+            stk.push(tree.root_node_id);
+            while(!stk.empty()){
+                int nid = stk.top();
+                stk.pop();
+                for(int child : tree.nodes[nid].daughters){
+                    int eid = tree.nodes[child].e_in;
+                    if(eid < 0 || eid >= (int)tree.edges.size()) continue;
+                    bool is_shift = find(tree.rlc_shift_eids.begin(), tree.rlc_shift_eids.end(), eid) != tree.rlc_shift_eids.end();
+                    RateSet parent_rate = node_rate[nid];
+                    RateSet child_rate = tree.edge_rates[eid];
+
+                    is_shift_edge[eid] = is_shift ? "1" : "0";
+                    if(is_shift){
+                        int cid = next_clock_id++;
+                        node_clock[child] = cid;
+                        local_clock_id[eid] = to_string(cid);
+                        double shared = infer_shared_multiplier_from_reference(parent_rate, child_rate);
+                        string sm = report_sim_double(shared);
+                        m_shared[eid] = sm;
+                        if(parent_rate.dup > 0.0) m_dup[eid] = sm;
+                        if(parent_rate.del > 0.0) m_del[eid] = sm;
+                        if(parent_rate.chr_gain > 0.0) m_chr_gain[eid] = sm;
+                        if(parent_rate.chr_loss > 0.0) m_chr_loss[eid] = sm;
+                        if(parent_rate.wgd > 0.0) m_wgd[eid] = sm;
+                    }else{
+                        node_clock[child] = node_clock[nid];
+                        local_clock_id[eid] = to_string(node_clock[child]);
+                        m_shared[eid] = "1";
+                        if(parent_rate.dup > 0.0) m_dup[eid] = "1";
+                        if(parent_rate.del > 0.0) m_del[eid] = "1";
+                        if(parent_rate.chr_gain > 0.0) m_chr_gain[eid] = "1";
+                        if(parent_rate.chr_loss > 0.0) m_chr_loss[eid] = "1";
+                        if(parent_rate.wgd > 0.0) m_wgd[eid] = "1";
+                    }
+
+                    node_rate[child] = child_rate;
+                    stk.push(child);
+                }
+            }
+        }
+    }
+
+    for(int eid = 0; eid < (int)tree.edges.size(); ++eid){
+        double blen = tree.edges[eid].length;
+        RateSet rs = has_edge_rates ? tree.edge_rates[eid] : reference;
+
+        double dup_expected = NORM_PLOIDY * num_total_bins * rs.dup * blen;
+        double del_expected = NORM_PLOIDY * num_total_bins * rs.del * blen;
+        double chr_gain_expected = NORM_PLOIDY * NUM_CHR * rs.chr_gain * blen;
+        double chr_loss_expected = NORM_PLOIDY * NUM_CHR * rs.chr_loss * blen;
+        double wgd_expected = rs.wgd * blen;
+        double nmut_expected = dup_expected + del_expected + chr_gain_expected + chr_loss_expected + wgd_expected;
+        double total_rate = NORM_PLOIDY * num_total_bins * (rs.dup + rs.del)
+                          + NORM_PLOIDY * NUM_CHR * (rs.chr_gain + rs.chr_loss)
+                          + rs.wgd;
+
+        auto mit = muts.find(eid);
+        const vector<mutation> empty_muts;
+        const vector<mutation>& edge_muts = (mit == muts.end()) ? empty_muts : mit->second;
+        EdgeObservedCounts obs = count_observed_mutations_on_edge(edge_muts);
+
+        out << eid << "\t"
+            << tree.edges[eid].start + 1 << "\t"
+            << tree.edges[eid].end + 1 << "\t"
+            << report_sim_double(blen) << "\t"
+            << report_sim_double(nmut_expected) << "\t"
+            << report_sim_double(dup_expected) << "\t"
+            << report_sim_double(del_expected) << "\t"
+            << report_sim_double(chr_gain_expected) << "\t"
+            << report_sim_double(chr_loss_expected) << "\t"
+            << report_sim_double(wgd_expected) << "\t"
+            << obs.total << "\t"
+            << obs.dup << "\t"
+            << obs.del << "\t"
+            << obs.chr_gain << "\t"
+            << obs.chr_loss << "\t"
+            << obs.wgd << "\t"
+            << report_sim_double(rs.dup) << "\t"
+            << report_sim_double(rs.del) << "\t"
+            << report_sim_double(rs.chr_gain) << "\t"
+            << report_sim_double(rs.chr_loss) << "\t"
+            << report_sim_double(rs.wgd) << "\t"
+            << report_sim_double(total_rate) << "\t"
+            << m_shared[eid] << "\t"
+            << m_dup[eid] << "\t"
+            << m_del[eid] << "\t"
+            << m_chr_gain[eid] << "\t"
+            << m_chr_loss[eid] << "\t"
+            << m_wgd[eid] << "\t"
+            << is_shift_edge[eid] << "\t"
+            << local_clock_id[eid] << "\n";
+    }
+}
 
 // Print data simulated with waiting times
-void print_simulations(int mode, int model, int num_seg, const vector<double>& rate_consts, vector<genome>& results, const vector<int>& chr_lengths, map<int, vector<mutation>>& muts, map<int, int>& failed_muts, evo_tree& test_tree, string dir, string prefix, int age, int cn_max, PRINT_LEVEL print_level, gsl_rng* r, int cons, int nerr = 0, int debug = 0){
+void print_simulations(int mode, int model, int num_seg, int bsr_mode, const vector<double>& rate_consts, vector<genome>& results, const vector<int>& chr_lengths, map<int, vector<mutation>>& muts, map<int, int>& failed_muts, evo_tree& test_tree, string dir, string prefix, int age, int cn_max, PRINT_LEVEL print_level, gsl_rng* r, int cons, int nerr = 0, int debug = 0){
     stringstream sstm;
 
     sstm << dir << prefix << "-cn.txt.gz";
@@ -1200,6 +1383,10 @@ void print_simulations(int mode, int model, int num_seg, const vector<double>& r
     out_tree.close();
     sstm.str("");
 
+    sstm << dir << prefix << "-edge_rates.txt";
+    write_simulation_edge_rate_table(test_tree, bsr_mode, rate_consts, muts, sstm.str(), num_seg);
+    sstm.str("");
+
     if(print_level.print_nex){
         cout << "Writing the tree in NEXUS format" << endl;
         sstm << dir << prefix << "-tree.nex";
@@ -1350,7 +1537,7 @@ void run_simulations(string tree_file, int mode, int method, const vector<int>& 
             simulate_samples(r, genomes, muts, failed_muts, test_tree, germline, chr_lengths, sv_size, model, cn_max, debug);
 
     int num_seg = get_num_seg(chr_lengths);
-    print_simulations(mode, model, num_seg, rate_consts, genomes, chr_lengths, muts, failed_muts, test_tree, dir, prefix, age, cn_max, print_level, r, cons, nerr, debug);
+    print_simulations(mode, model, num_seg, bsr_mode, rate_consts, genomes, chr_lengths, muts, failed_muts, test_tree, dir, prefix, age, cn_max, print_level, r, cons, nerr, debug);
 
 }else{  // SIM_SEQ path: only BOUNDA or BOUNDT are supported
             assert(model == BOUNDA || model == BOUNDT);

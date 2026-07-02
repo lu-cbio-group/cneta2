@@ -112,7 +112,7 @@ evo_tree perturb_tree_set(vector<evo_tree>& trees, gsl_rng* r, long unsigned (*f
  * @return vector<evo_tree>: 
  */
 // 
-vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int Npop, const vector<double>& rates, const vector<double>& tobs, double max_tobs, int age, int max_tree_num, int cons, const ITREE_PARAM& itree_param, int debug){
+vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int Npop, const vector<double>& rates, const vector<double>& tobs, double max_tobs, int age, int max_tree_num, int cons, const ITREE_PARAM& itree_param, int bsr_mode, int debug){
     vector<evo_tree> trees;
 
     if(init_tree){     // read MP trees from files
@@ -130,6 +130,8 @@ vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int
                 continue;
             }
 
+            if(bsr_mode > 0)
+                rtree.init_edge_rates(RateSet(rates[0], rates[1], rates[2], rates[3], rates[4], rates[5]));
             rtree.score = -MAX_NLNL;
             trees.push_back(rtree);
 
@@ -204,6 +206,8 @@ vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int
             }
 
             restore_mutation_rates(rtree, rates);
+            if(bsr_mode > 0)
+                rtree.init_edge_rates(RateSet(rates[0], rates[1], rates[2], rates[3], rates[4], rates[5]));
             rtree.score = -MAX_NLNL;
             trees.push_back(rtree);
 
@@ -295,7 +299,7 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
 
     int max_tree_num = NUM_TREES[Ns - 1];
     cout << "\nMaximum number of possible trees to explore " << max_tree_num << endl;
-    vector<evo_tree> init_trees = get_initial_trees(init_tree, dir_itrees, Ns, max_tree_num, rates, tobs, max_tobs, age, max_tree_num, cons, itree_param, debug);
+    vector<evo_tree> init_trees = get_initial_trees(init_tree, dir_itrees, Ns, max_tree_num, rates, tobs, max_tobs, age, max_tree_num, cons, itree_param, opt_type.bsr_mode, debug);
 
     assert(max_tree_num == init_trees.size());
     cout << "Initial number of trees " << max_tree_num << endl;
@@ -310,6 +314,10 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
     #pragma omp parallel for
     #endif
     for(int i = 0; i < max_tree_num; ++i){
+        // Thread-local copy of opt_type: stepwise_search_shift_edges modifies
+        // rlc_shift_eids, so sharing opt_type across threads would be a data race.
+        OPT_TYPE local_opt = opt_type;
+
         int tree_id = i + 1; // for display only
         string tstring = order_tree_string_uniq(create_tree_string_uniq(init_trees[i]));
         if(debug){
@@ -328,7 +336,7 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
         while(count < Ngen){
             // if(debug) cout << "Maximization in iteration " << count << endl;
             if(optim == GSL){
-                max_likelihood(init_trees[i], vobs, lnl_type, opt_type, nlnl, ssize);
+                max_likelihood(init_trees[i], vobs, lnl_type, local_opt, nlnl, ssize);
             }else{
                 // init_trees[i] has already been the same as best_tree
                 if(debug > 1){
@@ -336,7 +344,7 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
                     // cout << "vobs_change before " << endl;
                     // print_data_map<CN_CHANGE>(vobs_change);
                 }
-                max_likelihood_BFGS(init_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl, debug);
+                optimize_tree_by_bsr_mode(init_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, local_opt, nlnl, debug);
                 // cout << "vobs_change after " << endl;
             }
             // —— DEBUG, check if nlnl is NaN or inf ——
@@ -408,7 +416,7 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
     if(Ns <= LARGE_TREE)   max_tree_num = NUM_TREES[Ns - 1];
 
     // initialize candidate tree set
-    vector<evo_tree> trees = get_initial_trees(init_tree, dir_itrees, Ns, Npop, rates, tobs, max_tobs, age, max_tree_num, cons, itree_param, debug);
+    vector<evo_tree> trees = get_initial_trees(init_tree, dir_itrees, Ns, Npop, rates, tobs, max_tobs, age, max_tree_num, cons, itree_param, opt_type.bsr_mode, debug);
     int num2init = trees.size();
     vector<double> lnLs(num2init, 0.0);
     vector<int> index(num2init, 0);      // index of trees starting from 0
@@ -423,17 +431,19 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
     #pragma omp parallel for
     #endif
     for(int i = 0; i < num2init; ++i){
+        // Thread-local copy: stepwise_search_shift_edges writes to rlc_shift_eids
+        OPT_TYPE local_opt = opt_type;
         double nlnl = MAX_NLNL;
         if(debug)  cout << "\noptimize tree " << i + 1 << ": " << trees[i].make_newick() << endl;
         if(optim == GSL){  // use gsl libraries (deprecated)
             while(!(nlnl < MAX_NLNL)){
               nlnl = MAX_NLNL;
-              max_likelihood(trees[i], vobs, lnl_type, opt_type, nlnl, ssize);
+              max_likelihood(trees[i], vobs, lnl_type, local_opt, nlnl, ssize);
             }
         }else{
             while(!(nlnl < MAX_NLNL)){
               nlnl = MAX_NLNL;
-              max_likelihood_BFGS(trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl, debug);
+              optimize_tree_by_bsr_mode(trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, local_opt, nlnl, debug);
             }
         }
         trees[i].score = -nlnl;
@@ -582,7 +592,7 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
   double tolerance = opt_type.tolerance;
   int miter = opt_type.miter;
 
-  vector<evo_tree> trees = get_initial_trees(init_tree, dir_itrees, Ns, Npop, rates, tobs, max_tobs, age, Npop, cons, itree_param, debug);
+  vector<evo_tree> trees = get_initial_trees(init_tree, dir_itrees, Ns, Npop, rates, tobs, max_tobs, age, Npop, cons, itree_param, opt_type.bsr_mode, debug);
 
   vector<double> lnLs(2 * Npop, 0);
   double min_nlnl = MAX_NLNL;
@@ -610,7 +620,7 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
         if(optim == GSL){
            max_likelihood(new_trees[i], vobs, lnl_type, opt_type, nlnl, ssize);
         }else{
-           max_likelihood_BFGS(new_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
+           optimize_tree_by_bsr_mode(new_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
         }
         new_trees[i].score = -nlnl;
         // cout << "otree tobs " << otree.tobs[0] << endl;
@@ -642,7 +652,7 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
         	    max_likelihood(new_trees[Npop + i], vobs, lnl_type, opt_type, nlnl, ssize);
             }else{
                 // new_trees[Npop + i].print();
-                max_likelihood_BFGS(new_trees[Npop + i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
+                optimize_tree_by_bsr_mode(new_trees[Npop + i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
             }
         	new_trees[Npop + i].score = -nlnl;
             // cout << "otree tobs " << otree.tobs[0] << endl;
@@ -742,6 +752,397 @@ double compute_total_mutation_rate(const evo_tree& tree, int cn_type, int num_to
         default:
             cout << "Error in cn_type!" << endl;
             exit(EXIT_FAILURE);
+    }
+}
+
+double compute_total_mutation_rate_from_rateset(const RateSet& rs, int cn_type, int num_total_bins){
+    switch(cn_type){
+        case ALL:
+            return NORM_PLOIDY * NUM_CHR * (rs.chr_gain + rs.chr_loss)
+                 + NORM_PLOIDY * num_total_bins * (rs.dup + rs.del)
+                 + rs.wgd;
+
+        case ONLY_SEG:
+            return NORM_PLOIDY * num_total_bins * (rs.dup + rs.del);
+
+        case EXCLUDE_SEG:
+            return NORM_PLOIDY * NUM_CHR * (rs.chr_gain + rs.chr_loss)
+                 + rs.wgd;
+
+        case EXCLUDE_CHR:
+            return NORM_PLOIDY * num_total_bins * (rs.dup + rs.del)
+                 + rs.wgd;
+
+        case EXCLUDE_WGD:
+            return NORM_PLOIDY * NUM_CHR * (rs.chr_gain + rs.chr_loss)
+                 + NORM_PLOIDY * num_total_bins * (rs.dup + rs.del);
+
+        default:
+            cout << "Error in cn_type!" << endl;
+            exit(EXIT_FAILURE);
+    }
+}
+
+struct MutationCountBreakdown {
+    double dup;
+    double del;
+    double chr_gain;
+    double chr_loss;
+    double wgd;
+};
+
+MutationCountBreakdown compute_expected_mutation_counts_for_edge(const RateSet& rs, double blen, int cn_type, int num_total_bins){
+    bool use_seg = false;
+    bool use_chr = false;
+    bool use_wgd = false;
+
+    switch(cn_type){
+        case ALL:
+            use_seg = true;
+            use_chr = true;
+            use_wgd = true;
+            break;
+        case ONLY_SEG:
+            use_seg = true;
+            break;
+        case EXCLUDE_SEG:
+            use_chr = true;
+            use_wgd = true;
+            break;
+        case EXCLUDE_CHR:
+            use_seg = true;
+            use_wgd = true;
+            break;
+        case EXCLUDE_WGD:
+            use_seg = true;
+            use_chr = true;
+            break;
+        default:
+            cout << "Error in cn_type!" << endl;
+            exit(EXIT_FAILURE);
+    }
+
+    MutationCountBreakdown out{0.0, 0.0, 0.0, 0.0, 0.0};
+    if(use_seg){
+        out.dup = NORM_PLOIDY * num_total_bins * rs.dup * blen;
+        out.del = NORM_PLOIDY * num_total_bins * rs.del * blen;
+    }
+    if(use_chr){
+        out.chr_gain = NORM_PLOIDY * NUM_CHR * rs.chr_gain * blen;
+        out.chr_loss = NORM_PLOIDY * NUM_CHR * rs.chr_loss * blen;
+    }
+    if(use_wgd){
+        out.wgd = rs.wgd * blen;
+    }
+    return out;
+}
+
+double sum_expected_mutation_counts(const MutationCountBreakdown& c){
+    return c.dup + c.del + c.chr_gain + c.chr_loss + c.wgd;
+}
+
+RateSet compute_length_weighted_effective_rates(const evo_tree& tree, int bsr_mode){
+    double total_blen = 0.0;
+    double dup = 0.0;
+    double del = 0.0;
+    double chr_gain = 0.0;
+    double chr_loss = 0.0;
+    double wgd = 0.0;
+    bool has_edge_rates = bsr_mode > 0 && (int)tree.edge_rates.size() == (int)tree.edges.size();
+
+    for(int eid = 0; eid < (int)tree.edges.size(); ++eid){
+        double blen = tree.edges[eid].length;
+        if(blen <= 0.0) continue;
+        RateSet rs = has_edge_rates
+            ? tree.edge_rates[eid]
+            : RateSet(0.0, tree.dup_rate, tree.del_rate, tree.chr_gain_rate, tree.chr_loss_rate, tree.wgd_rate);
+        total_blen += blen;
+        dup += rs.dup * blen;
+        del += rs.del * blen;
+        chr_gain += rs.chr_gain * blen;
+        chr_loss += rs.chr_loss * blen;
+        wgd += rs.wgd * blen;
+    }
+
+    if(total_blen <= 0.0){
+        return RateSet(0.0, tree.dup_rate, tree.del_rate, tree.chr_gain_rate, tree.chr_loss_rate, tree.wgd_rate);
+    }
+
+    return RateSet(0.0,
+                   dup / total_blen,
+                   del / total_blen,
+                   chr_gain / total_blen,
+                   chr_loss / total_blen,
+                   wgd / total_blen);
+}
+
+string report_double(double value){
+    if(std::isfinite(value)){
+        ostringstream os;
+        os << setprecision(PRINT_PRECISION) << value;
+        return os.str();
+    }
+    return "NA";
+}
+
+string report_multiplier(double numerator, double denominator){
+    if(denominator > 0.0) return report_double(numerator / denominator);
+    return "NA";
+}
+
+string join_ints(const vector<int>& values){
+    if(values.empty()) return "";
+    ostringstream os;
+    for(size_t i = 0; i < values.size(); ++i){
+        if(i > 0) os << ",";
+        os << values[i];
+    }
+    return os.str();
+}
+
+RateSet global_rateset_from_tree(const evo_tree& tree){
+    return RateSet(0.0, tree.dup_rate, tree.del_rate,
+                   tree.chr_gain_rate, tree.chr_loss_rate, tree.wgd_rate);
+}
+
+RateSet rateset_for_edge(const evo_tree& tree, int eid, int bsr_mode){
+    if(bsr_mode > 0 && (int)tree.edge_rates.size() == (int)tree.edges.size())
+        return tree.edge_rates[eid];
+    return global_rateset_from_tree(tree);
+}
+
+bool contains_int(const vector<int>& values, int value){
+    return find(values.begin(), values.end(), value) != values.end();
+}
+
+double infer_shared_multiplier(const evo_tree& tree, const RateSet& rs){
+    if(tree.dup_rate > 0.0) return rs.dup / tree.dup_rate;
+    if(tree.del_rate > 0.0) return rs.del / tree.del_rate;
+    if(tree.chr_gain_rate > 0.0) return rs.chr_gain / tree.chr_gain_rate;
+    if(tree.chr_loss_rate > 0.0) return rs.chr_loss / tree.chr_loss_rate;
+    if(tree.wgd_rate > 0.0) return rs.wgd / tree.wgd_rate;
+    return std::numeric_limits<double>::quiet_NaN();
+}
+
+double infer_rateset_multiplier(const RateSet& parent_rate, const RateSet& child_rate){
+    if(parent_rate.dup > 0.0) return child_rate.dup / parent_rate.dup;
+    if(parent_rate.del > 0.0) return child_rate.del / parent_rate.del;
+    if(parent_rate.chr_gain > 0.0) return child_rate.chr_gain / parent_rate.chr_gain;
+    if(parent_rate.chr_loss > 0.0) return child_rate.chr_loss / parent_rate.chr_loss;
+    if(parent_rate.wgd > 0.0) return child_rate.wgd / parent_rate.wgd;
+    return std::numeric_limits<double>::quiet_NaN();
+}
+
+struct EdgeRateReport {
+    vector<string> m_shared;
+    vector<string> m_dup;
+    vector<string> m_del;
+    vector<string> m_chr_gain;
+    vector<string> m_chr_loss;
+    vector<string> m_wgd;
+    vector<string> is_shift_edge;
+    vector<string> local_clock_id;
+};
+
+EdgeRateReport make_default_edge_rate_report(int nedge){
+    EdgeRateReport report;
+    report.m_shared.assign(nedge, "NA");
+    report.m_dup.assign(nedge, "NA");
+    report.m_del.assign(nedge, "NA");
+    report.m_chr_gain.assign(nedge, "NA");
+    report.m_chr_loss.assign(nedge, "NA");
+    report.m_wgd.assign(nedge, "NA");
+    report.is_shift_edge.assign(nedge, "NA");
+    report.local_clock_id.assign(nedge, "NA");
+    return report;
+}
+
+EdgeRateReport build_rlc_edge_rate_report(const evo_tree& tree, const vector<int>& shift_eids){
+    int nedge = (int)tree.edges.size();
+    EdgeRateReport report = make_default_edge_rate_report(nedge);
+    if((int)tree.edge_rates.size() != nedge) return report;
+
+    RateSet global_rates = global_rateset_from_tree(tree);
+    vector<RateSet> node_rate(tree.nodes.size(), global_rates);
+    vector<int> node_clock(tree.nodes.size(), 0);
+    int next_clock_id = 1;
+
+    stack<int> stk;
+    stk.push(tree.root_node_id);
+    while(!stk.empty()){
+        int nid = stk.top();
+        stk.pop();
+
+        for(int child : tree.nodes[nid].daughters){
+            int eid = tree.nodes[child].e_in;
+            if(eid < 0 || eid >= nedge) continue;
+
+            bool is_shift = contains_int(shift_eids, eid);
+            RateSet parent_rate = node_rate[nid];
+            RateSet child_rate = tree.edge_rates[eid];
+
+            report.is_shift_edge[eid] = is_shift ? "1" : "0";
+            if(is_shift){
+                int cid = next_clock_id++;
+                node_clock[child] = cid;
+                report.local_clock_id[eid] = to_string(cid);
+
+                double m = infer_rateset_multiplier(parent_rate, child_rate);
+                string sm = report_double(m);
+                report.m_shared[eid] = sm;
+                if(parent_rate.dup > 0.0) report.m_dup[eid] = sm;
+                if(parent_rate.del > 0.0) report.m_del[eid] = sm;
+                if(parent_rate.chr_gain > 0.0) report.m_chr_gain[eid] = sm;
+                if(parent_rate.chr_loss > 0.0) report.m_chr_loss[eid] = sm;
+                if(parent_rate.wgd > 0.0) report.m_wgd[eid] = sm;
+            }else{
+                node_clock[child] = node_clock[nid];
+                report.local_clock_id[eid] = to_string(node_clock[child]);
+                report.m_shared[eid] = "1";
+                if(parent_rate.dup > 0.0) report.m_dup[eid] = "1";
+                if(parent_rate.del > 0.0) report.m_del[eid] = "1";
+                if(parent_rate.chr_gain > 0.0) report.m_chr_gain[eid] = "1";
+                if(parent_rate.chr_loss > 0.0) report.m_chr_loss[eid] = "1";
+                if(parent_rate.wgd > 0.0) report.m_wgd[eid] = "1";
+            }
+
+            node_rate[child] = child_rate;
+            stk.push(child);
+        }
+    }
+    return report;
+}
+
+void write_run_summary(ostream& out, const evo_tree& tree, int mode, const LNL_TYPE& lnl_type, const OPT_TYPE& opt_type, double raw_logL, double penalized_score){
+    int bsr_mode = opt_type.bsr_mode;
+    bool has_opt_rlc = std::isfinite(opt_type.rlc_raw_logL) || std::isfinite(opt_type.rlc_penalized_score);
+    bool has_tree_rlc = std::isfinite(tree.rlc_raw_logL) || std::isfinite(tree.rlc_penalized_score);
+
+    vector<int> shift_eids = has_opt_rlc ? opt_type.rlc_shift_eids : tree.rlc_shift_eids;
+    if(bsr_mode == 3){
+        if(has_opt_rlc){
+            raw_logL = opt_type.rlc_raw_logL;
+            penalized_score = opt_type.rlc_penalized_score;
+        }else if(has_tree_rlc){
+            raw_logL = tree.rlc_raw_logL;
+            penalized_score = tree.rlc_penalized_score;
+        }
+    }
+
+    out << "mode\t" << mode << "\n";
+    out << "model\t" << lnl_type.model << "\n";
+    out << "bsr_mode\t" << bsr_mode << "\n";
+    out << "cn_type\t" << lnl_type.cn_type << "\n";
+    out << "constrained\t" << lnl_type.cons << "\n";
+    out << "estmu\t" << opt_type.estmu << "\n";
+    out << "rlc_lambda\t" << (bsr_mode == 3 ? report_double(opt_type.rlc_lambda) : "NA") << "\n";
+    out << "raw_logL\t" << report_double(raw_logL) << "\n";
+    out << "penalized_score\t" << report_double(penalized_score) << "\n";
+    out << "K_shift_edges\t" << (bsr_mode == 3 ? to_string(shift_eids.size()) : "NA") << "\n";
+    out << "shift_eids\t" << (bsr_mode == 3 ? join_ints(shift_eids) : "NA") << "\n";
+    out << "dup_rate_reference\t" << report_double(tree.dup_rate) << "\n";
+    out << "del_rate_reference\t" << report_double(tree.del_rate) << "\n";
+    out << "chr_gain_rate_reference\t" << report_double(tree.chr_gain_rate) << "\n";
+    out << "chr_loss_rate_reference\t" << report_double(tree.chr_loss_rate) << "\n";
+    out << "wgd_rate_reference\t" << report_double(tree.wgd_rate) << "\n";
+
+    RateSet effective_rates = compute_length_weighted_effective_rates(tree, bsr_mode);
+    out << "dup_rate_final_global_weighted\t" << report_double(effective_rates.dup) << "\n";
+    out << "del_rate_final_global_weighted\t" << report_double(effective_rates.del) << "\n";
+    out << "chr_gain_rate_final_global_weighted\t" << report_double(effective_rates.chr_gain) << "\n";
+    out << "chr_loss_rate_final_global_weighted\t" << report_double(effective_rates.chr_loss) << "\n";
+    out << "wgd_rate_final_global_weighted\t" << report_double(effective_rates.wgd) << "\n";
+
+    out << "n_edges\t" << tree.edges.size() << "\n";
+    out << "n_leaves\t" << tree.nleaf << "\n";
+}
+
+void write_edge_rate_table(const evo_tree& tree, int num_total_bins, int cn_type, const OPT_TYPE& opt_type, const string& ofile){
+    ofstream out(ofile + ".edge_rates.txt");
+    out << "eid\tstart\tend\tlength\tnmut_expected\tdup_expected\tdel_expected\tchr_gain_expected\tchr_loss_expected\twgd_expected\tnmut_observed\tdup_observed\tdel_observed\tchr_gain_observed\tchr_loss_observed\twgd_observed\tdup_rate\tdel_rate\tchr_gain_rate\tchr_loss_rate\twgd_rate\ttotal_rate\tm_shared\tm_dup\tm_del\tm_chr_gain\tm_chr_loss\tm_wgd\tis_shift_edge\tlocal_clock_id\n";
+
+    bool has_edge_rates = opt_type.bsr_mode > 0 && (int)tree.edge_rates.size() == (int)tree.edges.size();
+    bool has_opt_rlc = std::isfinite(opt_type.rlc_raw_logL) || std::isfinite(opt_type.rlc_penalized_score);
+    bool has_tree_rlc = std::isfinite(tree.rlc_raw_logL) || std::isfinite(tree.rlc_penalized_score);
+    const vector<int>& shift_eids = has_opt_rlc ? opt_type.rlc_shift_eids : tree.rlc_shift_eids;
+    EdgeRateReport rlc_report = make_default_edge_rate_report((int)tree.edges.size());
+    if(opt_type.bsr_mode == 3 && has_edge_rates && (has_opt_rlc || has_tree_rlc)){
+        rlc_report = build_rlc_edge_rate_report(tree, shift_eids);
+    }
+
+    for(int eid = 0; eid < (int)tree.edges.size(); ++eid){
+        RateSet rs = rateset_for_edge(tree, eid, opt_type.bsr_mode);
+        double blen = tree.edges[eid].length;
+        MutationCountBreakdown expected_counts = compute_expected_mutation_counts_for_edge(rs, blen, cn_type, num_total_bins);
+        double nmut_expected = sum_expected_mutation_counts(expected_counts);
+        double total_rate = compute_total_mutation_rate_from_rateset(rs, cn_type, num_total_bins);
+
+        string m_shared = "NA";
+        string m_dup = "NA";
+        string m_del = "NA";
+        string m_chr_gain = "NA";
+        string m_chr_loss = "NA";
+        string m_wgd = "NA";
+        string is_shift_edge = "NA";
+        string local_clock_id = "NA";
+
+        if(opt_type.bsr_mode == 0 || !has_edge_rates){
+            m_shared = "1";
+            if(tree.dup_rate > 0.0) m_dup = "1";
+            if(tree.del_rate > 0.0) m_del = "1";
+            if(tree.chr_gain_rate > 0.0) m_chr_gain = "1";
+            if(tree.chr_loss_rate > 0.0) m_chr_loss = "1";
+            if(tree.wgd_rate > 0.0) m_wgd = "1";
+        }else if(opt_type.bsr_mode == 1){
+            double shared = infer_shared_multiplier(tree, rs);
+            m_shared = report_double(shared);
+            if(tree.dup_rate > 0.0) m_dup = m_shared;
+            if(tree.del_rate > 0.0) m_del = m_shared;
+            if(tree.chr_gain_rate > 0.0) m_chr_gain = m_shared;
+            if(tree.chr_loss_rate > 0.0) m_chr_loss = m_shared;
+            if(tree.wgd_rate > 0.0) m_wgd = m_shared;
+        }else if(opt_type.bsr_mode == 2){
+            m_dup = report_multiplier(rs.dup, tree.dup_rate);
+            m_del = report_multiplier(rs.del, tree.del_rate);
+            m_chr_gain = report_multiplier(rs.chr_gain, tree.chr_gain_rate);
+            m_chr_loss = report_multiplier(rs.chr_loss, tree.chr_loss_rate);
+            m_wgd = report_multiplier(rs.wgd, tree.wgd_rate);
+        }else if(opt_type.bsr_mode == 3){
+            m_shared = rlc_report.m_shared[eid];
+            m_dup = rlc_report.m_dup[eid];
+            m_del = rlc_report.m_del[eid];
+            m_chr_gain = rlc_report.m_chr_gain[eid];
+            m_chr_loss = rlc_report.m_chr_loss[eid];
+            m_wgd = rlc_report.m_wgd[eid];
+            is_shift_edge = rlc_report.is_shift_edge[eid];
+            local_clock_id = rlc_report.local_clock_id[eid];
+        }
+
+        out << eid << "\t"
+            << tree.edges[eid].start + 1 << "\t"
+            << tree.edges[eid].end + 1 << "\t"
+            << report_double(blen) << "\t"
+            << report_double(nmut_expected) << "\t"
+            << report_double(expected_counts.dup) << "\t"
+            << report_double(expected_counts.del) << "\t"
+            << report_double(expected_counts.chr_gain) << "\t"
+            << report_double(expected_counts.chr_loss) << "\t"
+            << report_double(expected_counts.wgd) << "\t"
+            << "NA\tNA\tNA\tNA\tNA\tNA\t"
+            << report_double(rs.dup) << "\t"
+            << report_double(rs.del) << "\t"
+            << report_double(rs.chr_gain) << "\t"
+            << report_double(rs.chr_loss) << "\t"
+            << report_double(rs.wgd) << "\t"
+            << report_double(total_rate) << "\t"
+            << m_shared << "\t"
+            << m_dup << "\t"
+            << m_del << "\t"
+            << m_chr_gain << "\t"
+            << m_chr_loss << "\t"
+            << m_wgd << "\t"
+            << is_shift_edge << "\t"
+            << local_clock_id << "\n";
     }
 }
 
@@ -849,7 +1250,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     min_tree.print();
     fname = tree_file + ".opt00_bfgs.txt";
     out_tree.open(fname);
-    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins));
+    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins), opt_type.bsr_mode, cn_type);
     out_tree.close();
 
 
@@ -869,7 +1270,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     fname = tree_file + ".opt01_bfgs.txt";
     out_tree.open(fname);
     // min_tree.write(out_tree
-    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins));
+    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins), opt_type.bsr_mode, cn_type);
     out_tree.close();
 
 
@@ -889,7 +1290,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     fname = tree_file + ".opt10_bfgs.txt";
     out_tree.open(fname);
     // min_tree.write(out_tree);
-    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins));
+    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins), opt_type.bsr_mode, cn_type);
     out_tree.close();
 
 
@@ -909,7 +1310,7 @@ void run_test(const string& tree_file, int Ns, int num_total_bins, int Nchar, co
     fname = tree_file + ".opt11_bfgs.txt";
     out_tree.open(fname);
     // min_tree.write(out_tree);
-    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins));
+    min_tree.write_with_mut(out_tree, compute_mutation_rates(min_tree, cn_type, num_total_bins), opt_type.bsr_mode, cn_type);
     out_tree.close();
 
 }
@@ -933,14 +1334,15 @@ double compute_tree_likelihood(evo_tree& tree, const map<int, vector<vector<int>
 }
 
 
-void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofile, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, int estmu, int debug){
+void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofile, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, const OPT_TYPE& opt_type, int mode, int debug){
     int cn_type = lnl_type.cn_type;
     int model = lnl_type.model;
+    int bsr_mode = opt_type.bsr_mode;
 
     cout.precision(PRINT_PRECISION);
     min_nlnl_tree.print();
 
-    if(estmu){
+    if(opt_type.estmu){
         cout << "Estimated mutation rates: " << endl;
     }else{
         cout << "Pre-specified mutation rates: " << endl;
@@ -960,21 +1362,52 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
         cout << "Recomputed log likelihood " << lnL << endl;
     }
 
-    // When mutation rates are not estimated, using specified rates to compute number of mutations
-    double mu_est = 0.0;
-
-    mu_est = compute_total_mutation_rate(min_nlnl_tree, cn_type, num_total_bins);
-
-    cout << "Total mutation rate per year " << mu_est << endl;
     vector<double> mu_all;
-    for(int i = 0; i < min_nlnl_tree.edges.size(); i++){
-        mu_all.push_back(mu_est);
+    if(bsr_mode > 0 && (int)min_nlnl_tree.edge_rates.size() == (int)min_nlnl_tree.edges.size()){
+        cout << "[OUTPUT] Using branch-specific edge_rates to compute nmut." << endl;
+        for(int i = 0; i < (int)min_nlnl_tree.edges.size(); i++){
+            mu_all.push_back(compute_total_mutation_rate_from_rateset(min_nlnl_tree.edge_rates[i], cn_type, num_total_bins));
+        }
+    }else{
+        cout << "[OUTPUT] Using global reference rates to compute nmut." << endl;
+        double mu_est = compute_total_mutation_rate(min_nlnl_tree, cn_type, num_total_bins);
+        cout << "Total mutation rate per year " << mu_est << endl;
+        for(int i = 0; i < (int)min_nlnl_tree.edges.size(); i++){
+            mu_all.push_back(mu_est);
+        }
     }
     vector<int> nmuts = min_nlnl_tree.get_nmuts(mu_all);
 
     ofstream out_tree(ofile);
-    min_nlnl_tree.write_with_mut(out_tree, nmuts);
+    min_nlnl_tree.write_with_mut(out_tree, nmuts, bsr_mode, cn_type);
     out_tree.close();
+
+    double raw_logL = min_nlnl_tree.score;
+    double penalized_score = min_nlnl_tree.score;
+    if(bsr_mode == 3){
+        bool has_opt_rlc = std::isfinite(opt_type.rlc_raw_logL) || std::isfinite(opt_type.rlc_penalized_score);
+        bool has_tree_rlc = std::isfinite(min_nlnl_tree.rlc_raw_logL) || std::isfinite(min_nlnl_tree.rlc_penalized_score);
+        if(has_opt_rlc){
+            raw_logL = opt_type.rlc_raw_logL;
+            penalized_score = opt_type.rlc_penalized_score;
+        }else if(has_tree_rlc){
+            raw_logL = min_nlnl_tree.rlc_raw_logL;
+            penalized_score = min_nlnl_tree.rlc_penalized_score;
+        }
+    }
+
+    write_edge_rate_table(min_nlnl_tree, num_total_bins, cn_type, opt_type, ofile);
+
+    ofstream summary_out(ofile + ".summary.txt");
+    write_run_summary(summary_out, min_nlnl_tree, mode, lnl_type, opt_type, raw_logL, penalized_score);
+    summary_out.close();
+
+    cout << "[RUN_SUMMARY]" << endl;
+    write_run_summary(cout, min_nlnl_tree, mode, lnl_type, opt_type, raw_logL, penalized_score);
+    cout << "[OUTPUT_FILES]" << endl;
+    cout << "tree_file\t" << ofile << endl;
+    cout << "summary_file\t" << ofile << ".summary.txt" << endl;
+    cout << "edge_rate_file\t" << ofile << ".edge_rates.txt" << endl;
 
     // branch length as time, not meaningful when pre-specified mutation rate in inaccurate
     string ofile_nex = ofile + ".nex";
@@ -995,7 +1428,7 @@ void write_min_nlnl_tree(evo_tree& min_nlnl_tree, int num_total_bins, string ofi
 
 
 // Given a tree, compute its maximum likelihood
-void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& ofile, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int optim, double ssize, int debug){
+void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& ofile, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int mode, int optim, double ssize, int debug){
     TimePoint t_max_start = now();
     int outer_iter = 0;
     lnl_type.knodes = get_inodes_bottom_up(tree, debug);
@@ -1021,7 +1454,7 @@ void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& 
             cout << "[TIME] BFGS outer iteration " << outer_iter << " starts\n";
             TimePoint t_iter_start = now();
             nlnl = MAX_NLNL;
-            max_likelihood_BFGS(tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
+            optimize_tree_by_bsr_mode(tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
             TimePoint t_iter_end = now();
             cout << "[TIME] BFGS outer iteration " << outer_iter
                  << " took " << elapsed_seconds(t_iter_start, t_iter_end)
@@ -1029,8 +1462,11 @@ void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& 
         }
     }
     cout << "\nMinimised negative log likelihood: " << nlnl << endl;
+    if(opt_type.bsr_mode != 3){
+        tree.score = -nlnl;
+    }
     TimePoint t_write_start = now();
-    write_min_nlnl_tree(tree, num_total_bins, ofile, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type.estmu, debug);
+    write_min_nlnl_tree(tree, num_total_bins, ofile, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, mode, debug);
     TimePoint t_write_end = now();
     cout << "[TIME] write_min_nlnl_tree: "
          << elapsed_seconds(t_write_start, t_write_end) << " s\n";
@@ -1041,7 +1477,7 @@ void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& 
 
 
 // Build ML tree from given CNPs
-void find_ML_tree(string real_tstring, int num_total_bins, string ofile, int tree_search, int Ns, int Npop, int Ngen, int init_tree, string dir_itrees, int max_static, double ssize, int optim, const vector<double>& rates, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double loglh_epsilon, int speed_nni, int debug){
+void find_ML_tree(string real_tstring, int num_total_bins, string ofile, int tree_search, int Ns, int Npop, int Ngen, int init_tree, string dir_itrees, int max_static, double ssize, int optim, const vector<double>& rates, const ITREE_PARAM& itree_param, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int mode, double loglh_epsilon, int speed_nni, int debug){
     evo_tree min_nlnl_tree;
     int cn_type = lnl_type.cn_type;
     int age = lnl_type.patient_age;
@@ -1069,7 +1505,7 @@ void find_ML_tree(string real_tstring, int num_total_bins, string ofile, int tre
 
     if(debug) cout << "Writing results ......" << endl;
     // Write out the top tree
-    write_min_nlnl_tree(min_nlnl_tree, num_total_bins, ofile, vobs, vobs_change, obs_decomp, comps, lnl_type, estmu, debug);
+    write_min_nlnl_tree(min_nlnl_tree, num_total_bins, ofile, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, mode, debug);
 }
 
 
@@ -1191,6 +1627,7 @@ int main(int argc, char** const argv){
     int model;
     int cons;   // whether or not to constrain branch lengths by sampling time, used in likelihood computation when optimizing branch lengths
     int estmu;  // whether or not to estimate mutation rates, used in likelihood computation when optimizing branch lengths
+    int bsr_mode;  // branch-specific rate mode (0: constant; 1: one shared multiplier per branch; 2: one per CNA type per branch; 3: RLC)
 
     int use_repeat;   // whether or not to use repeated site patterns, used in get_likelihood_chr*
     int correct_bias; // Whether or not to correct acquisition bias, used in get_likelihood_*
@@ -1200,6 +1637,7 @@ int main(int argc, char** const argv){
     int nstate; // number of states in the model, used in likelihood computation
 
     double scale_tobs;  // scaling factor for input times, used in likelihood computation when branch length is constrained by sampling time
+    double rlc_lambda;  // penalty per shift edge for bsr_mode=3 ML-RLC
 
     /********* derived from input ***********/
     map<int, vector<vector<int>>> vobs;   // CNP for each site, grouped by chr
@@ -1266,6 +1704,7 @@ int main(int argc, char** const argv){
     ("model,d", po::value<int>(&model)->default_value(2), "model of evolution (0: Mk, 1: one-step bounded (total), 2: one-step bounded (haplotype-specific), 3: independent Markov chains)")
     ("constrained", po::value<int>(&cons)->default_value(1), "constraints on branch length (0: none, 1: fixed total time)")
     ("estmu,u", po::value<int>(&estmu)->default_value(0), "estimation of mutation rate (0: mutation rate fixed to be the given value, 1: estimating mutation rate)")
+    ("bsr_mode", po::value<int>(&bsr_mode)->default_value(0), "branch-specific-rate inference mode (0: constant rate, 1: shared branch multiplier, 2: independent event-specific branch rates, 3: random local clock)")
     ("optim", po::value<int>(&optim)->default_value(1), "method of optimization (0: Simplex, 1: L-BFGS-B)")
 
     // limits on copy number changes
@@ -1319,6 +1758,7 @@ int main(int argc, char** const argv){
     ("chr_gain_rate", po::value<double>(&chr_gain_rate)->default_value(0), "chromosome gain rate")
     ("chr_loss_rate", po::value<double>(&chr_loss_rate)->default_value(0), "chromosome loss rate")
     ("wgd_rate", po::value<double>(&wgd_rate)->default_value(0), "WGD (whole genome doubling) rate")
+    ("rlc_lambda", po::value<double>(&rlc_lambda)->default_value(1.0), "penalty per shift edge for bsr_mode=3 ML-RLC; score = logL - rlc_lambda*K (higher = sparser clock)")
 
     ("verbose", po::value<int>(&debug)->default_value(0), "verbose level (0: default, 1: debug)")
     ("seed", po::value<unsigned>(&seed)->default_value(0), "seed used for generating random numbers")
@@ -1347,6 +1787,21 @@ int main(int argc, char** const argv){
 
     assert(optim <= 1);
     assert(model <= 3);
+
+    if(bsr_mode == 3 && optim != 1){
+        cerr << "Error: bsr_mode=3 (ML-RLC) requires L-BFGS-B optimizer (--optim 1)." << endl;
+        exit(EXIT_FAILURE);
+    }
+    if(bsr_mode == 3 && estmu){
+        cerr << "Error: bsr_mode=3 is incompatible with estmu=1; global rates are fixed reference values for RLC multipliers." << endl;
+        exit(EXIT_FAILURE);
+    }
+    if(bsr_mode == 3 && mode == 0 && tree_search == HILLCLIMB){
+        cerr << "Error: bsr_mode=3 (ML-RLC) is not compatible with hill-climbing NNI tree search (--tree_search 1)." << endl;
+        cerr << "  Use --tree_search 0 (evolutionary) or --tree_search 2 (exhaustive) for tree building," << endl;
+        cerr << "  or run fixed-topology optimization with --mode 3 (tree_search is ignored in that mode)." << endl;
+        exit(EXIT_FAILURE);
+    }
 
     gsl_rng_env_setup();
     const gsl_rng_type* T = gsl_rng_default;
@@ -1483,7 +1938,17 @@ int main(int argc, char** const argv){
     obs_decomp = {m_max, max_wgd_sample, max_chr_change, max_site_change};
 
     int opt_one_branch = 0; // optimize all branches by default
-    opt_type = {estmu, tolerance, miter, opt_one_branch, tobs, scale_tobs};
+    opt_type.estmu = estmu;
+    opt_type.bsr_mode = bsr_mode;
+    opt_type.tolerance = tolerance;
+    opt_type.miter = miter;
+    opt_type.opt_one_branch = opt_one_branch;
+    opt_type.tobs = tobs;
+    opt_type.scale_tobs = scale_tobs;
+    opt_type.rlc_shift_eids = {};
+    opt_type.rlc_lambda = rlc_lambda;
+    opt_type.rlc_raw_logL = std::numeric_limits<double>::quiet_NaN();
+    opt_type.rlc_penalized_score = std::numeric_limits<double>::quiet_NaN();
 
     if(bootstrap){
         cout << "\nDoing bootstapping " << endl;
@@ -1531,7 +1996,7 @@ int main(int argc, char** const argv){
       // nodes are in an order suitable for dynamic programming (lower nodes at first, which may be changed after topolgy change)
       initialize_knodes(lnl_type.knodes, Ns);
       ITREE_PARAM itree_param{Ne, beta, gtime};
-      find_ML_tree(real_tstring, num_total_bins, ofile, tree_search, Ns, Npop, Ngen, init_tree, dir_itrees, max_static, ssize, optim, rates, itree_param, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, loglh_epsilon, speed_nni, debug);
+      find_ML_tree(real_tstring, num_total_bins, ofile, tree_search, Ns, Npop, Ngen, init_tree, dir_itrees, max_static, ssize, optim, rates, itree_param, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, mode, loglh_epsilon, speed_nni, debug);
 
     }else if(mode == 1){   // test mode
         if(tree_file == ""){
@@ -1583,7 +2048,7 @@ int main(int argc, char** const argv){
 
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
 
-        maximize_tree_likelihood(tree, num_total_bins, ofile, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, optim, ssize, debug);
+        maximize_tree_likelihood(tree, num_total_bins, ofile, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, mode, optim, ssize, debug);
 
         TimePoint t_mode3_end = now();
         cout << "[TIME] mode 3 total: "

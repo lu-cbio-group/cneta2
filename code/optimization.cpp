@@ -140,6 +140,10 @@ double my_f_cons_mu(const gsl_vector *v, void *params){
 // given a tree, maximise the branch lengths (and optionally mu) assuming branch lengths are independent or constrained in time
 // use GSL simplex optimization, less used than BFGS version
 void max_likelihood(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double& min_nlnl, const double ssize){
+  if(opt_type.bsr_mode > 0){
+    cerr << "Error: simplex optimizer (optim=0) does not support bsr_mode>0. Use BFGS (optim=1) instead." << endl;
+    exit(EXIT_FAILURE);
+  }
   int debug = 0;
   vector<double> tobs = opt_type.tobs;
 
@@ -959,7 +963,11 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
 
             // ratios[0] = x[1]; // need to update root edge
             int eend = rtree.edges[rtree.current_eid].end;
-            assert(eend > rtree.nleaf);
+            if(eend <= rtree.nleaf){
+                cerr << "Error: constrained single-branch optimisation requires an internal "
+                     << "non-root edge (eend=" << eend << ", nleaf=" << rtree.nleaf << ")" << endl;
+                exit(EXIT_FAILURE);
+            }
             int nid = eend - rtree.root_node_id;
             ratios[nid] = x[1];
             // update based on all ratios together to avoid inconsistencies
@@ -1065,7 +1073,41 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
       exit(EXIT_FAILURE);
     }
 
-    if(opt_type.estmu){
+    if(opt_type.bsr_mode == 1){
+        // edge_rates[eid] = global_rates * m_i (one shared multiplier per branch)
+        RateSet global_rates(0, rtree.dup_rate, rtree.del_rate,
+                             rtree.chr_gain_rate, rtree.chr_loss_rate, rtree.wgd_rate);
+        vector<int> active_eids;
+        if(!opt_type.opt_one_branch)
+            active_eids = get_active_bsr_eids(rtree);
+        for(int k = 0; k < (int)active_eids.size(); k++){
+            int eid = active_eids[k];
+            double m = x[nparams_est + k + 1];
+            rtree.edge_rates[eid] = global_rates * m;
+        }
+    } else if(opt_type.bsr_mode == 3){
+        // RLC: root-to-tip propagation with inheritance; shift edges get parent_rate * m_k
+        // When opt_one_branch==1, x[] contains only branch-length variables (no RLC multipliers).
+        // Keep existing edge_rates frozen; do not attempt to read multipliers from x[].
+        if(!opt_type.opt_one_branch){
+            update_edge_rates_rlc_from_x(rtree, opt_type.rlc_shift_eids, x, nparams_est);
+        }
+    } else if(opt_type.bsr_mode == 2){
+        // edge_rates[eid].field_t = global_rate_t * m_t  (independent multiplier per type per branch)
+        // idx(k, t) = nparams_est + k * n_types_per_edge + t + 1
+        auto bsr_slots = get_bsr_rate_slots(rtree, cn_type);
+        int n_types = (int)bsr_slots.size();
+        vector<int> active_eids;
+        if(!opt_type.opt_one_branch)
+            active_eids = get_active_bsr_eids(rtree);
+        for(int k = 0; k < (int)active_eids.size(); k++){
+            int eid = active_eids[k];
+            for(int t = 0; t < n_types; t++){
+                double m = x[nparams_est + k * n_types + t + 1];
+                rtree.edge_rates[eid].*(bsr_slots[t].edge_field) = rtree.*(bsr_slots[t].tree_rate) * m;
+            }
+        }
+    } else if(opt_type.estmu){
         if(lnl_type.model == MK){
             // nintedge + 2 for constrained branches
             rtree.mu = x[nparams_est + 1];
@@ -1171,23 +1213,43 @@ double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, co
   if(lnl_type.model == DECOMP){
     // nlnl = -1.0 * get_likelihood_decomp(rtree, vobs, obs_decomp, comps, lnl_type);
     if(debug) cout << "checking targetFunk" << endl;
-    nlnl = -1.0 * get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, 0);  // debug = 0
+    if(opt_type.bsr_mode > 0){  // variable rate: all modes use per-edge rates in edge_rates
+      nlnl = -1.0 * get_likelihood_change_variable_rate(rtree, vobs_change, obs_decomp, lnl_type, 0);
+    } else {  // constant rate: single global rate shared across all branches
+      nlnl = -1.0 * get_likelihood_change(rtree, vobs_change, obs_decomp, lnl_type, 0);
+    }
   }else{
     nlnl = -1.0 * get_likelihood_revised(rtree, vobs, lnl_type);
   }
 
   if(!isfinite(nlnl)){
     cout << "[DEBUG] non-finite nlnl value check in targetFunk, nlnl = " << nlnl << endl;
-    cout << "        dup_rate=" << rtree.dup_rate
-         << " del_rate=" << rtree.del_rate
-         << " chr_gain_rate=" << rtree.chr_gain_rate
-         << " chr_loss_rate=" << rtree.chr_loss_rate
-         << " wgd_rate=" << rtree.wgd_rate << endl;            
-    int max_to_print = 10;   // print first 10 variables of x[i], which are 
+    if(opt_type.bsr_mode > 0){
+      cout << "        bsr_mode=" << opt_type.bsr_mode
+           << " global dup_rate=" << rtree.dup_rate
+           << " del_rate=" << rtree.del_rate
+           << " chr_gain_rate=" << rtree.chr_gain_rate
+           << " chr_loss_rate=" << rtree.chr_loss_rate
+           << " wgd_rate=" << rtree.wgd_rate << endl;
+      if(!rtree.edge_rates.empty()){
+        cout << "        edge_rates[0]: dup=" << rtree.edge_rates[0].dup
+             << " del=" << rtree.edge_rates[0].del
+             << " chr_gain=" << rtree.edge_rates[0].chr_gain
+             << " chr_loss=" << rtree.edge_rates[0].chr_loss
+             << " wgd=" << rtree.edge_rates[0].wgd << endl;
+      }
+    } else {
+      cout << "        dup_rate=" << rtree.dup_rate
+           << " del_rate=" << rtree.del_rate
+           << " chr_gain_rate=" << rtree.chr_gain_rate
+           << " chr_loss_rate=" << rtree.chr_loss_rate
+           << " wgd_rate=" << rtree.wgd_rate << endl;
+    }
+    int max_to_print = 10;   // print first 10 variables of x[i], which are
     cout << "        first "<< max_to_print <<" x: ";
     for (int i = 1; i <= max_to_print; ++i) {
       cout << " x[" << i << "]=" << x[i];
-    } 
+    }
     cout << endl;
     exit(EXIT_FAILURE); //nlnl = MAX_NLNL;// assign a large value, so that optimizer can continue, DEBUG ONLY
   }
@@ -1230,6 +1292,10 @@ double derivativeFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs
     }
 
     delete [] h;
+
+    // restore rtree (including edge_rates for bsr_mode>0) to the state at x,
+    // so callers see a consistent tree after gradient computation
+    targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, x);
 
 	return fx;
 }
@@ -1430,6 +1496,14 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
     int estmu = opt_type.estmu;
     int opt_one_branch = opt_type.opt_one_branch;
 
+    // bsr_mode>0 + estmu=1 is not supported: global rates serve as fixed reference values;
+    // per-branch multipliers m_i are estimated instead (actual rate on branch i = global_rate * m_i).
+    // Estimating both global rates and multipliers simultaneously is non-identifiable.
+    if(opt_type.bsr_mode > 0 && estmu){
+        cerr << "Error: estmu=1 is not compatible with bsr_mode>0 (global rates are fixed as reference; per-branch multipliers are estimated instead)" << endl;
+        exit(EXIT_FAILURE);
+    }
+
     // Set variables
     int nparams_est = 0;    // number of parameters to estimate
 
@@ -1446,8 +1520,35 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
       }
     }
 
-    // total number of variables to optimize depending on whether mutation rates are estimated
-    int ndim = get_ndim(estmu, nparams_est, model, cn_type); 
+    // build active edge list for variable rate (excludes the normal-sample edge)
+    // empty when opt_one_branch=1, so no multipliers enter the optimisation in that case
+    vector<int> active_eids;
+    if(opt_type.bsr_mode > 0 && !opt_one_branch){
+        if(opt_type.bsr_mode == 3)
+            active_eids = opt_type.rlc_shift_eids;   // only the δ=1 shift edges
+        else
+            active_eids = get_active_bsr_eids(rtree); // all optimizable edges
+    }
+    int n_bsr_edges = (int)active_eids.size();  // correct count regardless of cons
+
+    // Active rate slots for BSR: which rate types participate (depends on cn_type).
+    // bsr_mode=1: shared multiplier — n_types_per_edge=1 regardless of slot count.
+    // bsr_mode=2: independent per-type multipliers — n_types_per_edge=slots.size().
+    vector<BsrRateSlot> bsr_slots;
+    if(opt_type.bsr_mode > 0){
+        bsr_slots = get_bsr_rate_slots(rtree, cn_type);
+        if(bsr_slots.empty())
+            cerr << "Warning: bsr_mode=" << opt_type.bsr_mode
+                 << " but all reference rates for cn_type=" << cn_type
+                 << " are zero — BSR multipliers will have no effect. "
+                 << "Check that non-zero rates are passed when using bsr_mode>0." << endl;
+    }
+
+    int n_types_per_edge = 0;
+    if(opt_type.bsr_mode == 1)      n_types_per_edge = 1;
+    else if(opt_type.bsr_mode == 2) n_types_per_edge = (int)bsr_slots.size();
+    else if(opt_type.bsr_mode == 3) n_types_per_edge = 1;  // one multiplier per shift edge
+    int ndim = get_ndim(estmu, nparams_est, model, cn_type, n_types_per_edge, n_bsr_edges);
 
     if(debug){
       cout << "\nThere are " << ndim << " parameters to optimise " << endl;
@@ -1522,7 +1623,65 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
         }
     }
 
-    if(estmu){    // estimate mutation rates
+    // reinitialise edge_rates if missing or stale (size mismatch after tree changes)
+    if(opt_type.bsr_mode > 0 && (int)rtree.edge_rates.size() != (int)rtree.edges.size()){
+        // initialise with global rates so that m_i=1 means no deviation from mode 0 output
+        rtree.init_edge_rates(RateSet(0, rtree.dup_rate, rtree.del_rate,
+                                      rtree.chr_gain_rate, rtree.chr_loss_rate, rtree.wgd_rate));
+    }
+
+    if(opt_type.bsr_mode == 1){
+        // Shared bounds derived from the tightest constraint across all active slots.
+        double m_lower = 0.0, m_upper = std::numeric_limits<double>::infinity();
+        for(auto& slot : bsr_slots){
+            m_lower = std::max(m_lower, MIN_MRATE / rtree.*(slot.tree_rate));
+            m_upper = std::min(m_upper, MAX_MRATE / rtree.*(slot.tree_rate));
+        }
+        if(m_upper == std::numeric_limits<double>::infinity()) m_upper = MAX_MRATE;
+        if(m_lower <= 0.0) m_lower = MIN_MRATE;
+        if(m_lower > m_upper){
+            cerr << "Warning: inconsistent multiplier bounds for cn_type=" << cn_type
+                 << "; resetting to [MIN_MRATE, MAX_MRATE]" << endl;
+            m_lower = MIN_MRATE; m_upper = MAX_MRATE;
+        }
+
+        for(int k = 0; k < n_bsr_edges; k++){
+            int eid = active_eids[k];
+            // warm-start: extract shared m from the first available slot
+            double m = (!bsr_slots.empty())
+                       ? rtree.edge_rates[eid].*(bsr_slots[0].edge_field) / rtree.*(bsr_slots[0].tree_rate)
+                       : 1.0;
+            int idx = nparams_est + k + 1;
+            variables[idx]   = m;
+            lower_bound[idx] = m_lower;
+            upper_bound[idx] = m_upper;
+        }
+    } else if(opt_type.bsr_mode == 2){
+        // Independent per-type multiplier per branch.
+        // idx(k, t) = nparams_est + k * n_types_per_edge + t + 1
+        for(int k = 0; k < n_bsr_edges; k++){
+            int eid = active_eids[k];
+            for(int t = 0; t < (int)bsr_slots.size(); t++){
+                auto& slot = bsr_slots[t];
+                double m_lower = MIN_MRATE / rtree.*(slot.tree_rate);
+                double m_upper = MAX_MRATE / rtree.*(slot.tree_rate);
+                double m = rtree.edge_rates[eid].*(slot.edge_field) / rtree.*(slot.tree_rate);
+                int idx = nparams_est + k * n_types_per_edge + t + 1;
+                variables[idx]   = m;
+                lower_bound[idx] = m_lower;
+                upper_bound[idx] = m_upper;
+            }
+        }
+    } else if(opt_type.bsr_mode == 3){
+        // RLC: one multiplier per shift edge. Use RLC_MULT bounds (not absolute rate bounds).
+        // Warm-start at m=1.0 (no shift); stepwise outer loop provides a good starting point.
+        for(int k = 0; k < n_bsr_edges; k++){
+            int idx = nparams_est + k + 1;
+            variables[idx]   = 1.0;
+            lower_bound[idx] = RLC_MULT_MIN;
+            upper_bound[idx] = RLC_MULT_MAX;
+        }
+    } else if(estmu){    // estimate mutation rates, bsr_mode=0
         if(model == MK){
             int i = nparams_est;
             variables[i + 1] = rtree.mu;
@@ -1582,6 +1741,10 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
     // variables contains the parameters to estimate(branch length, mutation rate)
     min_nlnl = L_BFGS_B(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, ndim, variables + 1, lower_bound + 1, upper_bound + 1);
 
+    // ensure rtree (branch lengths, edge_rates) reflects the final optimised variables,
+    // since the last internal gradient call may have left rtree at a perturbed point
+    update_variables_transformed(rtree, variables, lnl_type, opt_type);
+
     // Check the validity of the tree
     if(cons && !is_tree_valid(rtree, lnl_type.max_tobs, patient_age, cons)){
       cout << "The optimized tree after BFGS " << rtree.make_newick() << " is not valid!" << endl;
@@ -1634,6 +1797,9 @@ double optimize_one_branch_BFGS(evo_tree& rtree, const map<int, vector<vector<in
 
     opt_type.opt_one_branch = 1;
     opt_type.estmu = 0;
+    // bsr_mode is intentionally NOT set to 0: when opt_one_branch=1, active_eids is empty
+    // so no multipliers enter the optimisation, but the variable-rate likelihood is still used
+    // with the current (frozen) edge_rates. This is the correct behaviour.
     double negative_lh = MAX_NLNL;
     // optimize ratio based on NNI branch(branch length, node times and ages have been updated during optimization)
     max_likelihood_BFGS(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, negative_lh);
@@ -1651,4 +1817,248 @@ double optimize_one_branch_BFGS(evo_tree& rtree, const map<int, vector<vector<in
     }
 
     return -negative_lh;
+}
+
+
+/****** bsr_mode=3 ML-RLC implementation ******/
+
+void update_edge_rates_rlc(
+    evo_tree& rtree,
+    const vector<int>& shift_eids,
+    const vector<double>& multipliers)
+{
+    assert(shift_eids.size() == multipliers.size());
+
+    // resize edge_rates if needed
+    if((int)rtree.edge_rates.size() != (int)rtree.edges.size())
+        rtree.edge_rates.resize(rtree.edges.size());
+
+    // build eid -> multiplier lookup
+    unordered_map<int,double> shift_m;
+    for(int k = 0; k < (int)shift_eids.size(); ++k)
+        shift_m[shift_eids[k]] = multipliers[k];
+
+    // per-node current local RateSet; initialise all to global rates
+    RateSet global_rates(0, rtree.dup_rate, rtree.del_rate,
+                         rtree.chr_gain_rate, rtree.chr_loss_rate, rtree.wgd_rate);
+    vector<RateSet> node_rate(rtree.nodes.size(), global_rates);
+
+    // preorder traversal from root
+    stack<int> stk;
+    stk.push(rtree.root_node_id);
+    while(!stk.empty()){
+        int nid = stk.top(); stk.pop();
+        for(int child : rtree.nodes[nid].daughters){
+            int eid = rtree.nodes[child].e_in;
+            RateSet parent_rate = node_rate[nid];
+            RateSet child_rate;
+            auto it = shift_m.find(eid);
+            if(it != shift_m.end()){
+                double m = it->second;
+                child_rate = parent_rate * m;
+            } else {
+                child_rate = parent_rate;
+            }
+            rtree.edge_rates[eid] = child_rate;
+            node_rate[child]       = child_rate;
+            stk.push(child);
+        }
+    }
+}
+
+
+void update_edge_rates_rlc_from_x(
+    evo_tree& rtree,
+    const vector<int>& shift_eids,
+    double* x,
+    int nparams_est)
+{
+    vector<double> multipliers(shift_eids.size());
+    for(int k = 0; k < (int)shift_eids.size(); ++k)
+        multipliers[k] = x[nparams_est + k + 1];
+    update_edge_rates_rlc(rtree, shift_eids, multipliers);
+}
+
+
+void stepwise_search_shift_edges(
+    evo_tree& rtree,
+    const map<int, vector<vector<int>>>& vobs,
+    const map<int, vector<vector<CN_CHANGE>>>& vobs_change,
+    const OBS_DECOMP& obs_decomp,
+    const set<vector<int>>& comps,
+    LNL_TYPE& lnl_type,
+    OPT_TYPE& opt_type,
+    double& min_nlnl,
+    int debug)
+{
+    assert(opt_type.bsr_mode == 3);
+    assert(opt_type.estmu == 0);
+
+    const double lambda       = opt_type.rlc_lambda;
+    const double eps          = 1e-6;  // small improvement threshold
+
+    // full candidate pool = all optimizable edges (excludes normal-sample edge)
+    vector<int> all_candidates = get_active_bsr_eids(rtree);
+
+    // initialise all edge_rates to global rates (K=0 starting point)
+    RateSet global_rates(0, rtree.dup_rate, rtree.del_rate,
+                         rtree.chr_gain_rate, rtree.chr_loss_rate, rtree.wgd_rate);
+    rtree.init_edge_rates(global_rates);
+
+    // --- K=0 baseline ---
+    OPT_TYPE cur_opt = opt_type;
+    cur_opt.rlc_shift_eids = {};
+    evo_tree cur_tree = rtree;
+
+    double cur_nlnl = MAX_NLNL;
+    max_likelihood_BFGS(cur_tree, vobs, vobs_change, obs_decomp, comps,
+                        lnl_type, cur_opt, cur_nlnl, debug);
+    double cur_score = -cur_nlnl - lambda * 0.0;
+
+    if(debug)
+        cout << "[RLC] K=0 baseline: nlnl=" << cur_nlnl
+             << " score=" << cur_score << endl;
+
+    // --- forward stepwise ---
+    while(true){
+        double best_score = cur_score;
+        double best_nlnl  = cur_nlnl;
+        int    best_edge  = -1;
+        evo_tree best_tree = cur_tree;
+        OPT_TYPE best_opt  = cur_opt;
+
+        for(int eid : all_candidates){
+            // skip already-selected shift edges
+            bool already = false;
+            for(int s : cur_opt.rlc_shift_eids)
+                if(s == eid){ already = true; break; }
+            if(already) continue;
+
+            // build candidate shift set
+            vector<int> cand_shifts = cur_opt.rlc_shift_eids;
+            cand_shifts.push_back(eid);
+
+            // start from the current accepted tree (copy)
+            evo_tree cand_tree = cur_tree;
+            OPT_TYPE cand_opt  = cur_opt;
+            cand_opt.rlc_shift_eids = cand_shifts;
+
+            // warm-start: new shift edge gets m=1.0 (set via init)
+            // update_edge_rates_rlc with uniform multipliers=1 keeps rates consistent
+            vector<double> ones(cand_shifts.size(), 1.0);
+            update_edge_rates_rlc(cand_tree, cand_shifts, ones);
+
+            double cand_nlnl = MAX_NLNL;
+            max_likelihood_BFGS(cand_tree, vobs, vobs_change, obs_decomp, comps,
+                                lnl_type, cand_opt, cand_nlnl, debug);
+
+            double cand_score = -cand_nlnl - lambda * (double)cand_shifts.size();
+
+            if(debug)
+                cout << "[RLC] candidate eid=" << eid
+                     << " K=" << cand_shifts.size()
+                     << " nlnl=" << cand_nlnl
+                     << " score=" << cand_score << endl;
+
+            if(cand_score > best_score + eps){
+                best_score = cand_score;
+                best_nlnl  = cand_nlnl;
+                best_edge  = eid;
+                best_tree  = cand_tree;
+                best_opt   = cand_opt;
+            }
+        }
+
+        if(best_edge == -1) break;  // no improvement found
+
+        cur_score = best_score;
+        cur_nlnl  = best_nlnl;
+        cur_tree  = best_tree;
+        cur_opt   = best_opt;
+
+        cout << "[RLC] accepted shift edge " << best_edge
+             << " K=" << cur_opt.rlc_shift_eids.size()
+             << " nlnl=" << cur_nlnl
+             << " penalized_score=" << cur_score << endl;
+
+        // --- optional backward cleanup ---
+        bool removed = true;
+        while(removed){
+            removed = false;
+            for(int k = 0; k < (int)cur_opt.rlc_shift_eids.size(); ++k){
+                vector<int> try_shifts = cur_opt.rlc_shift_eids;
+                try_shifts.erase(try_shifts.begin() + k);
+
+                evo_tree try_tree = cur_tree;
+                OPT_TYPE try_opt  = cur_opt;
+                try_opt.rlc_shift_eids = try_shifts;
+
+                vector<double> ones(try_shifts.size(), 1.0);
+                update_edge_rates_rlc(try_tree, try_shifts, ones);
+
+                double try_nlnl = MAX_NLNL;
+                max_likelihood_BFGS(try_tree, vobs, vobs_change, obs_decomp, comps,
+                                    lnl_type, try_opt, try_nlnl, debug);
+
+                double try_score = -try_nlnl - lambda * (double)try_shifts.size();
+                if(try_score > cur_score + eps){
+                    int removed_eid = cur_opt.rlc_shift_eids[k]; // save before cur_opt is replaced
+                    cur_score = try_score;
+                    cur_nlnl  = try_nlnl;
+                    cur_tree  = try_tree;
+                    cur_opt   = try_opt;
+                    removed   = true;
+                    cout << "[RLC] backward: removed shift edge " << removed_eid
+                         << " K=" << cur_opt.rlc_shift_eids.size()
+                         << " score=" << cur_score << endl;
+                    break;
+                }
+            }
+        }
+    }
+
+    // write back final results
+    // For bsr_mode=3, tree comparisons use penalized score = logL - lambda*K.
+    // rtree.score holds the penalized score (larger = better).
+    // min_nlnl holds -(penalized_score) so minimizing min_nlnl = maximizing penalized score.
+    rtree                   = cur_tree;
+    opt_type.rlc_shift_eids = cur_opt.rlc_shift_eids;
+
+    int K = (int)opt_type.rlc_shift_eids.size();
+    double raw_logL        = -cur_nlnl;
+    double penalized_score = raw_logL - lambda * K;
+
+    opt_type.rlc_raw_logL = raw_logL;
+    opt_type.rlc_penalized_score = penalized_score;
+    rtree.rlc_shift_eids = opt_type.rlc_shift_eids;
+    rtree.rlc_raw_logL = raw_logL;
+    rtree.rlc_penalized_score = penalized_score;
+    rtree.score = penalized_score;
+    min_nlnl    = -penalized_score;   // negative penalized score, minimized by caller
+
+    cout << "[RLC] final: K=" << K << " shift_eids=[ ";
+    for(int s : opt_type.rlc_shift_eids) cout << s << " ";
+    cout << "] raw_logL=" << raw_logL
+         << " penalized_score=" << penalized_score << endl;
+}
+
+
+void optimize_tree_by_bsr_mode(
+    evo_tree& rtree,
+    const map<int, vector<vector<int>>>& vobs,
+    const map<int, vector<vector<CN_CHANGE>>>& vobs_change,
+    const OBS_DECOMP& obs_decomp,
+    const set<vector<int>>& comps,
+    LNL_TYPE& lnl_type,
+    OPT_TYPE& opt_type,
+    double& min_nlnl,
+    int debug)
+{
+    if(opt_type.bsr_mode == 3){
+        stepwise_search_shift_edges(rtree, vobs, vobs_change, obs_decomp,
+                                    comps, lnl_type, opt_type, min_nlnl, debug);
+    } else {
+        max_likelihood_BFGS(rtree, vobs, vobs_change, obs_decomp,
+                            comps, lnl_type, opt_type, min_nlnl, debug);
+    }
 }
