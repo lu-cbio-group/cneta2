@@ -112,7 +112,7 @@ evo_tree perturb_tree_set(vector<evo_tree>& trees, gsl_rng* r, long unsigned (*f
  * @return vector<evo_tree>: 
  */
 // 
-vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int Npop, const vector<double>& rates, const vector<double>& tobs, double max_tobs, int age, int max_tree_num, int cons, const ITREE_PARAM& itree_param, int bsr_mode, int debug){
+vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int Npop, const vector<double>& rates, const vector<double>& tobs, double max_tobs, int age, int max_tree_num, int cons, const ITREE_PARAM& itree_param, int debug){
     vector<evo_tree> trees;
 
     if(init_tree){     // read MP trees from files
@@ -130,8 +130,6 @@ vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int
                 continue;
             }
 
-            if(bsr_mode > 0)
-                rtree.init_edge_rates(RateSet(rates[0], rates[1], rates[2], rates[3], rates[4], rates[5]));
             rtree.score = -MAX_NLNL;
             trees.push_back(rtree);
 
@@ -206,13 +204,12 @@ vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int
             }
 
             restore_mutation_rates(rtree, rates);
-            if(bsr_mode > 0)
-                rtree.init_edge_rates(RateSet(rates[0], rates[1], rates[2], rates[3], rates[4], rates[5]));
+
             rtree.score = -MAX_NLNL;
             trees.push_back(rtree);
 
             if(debug){
-                cout << "inital tree " << num_tree << endl;
+                cout << "initial tree " << num_tree << endl;
                 rtree.print();
                 cout << rtree.make_newick() << endl;
             }
@@ -299,7 +296,7 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
 
     int max_tree_num = NUM_TREES[Ns - 1];
     cout << "\nMaximum number of possible trees to explore " << max_tree_num << endl;
-    vector<evo_tree> init_trees = get_initial_trees(init_tree, dir_itrees, Ns, max_tree_num, rates, tobs, max_tobs, age, max_tree_num, cons, itree_param, opt_type.bsr_mode, debug);
+    vector<evo_tree> init_trees = get_initial_trees(init_tree, dir_itrees, Ns, max_tree_num, rates, tobs, max_tobs, age, max_tree_num, cons, itree_param, debug);
 
     assert(max_tree_num == init_trees.size());
     cout << "Initial number of trees " << max_tree_num << endl;
@@ -344,7 +341,7 @@ void do_exhaustive_search(evo_tree& min_nlnl_tree, string real_tstring, int Ns, 
                     // cout << "vobs_change before " << endl;
                     // print_data_map<CN_CHANGE>(vobs_change);
                 }
-                optimize_tree_by_bsr_mode(init_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, local_opt, nlnl, debug);
+                max_likelihood_BFGS(init_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, local_opt, nlnl, debug);
                 // cout << "vobs_change after " << endl;
             }
             // —— DEBUG, check if nlnl is NaN or inf ——
@@ -416,7 +413,7 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
     if(Ns <= LARGE_TREE)   max_tree_num = NUM_TREES[Ns - 1];
 
     // initialize candidate tree set
-    vector<evo_tree> trees = get_initial_trees(init_tree, dir_itrees, Ns, Npop, rates, tobs, max_tobs, age, max_tree_num, cons, itree_param, opt_type.bsr_mode, debug);
+    vector<evo_tree> trees = get_initial_trees(init_tree, dir_itrees, Ns, Npop, rates, tobs, max_tobs, age, max_tree_num, cons, itree_param, debug);
     int num2init = trees.size();
     vector<double> lnLs(num2init, 0.0);
     vector<int> index(num2init, 0);      // index of trees starting from 0
@@ -443,7 +440,7 @@ void do_hill_climbing(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ngen, int i
         }else{
             while(!(nlnl < MAX_NLNL)){
               nlnl = MAX_NLNL;
-              optimize_tree_by_bsr_mode(trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, local_opt, nlnl, debug);
+              max_likelihood_BFGS(trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, local_opt, nlnl, debug);
             }
         }
         trees[i].score = -nlnl;
@@ -592,7 +589,7 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
   double tolerance = opt_type.tolerance;
   int miter = opt_type.miter;
 
-  vector<evo_tree> trees = get_initial_trees(init_tree, dir_itrees, Ns, Npop, rates, tobs, max_tobs, age, Npop, cons, itree_param, opt_type.bsr_mode, debug);
+  vector<evo_tree> trees = get_initial_trees(init_tree, dir_itrees, Ns, Npop, rates, tobs, max_tobs, age, Npop, cons, itree_param, debug);
 
   vector<double> lnLs(2 * Npop, 0);
   double min_nlnl = MAX_NLNL;
@@ -620,7 +617,7 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
         if(optim == GSL){
            max_likelihood(new_trees[i], vobs, lnl_type, opt_type, nlnl, ssize);
         }else{
-           optimize_tree_by_bsr_mode(new_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
+           max_likelihood_BFGS(new_trees[i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl, debug);
         }
         new_trees[i].score = -nlnl;
         // cout << "otree tobs " << otree.tobs[0] << endl;
@@ -652,7 +649,7 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
         	    max_likelihood(new_trees[Npop + i], vobs, lnl_type, opt_type, nlnl, ssize);
             }else{
                 // new_trees[Npop + i].print();
-                optimize_tree_by_bsr_mode(new_trees[Npop + i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
+                max_likelihood_BFGS(new_trees[Npop + i], vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl, debug);
             }
         	new_trees[Npop + i].score = -nlnl;
             // cout << "otree tobs " << otree.tobs[0] << endl;
@@ -1788,18 +1785,16 @@ int main(int argc, char** const argv){
     assert(optim <= 1);
     assert(model <= 3);
 
-    if(bsr_mode == 3 && optim != 1){
-        cerr << "Error: bsr_mode=3 (ML-RLC) requires L-BFGS-B optimizer (--optim 1)." << endl;
+    if(bsr_mode > 0 && optim != 1){
+        cerr << "Error: bsr_mode=" << bsr_mode << " requires L-BFGS-B optimizer (--optim 1)." << endl;
         exit(EXIT_FAILURE);
     }
-    if(bsr_mode == 3 && estmu){
-        cerr << "Error: bsr_mode=3 is incompatible with estmu=1; global rates are fixed reference values for RLC multipliers." << endl;
+    if(bsr_mode > 0 && estmu){
+        cerr << "Error: bsr_mode=" << bsr_mode << " is incompatible with estmu=" << estmu << ", which is used for estimating constant mutation rates." << endl;
         exit(EXIT_FAILURE);
     }
-    if(bsr_mode == 3 && mode == 0 && tree_search == HILLCLIMB){
-        cerr << "Error: bsr_mode=3 (ML-RLC) is not compatible with hill-climbing NNI tree search (--tree_search 1)." << endl;
-        cerr << "  Use --tree_search 0 (evolutionary) or --tree_search 2 (exhaustive) for tree building," << endl;
-        cerr << "  or run fixed-topology optimization with --mode 3 (tree_search is ignored in that mode)." << endl;
+    if(bsr_mode > 0 && mode != 3){
+        cerr << "Error: bsr_mode=" << bsr_mode << " is not compatible with mode=" << mode << "." << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -2047,6 +2042,11 @@ int main(int argc, char** const argv){
         TimePoint t_mode3_start = now();
 
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
+
+        // initialise all edge_rates to global rates (K=0 starting point)
+        RateSet global_rates(0, tree.dup_rate, tree.del_rate,
+                                tree.chr_gain_rate, tree.chr_loss_rate, tree.wgd_rate);
+        tree.init_edge_rates(global_rates);
 
         maximize_tree_likelihood(tree, num_total_bins, ofile, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, mode, optim, ssize, debug);
 

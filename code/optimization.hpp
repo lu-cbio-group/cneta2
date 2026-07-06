@@ -20,9 +20,13 @@ const double ERROR_X = 1.0e-4;
 const double MIN_MRATE = 1.0e-20;
 // The maximum mutation rates allowed
 const double MAX_MRATE = 1;
+
+const double M_MIN = 1.0e-3;  // minimum multiplier for mutation rates
+const double M_MAX = 10;   // maximum multiplier for mutation rates
+
 // Bounds for mode-3 RLC multipliers (not absolute mutation rates — rates can be multiplied up or down)
-const double RLC_MULT_MIN = 1e-6;
-const double RLC_MULT_MAX = 1e6;
+const double RLC_MULT_MIN = 1e-3;
+const double RLC_MULT_MAX = 10;
 
 
 // bundle of variables used in optimization (values from input)
@@ -128,16 +132,17 @@ double optimize_all_branches(evo_tree& rtree, const map<int, vector<vector<int>>
 // The number of parameters to estimate, different when the mutation rates are estimated
 // n_bsr_edges: number of edges receiving a multiplier (active_eids.size()).
 // Defaults to -1, which falls back to nparams_est (correct for cons=0; wrong for cons=1 — see TODO).
-inline int get_ndim(int estmu, int nparams_est, int model, int cn_type, int n_types_per_edge = 0, int n_bsr_edges = -1){
+inline int get_ndim(int estmu, int nparams_est, int model, int cn_type, int nrates = 0, int n_types_per_edge = 0, int n_bsr_edges = -1){
     int ndim = 0;
 
     // variable rate: estimate n_types_per_edge multipliers per active branch
     // bsr_mode=1: n_types_per_edge=1, one shared multiplier per branch
     // bsr_mode=2: n_types_per_edge = number of active rate types for cn_type (1-5), one multiplier per type per branch
-    // bsr_mode=3 (RLC): not handled here, requires different parameterisation
+    // bsr_mode=3: 
     if(n_types_per_edge > 0){
         int n_edges = (n_bsr_edges >= 0) ? n_bsr_edges : nparams_est;
-        return nparams_est + n_types_per_edge * n_edges;
+        // + bsr_slots.size() for global rates
+        return nparams_est + n_types_per_edge * n_edges + nrates;  // +1 for the global rate (estmu=1) if applicable
     }
 
     // bsr_mode=0: n_types_per_edge=0, constant rate, handled by estmu logic below
@@ -185,8 +190,9 @@ void update_variables(evo_tree& rtree, int model, int cons, int estmu, double *x
 // Update the tree after each iteration in the BFGS optimization
 // Estimate time intervals rather than branch length in order to avoid negative terminal branch lengths
 // Sort node times in increasing order and take the first Ns intervals
-void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type, OPT_TYPE& opt_type);
+void update_variables_transformed(evo_tree &rtree, double *x, LNL_TYPE &lnl_type, OPT_TYPE &opt_type);
 
+void update_tree_rates(LNL_TYPE &lnl_type, evo_tree &rtree, double *x, int nparams_est);
 
 /**
     the target function which needs to be optimized
@@ -237,6 +243,7 @@ struct BsrRateSlot {
     double evo_tree::*  tree_rate;   // global reference rate on rtree
     double RateSet::*   edge_field;  // corresponding field in edge_rates
 };
+
 
 // Returns the active rate slots for the given cn_type.
 // bsr_mode=1: use slots to know which rates are active, share one multiplier across all.
@@ -290,7 +297,9 @@ inline vector<int> get_active_bsr_eids(const evo_tree& rtree){
 
 // Using BFGS method to get the maximum likelihood with lower and upper bounds (minimalize negative likelihood function)
 // Note: the topology of rtree is fixed, yet its branch lengths may be updated in the optimization process
-void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double &min_nlnl,int debug = 0);
+void max_likelihood_BFGS(evo_tree &rtree, const map<int, vector<vector<int>>> &vobs, const map<int, vector<vector<CN_CHANGE>>> &vobs_change, const OBS_DECOMP &obs_decomp, const set<vector<int>> &comps, LNL_TYPE &lnl_type, OPT_TYPE &opt_type, double &min_nlnl, int debug = 0);
+
+void set_tree_rates(int cn_type, evo_tree &rtree, int nparams_est, double* variables, double* lower_bound, double* upper_bound);
 
 /****** bsr_mode=3 ML-RLC functions ******/
 
