@@ -58,3 +58,6 @@ cneta.code-workspace
 
 # vscode
 .vscode/
+
+# Jetbrains
+.idea/
