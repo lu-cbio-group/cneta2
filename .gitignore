@@ -61,3 +61,6 @@ cneta.code-workspace
 
 # Jetbrains
 .idea/
+
+# Build directory
+code/build/
