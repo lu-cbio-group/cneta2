@@ -21,7 +21,7 @@ This package is mostly written in C++. There are a few scripts written in R and 
 
 * Required C/C++ libraries for compiling the main programs
   * [CMake](https://cmake.org/install/) is required for BFGS optimization
-  * C libaries: [gsl](https://www.gnu.org/software/gsl/), [boost](https://www.boost.org/) (version >= 1.42)
+  * C libraries: [gsl](https://www.gnu.org/software/gsl/), [boost](https://www.boost.org/) (version >= 1.42)
 
 * Required R libraries for data postprocessing
   * `optparse`

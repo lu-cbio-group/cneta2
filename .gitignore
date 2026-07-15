@@ -5,6 +5,7 @@
 *.slo
 *.lo
 *.o
+*.a
 *.obj
 
 # Precompiled Headers
@@ -49,12 +50,26 @@ code/lbfgsb
 example/
 
 # compiled program files
-code/cnets
-code/cnetml
-code/cnetmcmc
+cnets
+cnetml
+cnetmcmc
 
 # workspace files
 cneta.code-workspace
 
 # vscode
 .vscode/
+
+# Jetbrains
+.idea/
+
+# Build directory
+code/build/
+build/
+
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
