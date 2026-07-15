@@ -9,5 +9,5 @@ module load CMake/3.29.3
 module load Boost/1.85.0 
 module load GSL/2.8
 
-echo "HPC environment loaded successfully for cneta."
-echo "You can now run: cd ../code/build && cmake .. && make -j4"
+echo "Eureka2 environment loaded successfully for cneta."
+
