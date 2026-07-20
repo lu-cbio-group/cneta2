@@ -920,7 +920,12 @@ void update_variables(evo_tree& rtree, int model, int cons, int estmu, double *x
     }
 }
 
-void update_tree_rates(LNL_TYPE & lnl_type, evo_tree & rtree, double *x, int nparams_est){
+void update_tree_rates(LNL_TYPE & lnl_type, evo_tree & rtree, double *x, int nparams_est, int bsr_mode){
+    // [2026-07-14 added] this must never write the global reference rates when bsr_mode>0
+    // (they have to stay frozen — this exact call, unguarded, was today's root-cause bug).
+    // Fail loudly at the moment of the mistake instead of silently corrupting rates again
+    // if a future edit re-enables one of the disabled call sites elsewhere in this file.
+    assert(bsr_mode == 0);
     switch (lnl_type.cn_type)
     {
         case ALL:
@@ -1136,8 +1141,12 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         // }
         // cout << endl;     
 
-        // update global rate for all active edges
-        update_tree_rates(lnl_type, rtree, x, nparams_est);
+        // [2026-07-14 disabled] read-back counterpart of the set_tree_rates removal
+        // above: this let each BFGS evaluation overwrite the frozen global reference
+        // rates with whatever was in the per-edge multiplier slots. See
+        // docs/flowcharts.md "Two-step calibration workflow".
+        // // update global rate for all active edges
+        // update_tree_rates(lnl_type, rtree, x, nparams_est);
 
         RateSet global_rates(0, rtree.dup_rate, rtree.del_rate,
                              rtree.chr_gain_rate, rtree.chr_loss_rate, rtree.wgd_rate);
@@ -1164,15 +1173,36 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
     } else if(opt_type.bsr_mode == 3){
         // RLC: root-to-tip propagation with inheritance; shift edges get parent_rate * m_k
         // Keep existing edge_rates frozen; do not attempt to read multipliers from x[].
-        update_tree_rates(lnl_type, rtree, x, nparams_est);
-        
-        update_edge_rates_rlc_from_x(rtree, opt_type.rlc_shift_eids, x, nparams_est);
-        
+        // [2026-07-14 disabled] temporary diagnostic prints used to confirm the bug below:
+        // fired on every single BFGS objective/gradient evaluation (thousands of times per
+        // optimization, across many parallel candidates), so left uncommented they flood
+        // the log and add real cout-lock contention under OpenMP. Commented out (not
+        // deleted) rather than removed, so a later reader puzzled by huge log files from
+        // this period of the project knows what produced them and why they were disabled.
+        // cout << "[DEBUG-CHECK] K=" << opt_type.rlc_shift_eids.size()
+        //      << " dup_rate BEFORE=" << rtree.dup_rate
+        //      << " x[nparams_est+1]=" << x[nparams_est + 1] << endl;
+        // [2026-07-14 disabled] this call used to overwrite the frozen global dup_rate/
+        // del_rate/... with whatever was in this shift edge's multiplier slots (confirmed
+        // 2026-07-14 via the temporary debug print above: dup_rate jumped from 0.00143 to
+        // 1 as soon as K>=1). See docs/flowcharts.md "Two-step calibration workflow".
+        // update_tree_rates(lnl_type, rtree, x, nparams_est);
+        // cout << "[DEBUG-CHECK] dup_rate AFTER=" << rtree.dup_rate << endl;
+
+        update_edge_rates_rlc_from_x(rtree, opt_type.rlc_shift_eids, x, nparams_est, opt_type.bsr_slots_cache);
+
     } else if(opt_type.bsr_mode == 2){
         // edge_rates[eid].field_t = global_rate_t * m_t  (independent multiplier per type per branch)
         // idx(k, t) = nparams_est + k * n_types_per_edge + t + 1
-        update_tree_rates(lnl_type, rtree, x, nparams_est);
-        auto bsr_slots = get_bsr_rate_slots(rtree, cn_type);
+        // [2026-07-14 disabled] same bug as bsr_mode==1/3 above: this let the frozen
+        // global reference rates be overwritten by the first edge's per-type multiplier
+        // values. See docs/flowcharts.md "Two-step calibration workflow".
+        // update_tree_rates(lnl_type, rtree, x, nparams_est);
+        // [2026-07-14 disabled] recomputed bsr_slots on every call; it's invariant for the
+        // whole optimization, so max_likelihood_BFGS now computes it once into
+        // opt_type.bsr_slots_cache instead. See docs/flowcharts.md.
+        // auto bsr_slots = get_bsr_rate_slots(rtree, cn_type);
+        const vector<BsrRateSlot>& bsr_slots = opt_type.bsr_slots_cache;
         int n_types = (int)bsr_slots.size();
         vector<int> active_eids;
         if(!opt_type.opt_one_branch)
@@ -1180,7 +1210,9 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         for(int k = 0; k < (int)active_eids.size(); k++){
             int eid = active_eids[k];
             for(int t = 0; t < n_types; t++){
-                double m = x[nparams_est + k * n_types + t + 1];
+                // [2026-07-14 disabled] see bsr_var_index in optimization.hpp
+                // double m = x[nparams_est + k * n_types + t + 1];
+                double m = x[bsr_var_index(nparams_est, k, n_types, t)];
                 rtree.edge_rates[eid].*(bsr_slots[t].edge_field) = rtree.*(bsr_slots[t].tree_rate) * m;
             }
         }
@@ -1194,7 +1226,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
             }
         }else{ // for other models
           // only update those estimated rates
-          update_tree_rates(lnl_type, rtree, x, nparams_est);
+          update_tree_rates(lnl_type, rtree, x, nparams_est, opt_type.bsr_mode);
 
           if(debug){
               switch(cn_type){
@@ -1531,7 +1563,13 @@ void set_param(int offset, double value, int nparams_est, double* variables, dou
     upper_bound[idx] = MAX_MRATE;
 }
 
-void set_tree_rates(int cn_type, evo_tree &rtree, int nparams_est, double* variables, double* lower_bound, double* upper_bound){
+void set_tree_rates(int cn_type, evo_tree &rtree, int nparams_est, double* variables, double* lower_bound, double* upper_bound, int bsr_mode){
+    // [2026-07-14 added] this must never seed the global reference rates as free BFGS
+    // variables when bsr_mode>0 (they have to stay frozen — this exact call, unguarded,
+    // was today's root-cause bug). Fail loudly at the moment of the mistake instead of
+    // silently corrupting rates again if a future edit re-enables one of the disabled
+    // call sites elsewhere in this file.
+    assert(bsr_mode == 0);
     switch (cn_type)
     {
     case ALL:
@@ -1636,6 +1674,10 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
                  << " but all reference rates for cn_type=" << cn_type
                  << " are zero — BSR multipliers will have no effect. "
                  << "Check that non-zero rates are passed when using bsr_mode>0." << endl;
+        // [2026-07-14 added] cache so update_variables_transformed/update_edge_rates_rlc_from_x
+        // don't each recompute this on every BFGS objective/gradient evaluation — it's
+        // invariant for the whole optimization (global reference rates are frozen).
+        opt_type.bsr_slots_cache = bsr_slots;
     }
 
     int n_types_per_edge = 0;
@@ -1643,7 +1685,14 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
     else if(opt_type.bsr_mode == 2) n_types_per_edge = (int)bsr_slots.size();
     else if(opt_type.bsr_mode == 3) n_types_per_edge = (int)bsr_slots.size();  
 
-    int ndim = get_ndim(estmu, nparams_est, model, cn_type, bsr_slots.size(), n_types_per_edge, n_bsr_edges);
+    // [2026-07-14 disabled] nrates (5th arg) was always bsr_slots.size(), reserving ndim
+    // space for the 5 global reference rates even when bsr_mode>0 (where estmu is forced
+    // 0 and nothing writes/reads those slots anymore after today's fix) — wasted, always-
+    // [0,0]-bounded optimizer dimensions. nrates is only meaningful when estmu=1 (global
+    // rates genuinely being estimated, which only happens for bsr_mode=0). See
+    // docs/flowcharts.md.
+    // int ndim = get_ndim(estmu, nparams_est, model, cn_type, bsr_slots.size(), n_types_per_edge, n_bsr_edges);
+    int ndim = get_ndim(estmu, nparams_est, model, cn_type, estmu ? bsr_slots.size() : 0, n_types_per_edge, n_bsr_edges);
 
     if(debug){
       cout << "\nThere are " << ndim << " parameters excluding global mutation rates to optimise " << endl;
@@ -1711,10 +1760,15 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
         }
     }
 
-    // reinitialise edge_rates if missing or stale (size mismatch after tree changes)
-    if(opt_type.bsr_mode > 0){ //&& (int)rtree.edge_rates.size() != (int)rtree.edges.size()
-        set_tree_rates(cn_type, rtree, nparams_est, variables, lower_bound, upper_bound);
-    }
+    // [2026-07-14 disabled] this pushed the fixed global reference rates (dup_rate etc.)
+    // into the BFGS optimization variables for any bsr_mode>0, so they got estimated/
+    // corrupted instead of staying frozen (they overlap with the per-edge multiplier
+    // slots set up below). See docs/flowcharts.md "Two-step calibration workflow" for
+    // the full writeup. Kept here commented out, not deleted, per team request.
+    // // reinitialise edge_rates if missing or stale (size mismatch after tree changes)
+    // if(opt_type.bsr_mode > 0){ //&& (int)rtree.edge_rates.size() != (int)rtree.edges.size()
+    //     set_tree_rates(cn_type, rtree, nparams_est, variables, lower_bound, upper_bound);
+    // }
 
     if(opt_type.bsr_mode == 1){
         // Shared bounds derived from the tightest constraint across all active slots.
@@ -1752,7 +1806,9 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
                 double m_lower = MIN_MRATE / rtree.*(slot.tree_rate);
                 double m_upper = MAX_MRATE / rtree.*(slot.tree_rate);
                 double m = rtree.edge_rates[eid].*(slot.edge_field) / rtree.*(slot.tree_rate);
-                int idx = nparams_est + k * n_types_per_edge + t + 1;
+                // [2026-07-14 disabled] see bsr_var_index in optimization.hpp
+                // int idx = nparams_est + k * n_types_per_edge + t + 1;
+                int idx = bsr_var_index(nparams_est, k, n_types_per_edge, t);
                 variables[idx]   = m;
                 lower_bound[idx] = m_lower;
                 upper_bound[idx] = m_upper;
@@ -1776,7 +1832,7 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
             lower_bound[i + 1] = MIN_MRATE;
             upper_bound[i + 1] = MAX_MRATE;
         }else{ // other models
-            set_tree_rates(cn_type, rtree, nparams_est, variables, lower_bound, upper_bound);
+            set_tree_rates(cn_type, rtree, nparams_est, variables, lower_bound, upper_bound, opt_type.bsr_mode);
        }
     }
 
@@ -1878,7 +1934,7 @@ double optimize_one_branch_BFGS(evo_tree& rtree, const map<int, vector<vector<in
 void update_edge_rates_rlc(
     evo_tree& rtree,
     const vector<int>& shift_eids,
-    const vector<double>& multipliers)
+    const vector<RateSet>& multipliers)
 {
     assert(shift_eids.size() == multipliers.size());
 
@@ -1887,7 +1943,7 @@ void update_edge_rates_rlc(
         rtree.edge_rates.resize(rtree.edges.size());
 
     // build eid -> multiplier lookup
-    unordered_map<int,double> shift_m;
+    unordered_map<int,RateSet> shift_m;
     for(int k = 0; k < (int)shift_eids.size(); ++k)
         shift_m[shift_eids[k]] = multipliers[k];
 
@@ -1907,7 +1963,7 @@ void update_edge_rates_rlc(
             RateSet child_rate;
             auto it = shift_m.find(eid);
             if(it != shift_m.end()){
-                double m = it->second;
+                const RateSet& m = it->second;
                 child_rate = parent_rate * m;
             } else {
                 child_rate = parent_rate;
@@ -1924,11 +1980,26 @@ void update_edge_rates_rlc_from_x(
     evo_tree& rtree,
     const vector<int>& shift_eids,
     double* x,
-    int nparams_est)
+    int nparams_est,
+    const vector<BsrRateSlot>& bsr_slots)
 {
-    vector<double> multipliers(shift_eids.size());
-    for(int k = 0; k < (int)shift_eids.size(); ++k)
-        multipliers[k] = x[nparams_est + k + 1];
+    // [2026-07-14 disabled] recomputed bsr_slots on every call (fires on every BFGS
+    // objective/gradient evaluation for bsr_mode=3); it's invariant for the whole
+    // optimization, so the caller now passes max_likelihood_BFGS's cached
+    // opt_type.bsr_slots_cache instead. See docs/flowcharts.md.
+    // vector<BsrRateSlot> bsr_slots = get_bsr_rate_slots(rtree, cn_type);
+    int n_types_per_edge = (int)bsr_slots.size();
+
+    // neutral (1.0) multiplier for every field; only the active bsr_slots get overwritten below
+    vector<RateSet> multipliers(shift_eids.size(), RateSet(1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+    for(int k = 0; k < (int)shift_eids.size(); ++k){
+        for(int t = 0; t < n_types_per_edge; ++t){
+            // [2026-07-14 disabled] see bsr_var_index in optimization.hpp
+            // int idx = nparams_est + k * n_types_per_edge + t + 1;
+            int idx = bsr_var_index(nparams_est, k, n_types_per_edge, t);
+            multipliers[k].*(bsr_slots[t].edge_field) = x[idx];
+        }
+    }
     update_edge_rates_rlc(rtree, shift_eids, multipliers);
 }
 
@@ -1950,6 +2021,10 @@ void stepwise_search_shift_edges(
 
     const double lambda       = opt_type.rlc_lambda;
     const double eps          = 1e-6;  // small improvement threshold
+    // [2026-07-14 added] number of independent parameters a shift edge unlocks (5 for
+    // cn_type=ALL); the penalty must scale by this, not just by the number of edges.
+    // See rlc_penalized_score in optimization.hpp.
+    const int n_types_per_edge = (int)get_bsr_rate_slots(rtree, lnl_type.cn_type).size();
 
     // full candidate pool = all optimizable edges (excludes normal-sample edge)
     vector<int> all_candidates = get_active_bsr_eids(rtree);
@@ -1962,110 +2037,360 @@ void stepwise_search_shift_edges(
     double cur_nlnl = MAX_NLNL;
     max_likelihood_BFGS(cur_tree, vobs, vobs_change, obs_decomp, comps,
                         lnl_type, cur_opt, cur_nlnl, debug);
-    double cur_score = -cur_nlnl - lambda * 0.0;
+    // [2026-07-14 disabled] penalty charged per shift edge, not per unlocked parameter —
+    // see rlc_penalized_score in optimization.hpp. K=0 here so this specific line was
+    // numerically harmless, but kept consistent with the other 3 call sites below.
+    // double cur_score = -cur_nlnl - lambda * 0.0;
+    double cur_score = rlc_penalized_score(cur_nlnl, 0, lambda, n_types_per_edge);
 
     if(debug)
         cout << "[RLC] K=0 baseline: nlnl=" << cur_nlnl
              << " score=" << cur_score << endl;
 
-    // --- forward stepwise ---
-    while(true){
-        double best_score = cur_score;
-        double best_nlnl  = cur_nlnl;
-        int    best_edge  = -1;
-        evo_tree best_tree = cur_tree;
-        OPT_TYPE best_opt  = cur_opt;
+    // ----- start here: original code ----- //
+    // // --- forward stepwise ---
+    // while(true){
+    //     double best_score = cur_score;
+    //     double best_nlnl  = cur_nlnl;
+    //     int    best_edge  = -1;
+    //     evo_tree best_tree = cur_tree;
+    //     OPT_TYPE best_opt  = cur_opt;
 
-        for(int eid : all_candidates){
-            // skip already-selected shift edges
+    //     for(int eid : all_candidates){
+    //         // skip already-selected shift edges
+    //         bool already = false;
+    //         for(int s : cur_opt.rlc_shift_eids)
+    //             if(s == eid){ already = true; break; }
+    //         if(already) continue;
+
+    //         // build candidate shift set
+    //         vector<int> cand_shifts = cur_opt.rlc_shift_eids;
+    //         cand_shifts.push_back(eid);
+
+    //         // start from the current accepted tree (copy)
+    //         evo_tree cand_tree = cur_tree;
+    //         OPT_TYPE cand_opt  = cur_opt;
+    //         cand_opt.rlc_shift_eids = cand_shifts;
+
+    //         // warm-start: new shift edge gets m=1.0 (set via init)
+    //         // update_edge_rates_rlc with uniform multipliers=1 keeps rates consistent
+    //         vector<double> ones(cand_shifts.size(), 1.0);
+    //         update_edge_rates_rlc(cand_tree, cand_shifts, ones);
+
+    //         double cand_nlnl = MAX_NLNL;
+    //         max_likelihood_BFGS(cand_tree, vobs, vobs_change, obs_decomp, comps,
+    //                             lnl_type, cand_opt, cand_nlnl, debug);
+
+    //         double cand_score = -cand_nlnl - lambda * (double)cand_shifts.size();
+
+    //         if(debug)
+    //             cout << "[RLC] candidate eid=" << eid
+    //                  << " K=" << cand_shifts.size()
+    //                  << " nlnl=" << cand_nlnl
+    //                  << " score=" << cand_score << endl;
+
+    //         if(cand_score > best_score + eps){
+    //             best_score = cand_score;
+    //             best_nlnl  = cand_nlnl;
+    //             best_edge  = eid;
+    //             best_tree  = cand_tree;
+    //             best_opt   = cand_opt;
+    //         }
+    //     }
+
+    //     if(best_edge == -1) break;  // no improvement found
+
+    //     cur_score = best_score;
+    //     cur_nlnl  = best_nlnl;
+    //     cur_tree  = best_tree;
+    //     cur_opt   = best_opt;
+
+    //     cout << "[RLC] accepted shift edge " << best_edge
+    //          << " K=" << cur_opt.rlc_shift_eids.size()
+    //          << " nlnl=" << cur_nlnl
+    //          << " penalized_score=" << cur_score << endl;
+
+    //     // --- optional backward cleanup ---
+    //     // bool removed = true;
+    //     // while(removed){
+    //     //     removed = false;
+    //     //     for(int k = 0; k < (int)cur_opt.rlc_shift_eids.size(); ++k){
+    //     //         vector<int> try_shifts = cur_opt.rlc_shift_eids;
+    //     //         try_shifts.erase(try_shifts.begin() + k);
+
+    //     //         evo_tree try_tree = cur_tree;
+    //     //         OPT_TYPE try_opt  = cur_opt;
+    //     //         try_opt.rlc_shift_eids = try_shifts;
+
+    //     //         vector<double> ones(try_shifts.size(), 1.0);
+    //     //         update_edge_rates_rlc(try_tree, try_shifts, ones);
+
+    //     //         double try_nlnl = MAX_NLNL;
+    //     //         max_likelihood_BFGS(try_tree, vobs, vobs_change, obs_decomp, comps,
+    //     //                             lnl_type, try_opt, try_nlnl, debug);
+
+    //     //         double try_score = -try_nlnl - lambda * (double)try_shifts.size();
+    //     //         if(try_score > cur_score + eps){
+    //     //             int removed_eid = cur_opt.rlc_shift_eids[k]; // save before cur_opt is replaced
+    //     //             cur_score = try_score;
+    //     //             cur_nlnl  = try_nlnl;
+    //     //             cur_tree  = try_tree;
+    //     //             cur_opt   = try_opt;
+    //     //             removed   = true;
+    //     //             cout << "[RLC] backward: removed shift edge " << removed_eid
+    //     //                  << " K=" << cur_opt.rlc_shift_eids.size()
+    //     //                  << " score=" << cur_score << endl;
+    //     //             break;
+    //     //         }
+    //     //     }
+    //     // }
+    
+    // }
+    // ----- end here: original code ----- //
+    
+    
+    // ----- start here: if using OpenMP, parallelize candidate calculation only ----- //
+    while(true){
+        int ncand = (int)all_candidates.size();
+
+        // Store each candidate result at its corresponding index.
+        vector<char> evaluated(ncand, 0);
+        vector<double> candidate_scores(ncand, -MAX_NLNL);
+        vector<double> candidate_nlnls(ncand, MAX_NLNL);
+        vector<evo_tree> candidate_trees(ncand, cur_tree);
+        vector<OPT_TYPE> candidate_opts(ncand, cur_opt);
+
+        // ============================================================
+        // FORWARD: parallel candidate evaluation
+        // ============================================================
+        // Parallel section: only evaluate candidates; do not update the global best result here.
+        #pragma omp parallel for schedule(dynamic)
+        for(int i = 0; i < ncand; ++i){
+            int eid = all_candidates[i];
+
+            // Skip edges that have already been selected as shift edges.
             bool already = false;
-            for(int s : cur_opt.rlc_shift_eids)
-                if(s == eid){ already = true; break; }
+            for(int s : cur_opt.rlc_shift_eids){
+                if(s == eid){
+                    already = true;
+                    break;
+                }
+            }
             if(already) continue;
 
-            // build candidate shift set
+            // Build the candidate shift-edge set.
             vector<int> cand_shifts = cur_opt.rlc_shift_eids;
             cand_shifts.push_back(eid);
 
-            // start from the current accepted tree (copy)
+            // Each candidate uses its own copies.
             evo_tree cand_tree = cur_tree;
             OPT_TYPE cand_opt  = cur_opt;
+            LNL_TYPE cand_lnl_type = lnl_type;
+
             cand_opt.rlc_shift_eids = cand_shifts;
 
-            // warm-start: new shift edge gets m=1.0 (set via init)
-            // update_edge_rates_rlc with uniform multipliers=1 keeps rates consistent
-            vector<double> ones(cand_shifts.size(), 1.0);
+            // Warm start: initialize the new shift multiplier at 1.0 (all rate types).
+            vector<RateSet> ones(cand_shifts.size(), RateSet(1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
             update_edge_rates_rlc(cand_tree, cand_shifts, ones);
 
             double cand_nlnl = MAX_NLNL;
+
+            // Keep debug off inside the parallel region to avoid interleaved output.
             max_likelihood_BFGS(cand_tree, vobs, vobs_change, obs_decomp, comps,
-                                lnl_type, cand_opt, cand_nlnl, debug);
+                                cand_lnl_type, cand_opt, cand_nlnl, 0);
 
-            double cand_score = -cand_nlnl - lambda * (double)cand_shifts.size();
+            // [2026-07-14 disabled] see rlc_penalized_score in optimization.hpp — penalty
+            // must scale by parameters unlocked (n_types_per_edge per edge), not edges.
+            // double cand_score = -cand_nlnl - lambda * (double)cand_shifts.size();
+            double cand_score = rlc_penalized_score(cand_nlnl, (int)cand_shifts.size(), lambda, n_types_per_edge);
 
-            if(debug)
-                cout << "[RLC] candidate eid=" << eid
-                     << " K=" << cand_shifts.size()
-                     << " nlnl=" << cand_nlnl
-                     << " score=" << cand_score << endl;
-
-            if(cand_score > best_score + eps){
-                best_score = cand_score;
-                best_nlnl  = cand_nlnl;
-                best_edge  = eid;
-                best_tree  = cand_tree;
-                best_opt   = cand_opt;
-            }
+            // Each thread writes only to its own index.
+            evaluated[i]        = 1;
+            candidate_scores[i] = cand_score;
+            candidate_nlnls[i]  = cand_nlnl;
+            candidate_trees[i]  = std::move(cand_tree);
+            candidate_opts[i]   = std::move(cand_opt);
         }
 
-        if(best_edge == -1) break;  // no improvement found
+        // ============================================================
+        // FORWARD: serial selection
+        // ============================================================
+        // Serial section: compare all evaluated candidates and select the best one.
+        // Print per-candidate results here (outside the parallel region) so output
+        // isn't interleaved across threads. Always on (independent of the general
+        // debug flag) since this is the main RLC search diagnostic.
+        for(int i = 0; i < ncand; ++i){
+            if(!evaluated[i]) continue;
+            cout << "[RLC] candidate eid=" << all_candidates[i]
+                 << " K=" << cur_opt.rlc_shift_eids.size() + 1
+                 << " nlnl=" << candidate_nlnls[i]
+                 << " score=" << candidate_scores[i] << endl;
+        }
 
-        cur_score = best_score;
-        cur_nlnl  = best_nlnl;
-        cur_tree  = best_tree;
-        cur_opt   = best_opt;
-
-        cout << "[RLC] accepted shift edge " << best_edge
-             << " K=" << cur_opt.rlc_shift_eids.size()
-             << " nlnl=" << cur_nlnl
-             << " penalized_score=" << cur_score << endl;
-
-        // --- optional backward cleanup ---
-        // bool removed = true;
-        // while(removed){
-        //     removed = false;
-        //     for(int k = 0; k < (int)cur_opt.rlc_shift_eids.size(); ++k){
-        //         vector<int> try_shifts = cur_opt.rlc_shift_eids;
-        //         try_shifts.erase(try_shifts.begin() + k);
-
-        //         evo_tree try_tree = cur_tree;
-        //         OPT_TYPE try_opt  = cur_opt;
-        //         try_opt.rlc_shift_eids = try_shifts;
-
-        //         vector<double> ones(try_shifts.size(), 1.0);
-        //         update_edge_rates_rlc(try_tree, try_shifts, ones);
-
-        //         double try_nlnl = MAX_NLNL;
-        //         max_likelihood_BFGS(try_tree, vobs, vobs_change, obs_decomp, comps,
-        //                             lnl_type, try_opt, try_nlnl, debug);
-
-        //         double try_score = -try_nlnl - lambda * (double)try_shifts.size();
-        //         if(try_score > cur_score + eps){
-        //             int removed_eid = cur_opt.rlc_shift_eids[k]; // save before cur_opt is replaced
-        //             cur_score = try_score;
-        //             cur_nlnl  = try_nlnl;
-        //             cur_tree  = try_tree;
-        //             cur_opt   = try_opt;
-        //             removed   = true;
-        //             cout << "[RLC] backward: removed shift edge " << removed_eid
-        //                  << " K=" << cur_opt.rlc_shift_eids.size()
-        //                  << " score=" << cur_score << endl;
-        //             break;
-        //         }
+        // [2026-07-14 disabled] see pick_best_improving in optimization.hpp — this ~25-line
+        // loop was hand-copied here and in the backward removal selection below.
+        // int best_i = -1;
+        // for(int i = 0; i < ncand; ++i){
+        //     if(!evaluated[i]) continue;
+        //     double cand_score = candidate_scores[i];
+        //     int eid = all_candidates[i];
+        //     // A candidate must improve over the current accepted model.
+        //     if(cand_score <= cur_score + eps) continue;
+        //     if(best_i == -1){
+        //         best_i = i;
+        //         continue;
+        //     }
+        //     double best_candidate_score = candidate_scores[best_i];
+        //     int best_candidate_eid = all_candidates[best_i];
+        //     bool better =
+        //         cand_score > best_candidate_score + eps;
+        //     bool tie_but_smaller =
+        //         fabs(cand_score - best_candidate_score) <= eps &&
+        //         eid < best_candidate_eid;
+        //     if(better || tie_but_smaller){
+        //         best_i = i;
         //     }
         // }
-    
+        int best_i = pick_best_improving(ncand, evaluated, candidate_scores, all_candidates, cur_score, eps);
+
+        // Stop the stepwise search if no candidate improves the current model.
+        if(best_i == -1) break;
+
+        int best_edge = all_candidates[best_i];
+
+        cur_score = candidate_scores[best_i];
+        cur_nlnl  = candidate_nlnls[best_i];
+        cur_tree  = std::move(candidate_trees[best_i]);
+        cur_opt   = std::move(candidate_opts[best_i]);
+
+        cout << "[RLC] accepted shift edge " << best_edge
+            << " K=" << cur_opt.rlc_shift_eids.size()
+            << " nlnl=" << cur_nlnl
+            << " penalized_score=" << cur_score << endl;
+
+        // ============================================================
+        // BACKWARD CLEANUP
+        // After accepting one forward edge, repeatedly test whether
+        // removing one currently selected edge improves the score.
+        // ============================================================
+        bool removed = true;
+        while(removed){
+            removed = false;
+            int nshift = (int)cur_opt.rlc_shift_eids.size();
+            if(nshift == 0) break;
+            // save current shifted-edge IDs because cur_opt will be modified during the loop
+            vector<int> current_shifts = cur_opt.rlc_shift_eids;
+
+            //store one result for remoing each current shift edge
+            vector<char> remove_evaluated(nshift, 0);
+            vector<double> remove_scores(nshift, -MAX_NLNL);
+            vector<double> remove_nlnls(nshift, MAX_NLNL);
+            vector<evo_tree> remove_trees(nshift, cur_tree);
+            vector<OPT_TYPE> remove_opts(nshift, cur_opt);
+
+        // ========================================================
+        // BACKWARD: parallel candidate evaluation
+        // ========================================================
+        #pragma omp parallel for schedule(dynamic)
+        for(int k = 0; k < nshift; ++k){
+            vector<int> try_shifts = current_shifts;
+
+            // Candidate k removes current_shifts[k].
+            try_shifts.erase(try_shifts.begin() + k);
+
+            evo_tree try_tree = cur_tree;
+            OPT_TYPE try_opt = cur_opt;
+            LNL_TYPE try_lnl_type = lnl_type;
+
+            try_opt.rlc_shift_eids = try_shifts;
+
+            vector<RateSet> ones(try_shifts.size(), RateSet(1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+            update_edge_rates_rlc(try_tree, try_shifts, ones);
+
+            double try_nlnl = MAX_NLNL;
+
+            // Keep debug off inside the parallel region to avoid interleaved output.
+            max_likelihood_BFGS(try_tree, vobs, vobs_change, obs_decomp, comps,
+                                try_lnl_type, try_opt, try_nlnl, 0);
+
+            // [2026-07-14 disabled] see rlc_penalized_score in optimization.hpp — penalty
+            // must scale by parameters unlocked (n_types_per_edge per edge), not edges.
+            // double try_score = -try_nlnl - lambda * (double)try_shifts.size();
+            double try_score = rlc_penalized_score(try_nlnl, (int)try_shifts.size(), lambda, n_types_per_edge);
+
+            remove_evaluated[k] = 1;
+            remove_scores[k]    = try_score;
+            remove_nlnls[k]     = try_nlnl;
+            remove_trees[k]     = std::move(try_tree);
+            remove_opts[k]      = std::move(try_opt);
+        }
+
+        // ========================================================
+        // BACKWARD: serial selection
+        // ========================================================
+        // Print per-candidate removal results here (outside the parallel region) so
+        // output isn't interleaved across threads. Always on (independent of the
+        // general debug flag) since this is the main RLC search diagnostic.
+        for(int k = 0; k < nshift; ++k){
+            if(!remove_evaluated[k]) continue;
+            cout << "[RLC] backward candidate remove_eid=" << current_shifts[k]
+                 << " K=" << nshift - 1
+                 << " nlnl=" << remove_nlnls[k]
+                 << " score=" << remove_scores[k] << endl;
+        }
+
+        // [2026-07-14 disabled] see pick_best_improving in optimization.hpp — same
+        // selection logic as the forward candidate selection above.
+        // int best_remove_k = -1;
+        // for(int k = 0; k < nshift; ++k){
+        //     if(!remove_evaluated[k]) continue;
+        //     double try_score = remove_scores[k];
+        //     int removed_eid = current_shifts[k];
+        //     // Removal must improve the current accepted model.
+        //     if(try_score <= cur_score + eps) continue;
+        //     if(best_remove_k == -1){
+        //         best_remove_k = k;
+        //         continue;
+        //     }
+        //     double best_remove_score = remove_scores[best_remove_k];
+        //     int best_removed_eid = current_shifts[best_remove_k];
+        //     bool better = try_score > best_remove_score + eps;
+        //     bool tie_but_smaller = fabs(try_score - best_remove_score) <= eps && removed_eid < best_removed_eid;
+        //     if(better || tie_but_smaller){
+        //         best_remove_k = k;
+        //     }
+        // }
+        int best_remove_k = pick_best_improving(nshift, remove_evaluated, remove_scores, current_shifts, cur_score, eps);
+
+        // No backward deletion improves the model.
+        if(best_remove_k == -1) break;
+
+        int removed_eid = current_shifts[best_remove_k];
+
+        cur_score = remove_scores[best_remove_k];
+        cur_nlnl = remove_nlnls[best_remove_k];
+        cur_tree = std::move(remove_trees[best_remove_k]);
+        cur_opt = std::move(remove_opts[best_remove_k]);
+
+        removed = true;
+
+        cout << "[RLC] backward: removed shift edge "
+             << removed_eid
+             << " K=" << cur_opt.rlc_shift_eids.size()
+             << " nlnl=" << cur_nlnl
+             << " penalized_score=" << cur_score
+             << endl;
     }
+        
+}
+        
+        
+
+
+// ----- end here: if using OpenMP, parallelize candidate calculation only ----- //
+
+
+
 
     // write back final results
     // For bsr_mode=3, tree comparisons use penalized score = logL - lambda*K.
@@ -2076,7 +2401,10 @@ void stepwise_search_shift_edges(
 
     int K = (int)opt_type.rlc_shift_eids.size();
     double raw_logL        = -cur_nlnl;
-    double penalized_score = raw_logL - lambda * K;
+    // [2026-07-14 disabled] see rlc_penalized_score in optimization.hpp — penalty must
+    // scale by parameters unlocked (n_types_per_edge per edge), not edges.
+    // double penalized_score = raw_logL - lambda * K;
+    double penalized_score = rlc_penalized_score(cur_nlnl, K, lambda, n_types_per_edge);
 
     opt_type.rlc_raw_logL = raw_logL;
     opt_type.rlc_penalized_score = penalized_score;
@@ -2093,6 +2421,24 @@ void stepwise_search_shift_edges(
 }
 
 
+// Not yet implemented: placeholder so opt_type.rlc_search_method=1 can be wired up
+// and tested end-to-end before the GA itself is written. Must not be selected yet.
+void genetic_search_shift_edges(
+    evo_tree& rtree,
+    const map<int, vector<vector<int>>>& vobs,
+    const map<int, vector<vector<CN_CHANGE>>>& vobs_change,
+    const OBS_DECOMP& obs_decomp,
+    const set<vector<int>>& comps,
+    LNL_TYPE& lnl_type,
+    OPT_TYPE& opt_type,
+    double& min_nlnl,
+    int debug)
+{
+    cerr << "Error: genetic_search_shift_edges (opt_type.rlc_search_method=1) is not implemented yet." << endl;
+    exit(EXIT_FAILURE);
+}
+
+
 void optimize_tree_by_bsr_mode(
     evo_tree& rtree,
     const map<int, vector<vector<int>>>& vobs,
@@ -2104,9 +2450,70 @@ void optimize_tree_by_bsr_mode(
     double& min_nlnl,
     int debug)
 {
+    // [2026-07-14 added] auto-calibrate the 5 global reference rates once (bsr_mode=0,
+    // estmu=1) before running the real bsr_mode>0 search, so callers don't have to
+    // manually run the program twice (once to calibrate, once to search). Jointly
+    // estimating global rates and per-edge multipliers in one run is non-identifiable
+    // (scaling rates up and multipliers down by the same factor leaves every edge rate,
+    // and the likelihood, unchanged), so calibration must happen as a separate,
+    // isolated sub-optimization first. See docs/flowcharts.md "Two-step calibration
+    // workflow for bsr_mode=3".
+    // [2026-07-14 disabled] ran the calibration sub-optimization on every call, including
+    // retries from maximize_tree_likelihood's outer `while(!(nlnl < MAX_NLNL))` loop
+    // (cnetml.cpp) — if calibration itself had already succeeded and only the later
+    // shift-edge search failed, a retry redid the whole calibration for nothing, with no
+    // record of whether the redo was actually necessary. See docs/flowcharts.md.
+    // if(opt_type.bsr_mode > 0){
+    if(opt_type.bsr_mode > 0 && !opt_type.bsr_calibrated){
+        OPT_TYPE calib_opt = opt_type;
+        calib_opt.bsr_mode = 0;
+        calib_opt.estmu = 1;
+        calib_opt.rlc_shift_eids = {};
+
+        evo_tree calib_tree = rtree;
+        double calib_nlnl = MAX_NLNL;
+        max_likelihood_BFGS(calib_tree, vobs, vobs_change, obs_decomp, comps,
+                            lnl_type, calib_opt, calib_nlnl, debug);
+
+        // [2026-07-14 added] only accept and remember the calibration if it actually
+        // succeeded (calib_nlnl finite); on failure leave rtree's rates untouched and
+        // bsr_calibrated false, so a retry will genuinely retry calibration too instead
+        // of skipping it based on a failed attempt.
+        if(calib_nlnl < MAX_NLNL){
+        // only carry the 5 calibrated rate values over, not branch lengths — matches
+        // what a manual second run would see (branch lengths come fresh from rtree)
+        rtree.dup_rate      = calib_tree.dup_rate;
+        rtree.del_rate      = calib_tree.del_rate;
+        rtree.chr_gain_rate = calib_tree.chr_gain_rate;
+        rtree.chr_loss_rate = calib_tree.chr_loss_rate;
+        rtree.wgd_rate      = calib_tree.wgd_rate;
+
+        RateSet global_rates(0, rtree.dup_rate, rtree.del_rate,
+                             rtree.chr_gain_rate, rtree.chr_loss_rate, rtree.wgd_rate);
+        rtree.init_edge_rates(global_rates);
+
+        opt_type.bsr_calibrated = true;
+
+        if(debug)
+            cout << "[CALIBRATE] estimated reference rates: dup=" << rtree.dup_rate
+                 << " del=" << rtree.del_rate
+                 << " chr_gain=" << rtree.chr_gain_rate
+                 << " chr_loss=" << rtree.chr_loss_rate
+                 << " wgd=" << rtree.wgd_rate << endl;
+        }
+    }
+
     if(opt_type.bsr_mode == 3){
-        stepwise_search_shift_edges(rtree, vobs, vobs_change, obs_decomp,
-                                    comps, lnl_type, opt_type, min_nlnl, debug);
+        if(opt_type.rlc_search_method == 0){
+            stepwise_search_shift_edges(rtree, vobs, vobs_change, obs_decomp,
+                                        comps, lnl_type, opt_type, min_nlnl, debug);
+        } else if(opt_type.rlc_search_method == 1){
+            genetic_search_shift_edges(rtree, vobs, vobs_change, obs_decomp,
+                                       comps, lnl_type, opt_type, min_nlnl, debug);
+        } else {
+            cerr << "Error: unknown opt_type.rlc_search_method=" << opt_type.rlc_search_method << endl;
+            exit(EXIT_FAILURE);
+        }
     } else {
         max_likelihood_BFGS(rtree, vobs, vobs_change, obs_decomp,
                             comps, lnl_type, opt_type, min_nlnl, debug);

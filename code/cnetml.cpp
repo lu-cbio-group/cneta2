@@ -1451,7 +1451,7 @@ void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& 
             cout << "[TIME] BFGS outer iteration " << outer_iter << " starts\n";
             TimePoint t_iter_start = now();
             nlnl = MAX_NLNL;
-            optimize_tree_by_bsr_mode(tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl);
+            optimize_tree_by_bsr_mode(tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl, debug);
             TimePoint t_iter_end = now();
             cout << "[TIME] BFGS outer iteration " << outer_iter
                  << " took " << elapsed_seconds(t_iter_start, t_iter_end)
@@ -1635,6 +1635,7 @@ int main(int argc, char** const argv){
 
     double scale_tobs;  // scaling factor for input times, used in likelihood computation when branch length is constrained by sampling time
     double rlc_lambda;  // penalty per shift edge for bsr_mode=3 ML-RLC
+    int rlc_search_method;  // outer search for bsr_mode=3 ML-RLC shift edges (0: stepwise greedy, 1: genetic algorithm [not yet implemented])
 
     /********* derived from input ***********/
     map<int, vector<vector<int>>> vobs;   // CNP for each site, grouped by chr
@@ -1756,6 +1757,7 @@ int main(int argc, char** const argv){
     ("chr_loss_rate", po::value<double>(&chr_loss_rate)->default_value(0), "chromosome loss rate")
     ("wgd_rate", po::value<double>(&wgd_rate)->default_value(0), "WGD (whole genome doubling) rate")
     ("rlc_lambda", po::value<double>(&rlc_lambda)->default_value(1.0), "penalty per shift edge for bsr_mode=3 ML-RLC; score = logL - rlc_lambda*K (higher = sparser clock)")
+    ("rlc_search_method", po::value<int>(&rlc_search_method)->default_value(0), "outer search for bsr_mode=3 ML-RLC shift edges (0: stepwise greedy search, 1: genetic algorithm [not yet implemented])")
 
     ("verbose", po::value<int>(&debug)->default_value(0), "verbose level (0: default, 1: debug)")
     ("seed", po::value<unsigned>(&seed)->default_value(0), "seed used for generating random numbers")
@@ -1795,6 +1797,14 @@ int main(int argc, char** const argv){
     }
     if(bsr_mode > 0 && mode != 3){
         cerr << "Error: bsr_mode=" << bsr_mode << " is not compatible with mode=" << mode << "." << endl;
+        exit(EXIT_FAILURE);
+    }
+    if(rlc_search_method != 0 && rlc_search_method != 1){
+        cerr << "Error: unknown rlc_search_method=" << rlc_search_method << " (0: stepwise greedy search, 1: genetic algorithm)." << endl;
+        exit(EXIT_FAILURE);
+    }
+    if(rlc_search_method == 1){
+        cerr << "Error: rlc_search_method=1 (genetic algorithm) is not implemented yet." << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -1942,6 +1952,7 @@ int main(int argc, char** const argv){
     opt_type.scale_tobs = scale_tobs;
     opt_type.rlc_shift_eids = {};
     opt_type.rlc_lambda = rlc_lambda;
+    opt_type.rlc_search_method = rlc_search_method;
     opt_type.rlc_raw_logL = std::numeric_limits<double>::quiet_NaN();
     opt_type.rlc_penalized_score = std::numeric_limits<double>::quiet_NaN();
 

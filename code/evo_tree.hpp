@@ -48,6 +48,12 @@ struct RateSet {
     RateSet operator*(double m) const {
         return {mu*m, dup*m, del*m, chr_gain*m, chr_loss*m, wgd*m};
     }
+
+    // Element-wise (Hadamard) product: each field scaled by its own independent multiplier.
+    // Used by bsr_mode=3 (RLC), where a shift edge has one multiplier per rate type.
+    RateSet operator*(const RateSet& m) const {
+        return {mu*m.mu, dup*m.dup, del*m.del, chr_gain*m.chr_gain, chr_loss*m.chr_loss, wgd*m.wgd};
+    }
 };
 
 
@@ -324,6 +330,13 @@ public:
   void scale_time_internal(double ratio);   // used in cnets
   void init_edge_rates(const RateSet& global);
   vector<double> get_edge_rate_vec(int edge_id) const;
+  // [2026-07-14 added] true if edge eid touches the normal-sample node (nleaf-1) — the
+  // edge that should never get its own bsr multiplier/shift. Was previously hand-written
+  // identically in optimization.hpp's get_active_bsr_eids and in init_edge_rates_rlc
+  // below (evo_tree.cpp can't include optimization.hpp, so this couldn't be shared the
+  // other way around). Centralized here so both call this instead of duplicating the
+  // condition. See docs/flowcharts.md.
+  bool is_normal_sample_edge(int eid) const;
   // BSR mode 1: one shared branch multiplier.
   // bsr_dist controls whether the multiplier is lognormal or gamma; bsr_variance is its target variance (mean=1).
   void init_edge_rates_shared(const RateSet& mean_rates, int bsr_dist, double bsr_variance, gsl_rng* r);

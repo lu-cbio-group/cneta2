@@ -190,9 +190,16 @@ void get_tcn_state_index(int cn_total, int peak_sum_haplotype, int& si, int& ei)
     int last_index = cn_total;
 
     if(cn_total < 0){
-        cout << "Total copy number is negative, resetting to 0" << endl;
+        // [2026-07-14 disabled] no debug gate reaches this function (get_tcn_state_index
+        // takes no debug/verbose parameter, and its two callers in likelihood.cpp and
+        // state.cpp don't pass one either), so this printed unconditionally on every hit —
+        // easily millions of times across one optimization run, adding real cout I/O and
+        // (under OpenMP) lock-contention overhead. The reset to 0 below still always runs;
+        // only the print is disabled. Commented out rather than deleted so a later reader
+        // puzzled by huge log files from this period knows what produced them.
+        // cout << "Total copy number is negative, resetting to 0" << endl;
         last_index = 0;
-    }    
+    }
 
     int max_tcn = 2 * peak_sum_haplotype - 2;
     if(cn_total > max_tcn){
