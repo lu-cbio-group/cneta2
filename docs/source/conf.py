@@ -40,9 +40,9 @@ extensions = [
     "breathe",                  # C++ API via Doxygen XML
     "sphinx_copybutton",        # copy button on code blocks
     "sphinx_design",            # tab-sets used in developer-guide/documentation.md
-    "sphinx-togglebutton",      # collapsible admonitions
-    "sphinx-notfound-page",     # correct 404 page for a project served under /REPO/
-    "sphinx-sitemap",           # sitemap.xml; requires html_baseurl to be set
+    "sphinx_togglebutton",      # collapsible admonitions
+    "notfound.extension",     # correct 404 page for a project served under /REPO/
+    "sphinx_sitemap",           # sitemap.xml; requires html_baseurl to be set
 ]
 
 exclude_patterns = ["build", "Thumbs.db", ".DS_Store"]
