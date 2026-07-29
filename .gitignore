@@ -63,13 +63,8 @@ cneta.code-workspace
 # Jetbrains
 .idea/
 
-# Build directory
+# Build directory (also covers the CMake-generated CMakeCache.txt,
+# CMakeFiles/, cmake_install.cmake, and Makefile within it — build.sh
+# always configures out-of-source here, never in code/ or docs/)
 code/build/
 build/
-
-# CMake artifacts
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-*.cmake
