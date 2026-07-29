@@ -18,13 +18,13 @@ channels:
   - conda-forge
 
 dependencies:
-  # --- non-Python tooling -------------------------------------------------
+  # non-Python tooling 
   - python=3.12
   - make
   - doxygen
   - graphviz
 
-  # --- Python packages ----------------------------------------------------
+  # Python packages
   - pip
   - pip:
       # Path is resolved relative to this file. If your conda version

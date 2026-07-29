@@ -35,11 +35,15 @@ DOXYGEN_XML = DOCS_DIR / "build" / "doxygen" / "xml"
 # ---------------------------------------------------------------------------
 
 extensions = [
-    "myst_parser",          # Markdown authoring
-    "sphinxcontrib.mermaid",  # workflow diagrams
-    "breathe",              # C++ API via Doxygen XML
-    "sphinx_copybutton",    # copy button on code blocks
-    "sphinx_design",        # tab-sets used in developer-guide/documentation.md
+    "myst_parser",              # Markdown authoring
+    "sphinxcontrib.mermaid",    # workflow diagrams
+    "breathe",                  # C++ API via Doxygen XML
+    "sphinx_copybutton",        # copy button on code blocks
+    "sphinx_design",            # tab-sets used in developer-guide/documentation.md
+    "sphinx-tabs",              # tabbed content (e.g. macOS / Linux / HPC install)
+    "sphinx-togglebutton",      # collapsible admonitions
+    "sphinx-notfound-page",     # correct 404 page for a project served under /REPO/
+    "sphinx-sitemap",           # sitemap.xml; requires html_baseurl to be set
 ]
 
 exclude_patterns = ["build", "Thumbs.db", ".DS_Store"]
@@ -122,23 +126,46 @@ breathe_default_project = "cneta"
 breathe_default_members = ("members",)
 
 
-def _maybe_run_doxygen() -> None:
+def _maybe_run_doxygen() -> bool:
     """Generate Doxygen XML if it is missing, or if FORCE_DOXYGEN is set.
 
     Kept conditional so that ``make live`` does not re-run Doxygen over the
     whole of ``code/`` on every keystroke. Use ``make api`` to refresh it
     deliberately; CI always runs it because ``build/`` starts empty.
+
+    Returns whether the XML is present and usable afterwards.
     """
     if DOXYGEN_XML.exists() and not os.environ.get("FORCE_DOXYGEN"):
-        return
+        return True
     try:
         # Doxygen creates at most one missing path segment for
         # OUTPUT_DIRECTORY, so on a fresh checkout (no build/ yet) it fails
         # to create the nested "build/doxygen" and silently produces no XML.
         DOXYGEN_XML.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(["doxygen", "Doxyfile"], cwd=DOCS_DIR, check=True)
-    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
-        print(f"[conf.py] Doxygen skipped ({exc}); API pages will be empty.")
+        return True
+    except FileNotFoundError:
+        print(
+            "[conf.py] Doxygen skipped: the 'doxygen' binary is not on PATH. "
+            "API pages will be empty. `pip install -r requirements.txt` does "
+            "NOT install it (it isn't a Python package) — either "
+            "`conda activate cneta-docs` (installs it via environment.yml), "
+            "or install it yourself (`brew install doxygen` / "
+            "`apt install doxygen`) if you're on the venv/uv workflow."
+        )
+        return False
+    except subprocess.CalledProcessError as exc:
+        print(f"[conf.py] Doxygen failed ({exc}); API pages will be empty.")
+        return False
 
 
-_maybe_run_doxygen()
+# If Doxygen didn't run (not installed — e.g. the wrong conda env is active
+# — or it failed), there is no XML for Breathe to read. Breathe does not
+# degrade gracefully in that case: it raises breathe.file_state_cache.
+# MTimeError deep inside a parallel Sphinx worker, which surfaces as an
+# opaque SphinxParallelError and crashes the whole build. Dropping "breathe"
+# from the extension list instead means {doxygenfile} in api/cpp.md is just
+# an unrecognized directive — a normal (non-fatal outside `make strict`)
+# warning, and the rest of the site still builds.
+if not _maybe_run_doxygen():
+    extensions.remove("breathe")
