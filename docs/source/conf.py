@@ -95,7 +95,7 @@ myst_fence_as_directive = ["mermaid"]
 
 # Values usable in pages as {{ repo_url }} etc.
 myst_substitutions = {
-    "repo_url": "https://github.com/ORG/REPO",  # TODO: set to the real repo
+    "repo_url": "https://github.com/lu-cbio-group/cneta2",
 }
 
 # ---------------------------------------------------------------------------
@@ -112,10 +112,13 @@ html_theme_options = {
 html_static_path = ["_static"]
 html_title = f"{project} {release}"
 
-# TODO: set once GitHub Pages is live, e.g.
-#   https://ORG.github.io/REPO/
 # Used for canonical links and sitemap generation.
-html_baseurl = os.environ.get("DOCS_BASEURL", "")
+html_baseurl = os.environ.get("DOCS_BASEURL", "https://lu-cbio-group.github.io/cneta2/")
+
+# sphinx-not-found-page settings
+# for more, see https://sphinx-notfound-page.readthedocs.io/en/latest/configuration.html
+notfound_urls_prefix=None
+
 
 # ---------------------------------------------------------------------------
 # C++ API (Doxygen + Breathe)
