@@ -62,9 +62,11 @@ nitpick_ignore_regex = [
     # {doxygenfile}/{doxygenstruct} directive yet (e.g. a struct defined in
     # a header not shown in api/cpp.md). Doxygen's mangled anchor names are
     # distinctive enough to target narrowly: `..._8hpp`/`..._8cpp` for files,
-    # `struct_...`/`class_...` for types.
+    # `struct...`/`class...` for types (CASE_SENSE_NAMES=YES in Doxyfile
+    # means no underscore directly after the struct/class keyword, e.g.
+    # "structCN__CHANGE" rather than "struct_c_n___c_h_a_n_g_e").
     ("std:ref", r".*_8[a-z]+$"),
-    ("std:ref", r"^(struct|class)_.*"),
+    ("std:ref", r"^(struct|class).*"),
 ]
 
 # ---------------------------------------------------------------------------

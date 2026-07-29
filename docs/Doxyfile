@@ -23,6 +23,12 @@ XML_OUTPUT             = xml
 GENERATE_HTML          = NO
 GENERATE_LATEX         = NO
 
+# CASE_SENSE_NAMES defaults to YES on Linux (case-sensitive filesystems) but
+# NO on macOS/Windows, which changes how compound names are mangled into
+# anchor/file names (e.g. "structCN__CHANGE" vs "struct_c_n___c_h_a_n_g_e").
+# Pinned so local builds match CI exactly instead of only failing there.
+CASE_SENSE_NAMES       = YES
+
 # Permissive for now: the sources carry few Doxygen comments, so EXTRACT_ALL
 # still yields a usable structural reference. Switch to NO once the headers
 # destined for libcneta are properly commented, so that undocumented internals
