@@ -1,0 +1,33 @@
+# Conda environment for building the CNETA documentation.
+#
+#   conda env create -f docs/environment.yml
+#   conda activate cneta-docs
+#   make -C docs live
+#
+# Layering:
+#   * conda provides what pip cannot — the doxygen and graphviz *binaries*,
+#     a pinned Python, and make.
+#   * every Python package comes from docs/requirements.txt, which is the
+#     single source of truth shared with the venv/uv workflows.
+#
+# The same file is used by .github/workflows/docs.yml, so local and CI
+# builds stay in step.
+name: cneta-docs
+
+channels:
+  - conda-forge
+
+dependencies:
+  # --- non-Python tooling -------------------------------------------------
+  - python=3.12
+  - make
+  - doxygen
+  - graphviz
+
+  # --- Python packages ----------------------------------------------------
+  - pip
+  - pip:
+      # Path is resolved relative to this file. If your conda version
+      # complains, run `conda env create -f environment.yml` from inside
+      # docs/ instead.
+      - -r requirements.txt

@@ -1,0 +1,86 @@
+name: docs
+
+# Trigger model (GitLab equivalent in brackets):
+#   pull_request  → build only, no deploy   [merge_request_event rule]
+#   push to main  → build and publish       [only: main]
+# A merged pull request *is* a push to main, so publication happens exactly
+# once per merge. Deploying from `pull_request` is deliberately avoided: on a
+# public repository that event runs with a read-only token for forks.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'code/**'
+      - '.github/workflows/docs.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'code/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+# Read-only by default; the deploy job widens permissions for itself only.
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  # Cancel superseded PR builds, but never interrupt a deploy to main.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The cache key must cover requirements.txt as well as environment.yml.
+      # By default the cache is keyed on the environment file alone, so a new
+      # package added to requirements.txt would restore a stale environment
+      # and the build would fail with a missing extension.
+      - name: Set up conda environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: docs/environment.yml
+          cache-environment: true
+          cache-environment-key: >-
+            docs-${{ runner.os }}-${{ hashFiles('docs/environment.yml',
+            'docs/requirements.txt') }}
+
+      # `bash -el {0}` is required: without a login shell the conda
+      # environment is not on PATH and sphinx-build is not found.
+      - name: Build documentation (strict)
+        shell: bash -el {0}
+        run: make -C docs api strict
+
+      # Reviewers can download this from the checks tab of the pull request
+      # and open index.html locally — the stand-in for a hosted PR preview.
+      - name: Upload built site as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-docs
+          path: docs/build/html
+          retention-days: 7
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/build/html
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

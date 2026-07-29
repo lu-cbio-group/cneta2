@@ -1,0 +1,43 @@
+# Python dependencies for the CNETA documentation site.
+#
+# Single source of truth: docs/environment.yml pulls this file in via pip,
+# so conda, venv, and uv workflows all install the same set.
+#
+#   conda:  conda env create -f docs/environment.yml
+#   venv:   python -m venv .venv && . .venv/bin/activate
+#           pip install -r docs/requirements.txt
+#   uv:     uv venv && uv pip install -r docs/requirements.txt
+#
+# Non-Python dependencies (doxygen, graphviz) are NOT listed here — see
+# environment.yml, or install them with your system package manager.
+
+# --- core -----------------------------------------------------------------
+sphinx
+sphinx-rtd-theme
+
+# --- Markdown authoring ---------------------------------------------------
+myst-parser
+linkify-it-py          # required by the myst "linkify" extension
+
+# --- diagrams -------------------------------------------------------------
+sphinxcontrib-mermaid
+
+# --- C++ API generation ---------------------------------------------------
+breathe                # renders Doxygen XML into Sphinx pages
+
+# --- authoring convenience ------------------------------------------------
+sphinx-autobuild       # `make live`
+sphinx-copybutton      # copy button on code blocks
+
+# --- optional extras ------------------------------------------------------
+# Uncomment as needed; each one also needs adding to `extensions` in conf.py.
+#
+sphinx-design            # cards, grids, dropdowns — used by the tab-sets in
+                          # developer-guide/documentation.md
+# sphinx-tabs           # tabbed content (e.g. macOS / Linux / HPC install)
+# sphinx-togglebutton   # collapsible admonitions
+# sphinx-notfound-page  # correct 404 page for a project served under /REPO/
+# sphinx-sitemap        # sitemap.xml; requires html_baseurl to be set
+#
+# Python API docs, once bindings/ exists:
+# sphinx-autoapi

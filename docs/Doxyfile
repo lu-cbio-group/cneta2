@@ -1,0 +1,36 @@
+# Minimal Doxyfile for CNETA.
+#
+# Only XML output is generated; Breathe turns it into Sphinx pages.
+# Regenerate with:  make -C docs api
+#
+# Full reference: run `doxygen -g` for a commented default file.
+
+PROJECT_NAME           = "CNETA"
+PROJECT_BRIEF          = "Copy-number evolution tree analysis"
+OUTPUT_DIRECTORY       = build/doxygen
+
+INPUT                  = ../code
+FILE_PATTERNS          = *.hpp *.cpp
+RECURSIVE              = YES
+
+# Vendored third-party code - not part of the CNETA API.
+EXCLUDE                = ../code/gzstream \
+                         ../code/lbfgsb \
+                         ../code/matexp
+
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+GENERATE_HTML          = NO
+GENERATE_LATEX         = NO
+
+# Permissive for now: the sources carry few Doxygen comments, so EXTRACT_ALL
+# still yields a usable structural reference. Switch to NO once the headers
+# destined for libcneta are properly commented, so that undocumented internals
+# stop appearing in the public API pages.
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = NO
+HIDE_UNDOC_MEMBERS     = NO
+
+JAVADOC_AUTOBRIEF      = YES
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
