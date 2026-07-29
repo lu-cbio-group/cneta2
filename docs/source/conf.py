@@ -40,7 +40,6 @@ extensions = [
     "breathe",                  # C++ API via Doxygen XML
     "sphinx_copybutton",        # copy button on code blocks
     "sphinx_design",            # tab-sets used in developer-guide/documentation.md
-    "sphinx-tabs",              # tabbed content (e.g. macOS / Linux / HPC install)
     "sphinx-togglebutton",      # collapsible admonitions
     "sphinx-notfound-page",     # correct 404 page for a project served under /REPO/
     "sphinx-sitemap",           # sitemap.xml; requires html_baseurl to be set
