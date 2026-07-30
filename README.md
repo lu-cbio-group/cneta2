@@ -385,26 +385,30 @@ The output can be analyzed by [RWTY](https://github.com/danlwarren/RWTY). Please
 # Contributing to the documentation
 
 The `docs/` directory contains the Sphinx/MyST documentation site, built
-and deployed to GitHub Pages via `.github/workflows/docs.yml`. This
-section is a stopgap so you don't need a working docs build just to find
-out how to get one — the full authoring guide already lives at
-`docs/source/developer-guide/documentation.md`, and this content will
+and deployed to GitHub Pages via `.github/workflows/docs.yml`. 
+
+This is a temporary section, some guidance on contributing to the docs are 
+already part of the live docs. Those notes live at 
+`docs/source/developer-guide/documentation.md`, and the README content will
 eventually move into the Sphinx site itself rather than living here.
 
 ## Development workflow
 
 1. **Create a branch** from `main` for your change (see
    [Working with git branches](#working-with-git-branches)).
+
 2. **Make your changes** and check them locally (see
    [Building and previewing documentation](#building-and-previewing-documentation)).
+
 3. **Open a pull request** into `main`. The `docs / build` check runs
    automatically — `make strict` locally is the same check, so if it
    passes for you, CI will pass too. Get it reviewed if the change
    warrants it, then merge.
+
 4. Once merged, the docs site rebuilds and redeploys automatically.
 
-(We'll start linking branches/PRs to issues once the team adopts issue
-tracking — for now, just branch and go.)
+We can start linking branches/PRs to issues once the team adopts issue
+tracking — for now, just branch and go.
 
 ## Setting up a local development environment
 
@@ -415,6 +419,8 @@ cd cneta2/docs
 conda env create -f environment.yml
 conda activate cneta-docs
 ```
+
+## Updating an existing local development environment
 
 If you already have the environment from an earlier checkout, update it
 rather than recreating it (`--prune` removes packages dropped from
@@ -429,7 +435,7 @@ Not using conda? `docs/requirements.txt` is the single source of truth for
 the Python packages either way — see the venv/uv instructions in
 `docs/source/developer-guide/documentation.md`. You will additionally need
 `doxygen` and `graphviz` from your system package manager
-(`brew install doxygen graphviz` / `apt install doxygen graphviz`), since
+(e.g. `brew install doxygen graphviz` / `apt install doxygen graphviz`), since
 those aren't Python packages and conda is the only workflow here that
 installs them for you automatically.
 
@@ -454,7 +460,7 @@ git commit -m "Brief description of your changes"
 git push -u origin <branch-name>
 ```
 
-Then open a pull request into `main` on GitHub.
+Then open a pull request into `main` on GitHub. You can use your prefered GUI git program as well.
 
 ## Project structure
 
@@ -499,7 +505,7 @@ diagrams). The full authoring guide, including how to add a page, add a
 dependency, and write Mermaid diagrams so they render both here and on
 GitHub, is at `docs/source/developer-guide/documentation.md`.
 
-## CI/CD
+## CI/CD pipeline
 
 `.github/workflows/docs.yml` builds the docs on every pull request into
 `main` (posting a downloadable HTML artifact as a PR-preview stand-in,
