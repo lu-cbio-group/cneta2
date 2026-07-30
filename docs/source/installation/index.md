@@ -27,6 +27,8 @@ see [Utility scripts](../user-guide/utility-scripts.md).
 
 ## Building from source
 
+Clone the repository:
+
 ```bash
 git clone https://github.com/lu-cbio-group/cneta2.git
 cd cneta2/code
@@ -62,15 +64,17 @@ against Eureka2's HPC module environment (HPC tab).
 
 :::{tab-item} HPC
 
-No sudo needed — dependencies are provided as environment modules.
-`./build.sh <cluster> <cores>` sources `code/envs/setup_env_<cluster>.sh`
-for you automatically; no need to source it yourself first.
+On most High Performance Clusters dependencies are provided as environment modules.
+The build script, `./build.sh <cluster> <cores>`, sources `code/envs/setup_env_<cluster>.sh`
+and loads the modules for you automatically; no need to source it yourself first.
+
+Once your `code/envs/setup_env_<cluster>.sh` script exists, you can build the code like so:
 
 ```bash
 ./build.sh Eureka2 <cores>
 ```
 
-Eureka2 is the currently-supported example; it loads this module set:
+Eureka2, local CPU cluster at Surrey serves as an example here. The script loads this module set:
 
 ```text
 GCC/13.3.0
@@ -87,15 +91,18 @@ conventions for `sbatch`/`srun`) — not yet documented here.
 :::
 ::::
 
-`build.sh` configures an out-of-source CMake build in `code/build/`. The
-three executables (`cnets`, `cnetml`, `cnetmcmc`) land directly in
-`code/build/`.
+`build.sh` configures a CMake build in `code/build/`. The three executables 
+(`cnets`, `cnetml`, `cnetmcmc`) land directly in `code/build/`.
 
 Other `build.sh` usage:
 
 ```bash
-./build.sh              # no arguments: show help
-./build.sh clean         # remove code/build/
+./build.sh              # no arguments: shows help
+```
+
+
+```bash
+./build.sh clean         # removes code/build/
 ```
 
 ## Containers
