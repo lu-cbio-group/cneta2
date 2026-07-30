@@ -380,3 +380,134 @@ The output can be analyzed by [RWTY](https://github.com/danlwarren/RWTY). Please
 *.p can be imported into [Tracer](https://beast.community/tracer) to check the convergence of the chains.
 
 *.t can be analyzed by [TreeAnnotator](https://beast.community/treeannotator) to get a summary tree (maximum credibility tree).
+
+
+# Contributing to the documentation
+
+The `docs/` directory contains the Sphinx/MyST documentation site, built
+and deployed to GitHub Pages via `.github/workflows/docs.yml`. 
+
+This is a temporary section, some guidance on contributing to the docs are 
+already part of the live docs. Those notes live at 
+`docs/source/developer-guide/documentation.md`, and the README content will
+eventually move into the Sphinx site itself rather than living here.
+
+## Development workflow
+
+1. **Create a branch** from `main` for your change (see
+   [Working with git branches](#working-with-git-branches)).
+
+2. **Make your changes** and check them locally (see
+   [Building and previewing documentation](#building-and-previewing-documentation)).
+
+3. **Open a pull request** into `main`. The `docs / build` check runs
+   automatically — `make strict` locally is the same check, so if it
+   passes for you, CI will pass too. Get it reviewed if the change
+   warrants it, then merge.
+
+4. Once merged, the docs site rebuilds and redeploys automatically.
+
+We can start linking branches/PRs to issues once the team adopts issue
+tracking — for now, just branch and go.
+
+## Setting up a local development environment
+
+```bash
+git clone https://github.com/lu-cbio-group/cneta2.git
+cd cneta2/docs
+
+conda env create -f environment.yml
+conda activate cneta-docs
+```
+
+## Updating an existing local development environment
+
+If you already have the environment from an earlier checkout, update it
+rather than recreating it (`--prune` removes packages dropped from
+`requirements.txt`, not just adds new ones):
+
+```bash
+conda env update -f environment.yml --prune
+conda activate cneta-docs
+```
+
+Not using conda? `docs/requirements.txt` is the single source of truth for
+the Python packages either way — see the venv/uv instructions in
+`docs/source/developer-guide/documentation.md`. You will additionally need
+`doxygen` and `graphviz` from your system package manager
+(e.g. `brew install doxygen graphviz` / `apt install doxygen graphviz`), since
+those aren't Python packages and conda is the only workflow here that
+installs them for you automatically.
+
+## Working with git branches
+
+**Recommended naming**: a short, descriptive name, e.g.
+`fix-cnetml-options-page` or `add-slurm-tutorial`.
+
+```bash
+# Create and switch to a new branch
+git checkout -b <branch-name>
+
+# ... make your changes ...
+
+git status                             # see what changed
+git add docs/source/path/to/file.md    # add specific files — avoid `git
+                                        # add .`, it's easy to sweep in
+                                        # docs/build/ output or unrelated
+                                        # local files by accident
+git diff --staged                      # review what will actually commit
+git commit -m "Brief description of your changes"
+git push -u origin <branch-name>
+```
+
+Then open a pull request into `main` on GitHub. You can use your prefered GUI git program as well.
+
+## Project structure
+
+- **`docs/source/`** — documentation source files (Markdown, MyST flavour)
+  - **`docs/source/index.md`** — homepage and root `toctree`
+  - **`docs/source/<section>/`** — pages grouped by topic (`installation/`,
+    `user-guide/`, `developer-guide/`, ...)
+  - **`docs/source/conf.py`** — Sphinx configuration
+  - **`docs/source/_static/`** — static assets
+- **`docs/build/`** — generated HTML/Doxygen XML (gitignored, not committed)
+- **`docs/Makefile`** — build automation (see below)
+- **`docs/environment.yml`**, **`docs/requirements.txt`** — conda/pip
+  dependencies; `requirements.txt` is the single source of truth, pulled in
+  by `environment.yml` via pip
+- **`docs/Doxyfile`** — Doxygen config for the C++ API pages
+- **`.github/workflows/docs.yml`** — CI: builds on every pull request,
+  deploys to GitHub Pages on merge to `main`
+
+New pages must be added to a `toctree` in their section's `index.md` to
+appear in the site navigation — an unlisted page triggers a warning, which
+fails `make strict`.
+
+## Building and previewing documentation
+
+```bash
+make live      # live-reload preview at http://localhost:8080 — use this
+               # while actively editing
+make html      # one-off build into docs/build/html
+make serve     # serve the already-built docs/build/html, no rebuild
+make strict    # nitpicky + warnings-as-errors — this is what CI runs;
+               # if it passes locally, CI will pass
+make api       # regenerate the C++ API pages from Doxygen comments
+make linkcheck # check external links (best on campus/VPN)
+make clean     # remove docs/build/
+```
+
+## Writing documentation
+
+Pages are Markdown (MyST), not reStructuredText — plain Markdown works,
+plus a few MyST extras (admonitions, definition lists, math, Mermaid
+diagrams). The full authoring guide, including how to add a page, add a
+dependency, and write Mermaid diagrams so they render both here and on
+GitHub, is at `docs/source/developer-guide/documentation.md`.
+
+## CI/CD pipeline
+
+`.github/workflows/docs.yml` builds the docs on every pull request into
+`main` (posting a downloadable HTML artifact as a PR-preview stand-in,
+since GitHub Pages has no per-PR preview environment), and deploys to
+GitHub Pages on every push to `main`.
