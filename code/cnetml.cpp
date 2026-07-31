@@ -1032,7 +1032,8 @@ void write_run_summary(ostream& out, const evo_tree& tree, int mode, const LNL_T
     out << "cn_type\t" << lnl_type.cn_type << "\n";
     out << "constrained\t" << lnl_type.cons << "\n";
     out << "estmu\t" << opt_type.estmu << "\n";
-    out << "rlc_lambda\t" << (bsr_mode == 3 ? report_double(opt_type.rlc_lambda) : "NA") << "\n";
+
+    out << "rlc_criterion\t" << (bsr_mode == 3 ? (opt_type.rlc_criterion == 0 ? "AIC" : "BIC") : "NA") << "\n";
     out << "raw_logL\t" << report_double(raw_logL) << "\n";
     out << "penalized_score\t" << report_double(penalized_score) << "\n";
     out << "K_shift_edges\t" << (bsr_mode == 3 ? to_string(shift_eids.size()) : "NA") << "\n";
@@ -1451,7 +1452,7 @@ void maximize_tree_likelihood(evo_tree& tree, int num_total_bins, const string& 
             cout << "[TIME] BFGS outer iteration " << outer_iter << " starts\n";
             TimePoint t_iter_start = now();
             nlnl = MAX_NLNL;
-            optimize_tree_by_bsr_mode(tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl, debug);
+            optimize_tree_by_bsr_mode(r, tree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nlnl, debug);
             TimePoint t_iter_end = now();
             cout << "[TIME] BFGS outer iteration " << outer_iter
                  << " took " << elapsed_seconds(t_iter_start, t_iter_end)
@@ -1634,8 +1635,8 @@ int main(int argc, char** const argv){
     int nstate; // number of states in the model, used in likelihood computation
 
     double scale_tobs;  // scaling factor for input times, used in likelihood computation when branch length is constrained by sampling time
-    double rlc_lambda;  // penalty per shift edge for bsr_mode=3 ML-RLC
-    int rlc_search_method;  // outer search for bsr_mode=3 ML-RLC shift edges (0: stepwise greedy, 1: genetic algorithm [not yet implemented])
+    int rlc_search_method;  // outer search for bsr_mode=3 ML-RLC shift edges (0: exhaustive search, 1: stepwise greedy [default], 2: genetic algorithm [not yet implemented])
+    int rlc_criterion;  // model-selection criterion for bsr_mode=3 ML-RLC (0: AIC, 1: BIC)
 
     /********* derived from input ***********/
     map<int, vector<vector<int>>> vobs;   // CNP for each site, grouped by chr
@@ -1756,8 +1757,8 @@ int main(int argc, char** const argv){
     ("chr_gain_rate", po::value<double>(&chr_gain_rate)->default_value(0), "chromosome gain rate")
     ("chr_loss_rate", po::value<double>(&chr_loss_rate)->default_value(0), "chromosome loss rate")
     ("wgd_rate", po::value<double>(&wgd_rate)->default_value(0), "WGD (whole genome doubling) rate")
-    ("rlc_lambda", po::value<double>(&rlc_lambda)->default_value(1.0), "penalty per shift edge for bsr_mode=3 ML-RLC; score = logL - rlc_lambda*K (higher = sparser clock)")
-    ("rlc_search_method", po::value<int>(&rlc_search_method)->default_value(0), "outer search for bsr_mode=3 ML-RLC shift edges (0: stepwise greedy search, 1: genetic algorithm [not yet implemented])")
+    ("rlc_search_method", po::value<int>(&rlc_search_method)->default_value(1), "outer search for bsr_mode=3 ML-RLC shift edges (0: exhaustive search over all shift-edge subsets [small trees only], 1: stepwise greedy search [default], 2: genetic algorithm [not yet implemented])")
+    ("rlc_criterion", po::value<int>(&rlc_criterion)->default_value(0), "model-selection criterion for bsr_mode=3 ML-RLC shift-edge search (0: AIC, 1: BIC)")
 
     ("verbose", po::value<int>(&debug)->default_value(0), "verbose level (0: default, 1: debug)")
     ("seed", po::value<unsigned>(&seed)->default_value(0), "seed used for generating random numbers")
@@ -1799,12 +1800,17 @@ int main(int argc, char** const argv){
         cerr << "Error: bsr_mode=" << bsr_mode << " is not compatible with mode=" << mode << "." << endl;
         exit(EXIT_FAILURE);
     }
-    if(rlc_search_method != 0 && rlc_search_method != 1){
-        cerr << "Error: unknown rlc_search_method=" << rlc_search_method << " (0: stepwise greedy search, 1: genetic algorithm)." << endl;
+    if(rlc_search_method != 0 && rlc_search_method != 1 && rlc_search_method != 2){
+        cerr << "Error: unknown rlc_search_method=" << rlc_search_method << " (0: exhaustive search, 1: stepwise greedy search, 2: genetic algorithm)." << endl;
         exit(EXIT_FAILURE);
     }
-    if(rlc_search_method == 1){
-        cerr << "Error: rlc_search_method=1 (genetic algorithm) is not implemented yet." << endl;
+    if(rlc_search_method == 2){
+        cerr << "Error: rlc_search_method=2 (genetic algorithm) is not implemented yet." << endl;
+        exit(EXIT_FAILURE);
+    }
+    // [2026-07-21 added]
+    if(rlc_criterion != 0 && rlc_criterion != 1){
+        cerr << "Error: unknown rlc_criterion=" << rlc_criterion << " (0: AIC, 1: BIC)." << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -1938,7 +1944,15 @@ int main(int argc, char** const argv){
     max_tobs = *max_element(tobs.begin(), tobs.end());
     // a list of nodes to loop over for bottom-up likelihood computation, and the root is last
     vector<int> knodes(Ns, 0);
-    lnl_type = {model, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, cn_type, knodes};
+    // [2026-07-30 changed] "n" in AIC/BIC for bsr_mode=3 (see compute_rlc_ic in
+    // optimization.hpp) is the number of independently informative sites backing logL:
+    // Nchar. num_invar_bins is excluded even when correct_bias=1 -- those bins contribute
+    // one repeated correction term (num_invar_bins*lnl_invar), not num_invar_bins genuinely
+    // independent observations, so counting them toward n overstated BIC's per-parameter
+    // penalty (log(n) too large, biasing the search toward fewer shift edges than
+    // warranted). Previously n_sites_for_ic = correct_bias ? (num_invar_bins + Nchar) : Nchar.
+    int n_sites_for_ic = Nchar;
+    lnl_type = {model, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, n_sites_for_ic, cn_type, knodes};
     // important variables for independent Markov chains model
     obs_decomp = {m_max, max_wgd_sample, max_chr_change, max_site_change};
 
@@ -1951,8 +1965,8 @@ int main(int argc, char** const argv){
     opt_type.tobs = tobs;
     opt_type.scale_tobs = scale_tobs;
     opt_type.rlc_shift_eids = {};
-    opt_type.rlc_lambda = rlc_lambda;
     opt_type.rlc_search_method = rlc_search_method;
+    opt_type.rlc_criterion = rlc_criterion;
     opt_type.rlc_raw_logL = std::numeric_limits<double>::quiet_NaN();
     opt_type.rlc_penalized_score = std::numeric_limits<double>::quiet_NaN();
 

@@ -426,7 +426,7 @@ void evo_tree::init_edge_rates(const RateSet& global) {
 
 // [2026-07-14 added] see declaration in evo_tree.hpp.
 bool evo_tree::is_normal_sample_edge(int eid) const {
-  return edges[eid].start == nleaf - 1 || edges[eid].end == nleaf - 1;
+  return edges[eid].end == nleaf - 1;
 }
 
 // Return a vector of rates for the specified edge, in the order: dup, del, chr_gain, chr_loss, wgd.

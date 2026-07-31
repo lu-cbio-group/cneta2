@@ -921,10 +921,8 @@ void update_variables(evo_tree& rtree, int model, int cons, int estmu, double *x
 }
 
 void update_tree_rates(LNL_TYPE & lnl_type, evo_tree & rtree, double *x, int nparams_est, int bsr_mode){
-    // [2026-07-14 added] this must never write the global reference rates when bsr_mode>0
-    // (they have to stay frozen — this exact call, unguarded, was today's root-cause bug).
-    // Fail loudly at the moment of the mistake instead of silently corrupting rates again
-    // if a future edit re-enables one of the disabled call sites elsewhere in this file.
+    // Global reference rates must stay frozen when bsr_mode>0; this assert fails loudly if a
+    // future edit re-enables one of the disabled call sites elsewhere in this file.
     assert(bsr_mode == 0);
     switch (lnl_type.cn_type)
     {
@@ -1564,10 +1562,8 @@ void set_param(int offset, double value, int nparams_est, double* variables, dou
 }
 
 void set_tree_rates(int cn_type, evo_tree &rtree, int nparams_est, double* variables, double* lower_bound, double* upper_bound, int bsr_mode){
-    // [2026-07-14 added] this must never seed the global reference rates as free BFGS
-    // variables when bsr_mode>0 (they have to stay frozen — this exact call, unguarded,
-    // was today's root-cause bug). Fail loudly at the moment of the mistake instead of
-    // silently corrupting rates again if a future edit re-enables one of the disabled
+    // Global reference rates must stay frozen when bsr_mode>0, never seeded as free BFGS
+    // variables; this assert fails loudly if a future edit re-enables one of the disabled
     // call sites elsewhere in this file.
     assert(bsr_mode == 0);
     switch (cn_type)
@@ -1687,7 +1683,7 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
 
     // [2026-07-14 disabled] nrates (5th arg) was always bsr_slots.size(), reserving ndim
     // space for the 5 global reference rates even when bsr_mode>0 (where estmu is forced
-    // 0 and nothing writes/reads those slots anymore after today's fix) — wasted, always-
+    // 0 and nothing writes/reads those slots anymore) — wasted, always-
     // [0,0]-bounded optimizer dimensions. nrates is only meaningful when estmu=1 (global
     // rates genuinely being estimated, which only happens for bsr_mode=0). See
     // docs/flowcharts.md.
@@ -1803,18 +1799,16 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
             int eid = active_eids[k];
             for(int t = 0; t < (int)bsr_slots.size(); t++){
                 auto& slot = bsr_slots[t];
-                double m_lower = MIN_MRATE / rtree.*(slot.tree_rate);
-                double m_upper = MAX_MRATE / rtree.*(slot.tree_rate);
                 double m = rtree.edge_rates[eid].*(slot.edge_field) / rtree.*(slot.tree_rate);
                 // [2026-07-14 disabled] see bsr_var_index in optimization.hpp
                 // int idx = nparams_est + k * n_types_per_edge + t + 1;
                 int idx = bsr_var_index(nparams_est, k, n_types_per_edge, t);
                 variables[idx]   = m;
-                lower_bound[idx] = m_lower;
-                upper_bound[idx] = m_upper;
+                lower_bound[idx] = M_MIN;
+                upper_bound[idx] = M_MAX;
             }
         }
-    } 
+    }
     // else if(opt_type.bsr_mode == 3){
     //     // RLC: one multiplier per shift edge. Use RLC_MULT bounds (not absolute rate bounds).
     //     // Warm-start at m=1.0 (no shift); stepwise outer loop provides a good starting point.
@@ -2019,11 +2013,12 @@ void stepwise_search_shift_edges(
     assert(opt_type.bsr_mode == 3);
     assert(opt_type.estmu == 0);
 
-    const double lambda       = opt_type.rlc_lambda;
+    const int criterion       = opt_type.rlc_criterion;  // 0=AIC, 1=BIC (see compute_rlc_ic)
+    const int n_sites         = lnl_type.n_sites_for_ic;
     const double eps          = 1e-6;  // small improvement threshold
     // [2026-07-14 added] number of independent parameters a shift edge unlocks (5 for
     // cn_type=ALL); the penalty must scale by this, not just by the number of edges.
-    // See rlc_penalized_score in optimization.hpp.
+    // See compute_rlc_ic in optimization.hpp.
     const int n_types_per_edge = (int)get_bsr_rate_slots(rtree, lnl_type.cn_type).size();
 
     // full candidate pool = all optimizable edges (excludes normal-sample edge)
@@ -2037,14 +2032,12 @@ void stepwise_search_shift_edges(
     double cur_nlnl = MAX_NLNL;
     max_likelihood_BFGS(cur_tree, vobs, vobs_change, obs_decomp, comps,
                         lnl_type, cur_opt, cur_nlnl, debug);
-    // [2026-07-14 disabled] penalty charged per shift edge, not per unlocked parameter —
-    // see rlc_penalized_score in optimization.hpp. K=0 here so this specific line was
-    // numerically harmless, but kept consistent with the other 3 call sites below.
-    // double cur_score = -cur_nlnl - lambda * 0.0;
-    double cur_score = rlc_penalized_score(cur_nlnl, 0, lambda, n_types_per_edge);
+    RlcIC cur_ic = compute_rlc_ic(cur_nlnl, 0, n_types_per_edge, n_sites, criterion);
+    double cur_score = cur_ic.score;
 
     if(debug)
         cout << "[RLC] K=0 baseline: nlnl=" << cur_nlnl
+             << " raw_logL=" << cur_ic.raw_logL << " AIC=" << cur_ic.aic << " BIC=" << cur_ic.bic
              << " score=" << cur_score << endl;
 
     // ----- start here: original code ----- //
@@ -2157,6 +2150,8 @@ void stepwise_search_shift_edges(
         vector<char> evaluated(ncand, 0);
         vector<double> candidate_scores(ncand, -MAX_NLNL);
         vector<double> candidate_nlnls(ncand, MAX_NLNL);
+        vector<double> candidate_aics(ncand, MAX_NLNL);
+        vector<double> candidate_bics(ncand, MAX_NLNL);
         vector<evo_tree> candidate_trees(ncand, cur_tree);
         vector<OPT_TYPE> candidate_opts(ncand, cur_opt);
 
@@ -2199,15 +2194,15 @@ void stepwise_search_shift_edges(
             max_likelihood_BFGS(cand_tree, vobs, vobs_change, obs_decomp, comps,
                                 cand_lnl_type, cand_opt, cand_nlnl, 0);
 
-            // [2026-07-14 disabled] see rlc_penalized_score in optimization.hpp — penalty
-            // must scale by parameters unlocked (n_types_per_edge per edge), not edges.
-            // double cand_score = -cand_nlnl - lambda * (double)cand_shifts.size();
-            double cand_score = rlc_penalized_score(cand_nlnl, (int)cand_shifts.size(), lambda, n_types_per_edge);
+            RlcIC cand_ic = compute_rlc_ic(cand_nlnl, (int)cand_shifts.size(), n_types_per_edge, n_sites, criterion);
+            double cand_score = cand_ic.score;
 
             // Each thread writes only to its own index.
             evaluated[i]        = 1;
             candidate_scores[i] = cand_score;
             candidate_nlnls[i]  = cand_nlnl;
+            candidate_aics[i]   = cand_ic.aic;
+            candidate_bics[i]   = cand_ic.bic;
             candidate_trees[i]  = std::move(cand_tree);
             candidate_opts[i]   = std::move(cand_opt);
         }
@@ -2224,6 +2219,8 @@ void stepwise_search_shift_edges(
             cout << "[RLC] candidate eid=" << all_candidates[i]
                  << " K=" << cur_opt.rlc_shift_eids.size() + 1
                  << " nlnl=" << candidate_nlnls[i]
+                 << " AIC=" << candidate_aics[i]
+                 << " BIC=" << candidate_bics[i]
                  << " score=" << candidate_scores[i] << endl;
         }
 
@@ -2285,6 +2282,8 @@ void stepwise_search_shift_edges(
             vector<char> remove_evaluated(nshift, 0);
             vector<double> remove_scores(nshift, -MAX_NLNL);
             vector<double> remove_nlnls(nshift, MAX_NLNL);
+            vector<double> remove_aics(nshift, MAX_NLNL);
+            vector<double> remove_bics(nshift, MAX_NLNL);
             vector<evo_tree> remove_trees(nshift, cur_tree);
             vector<OPT_TYPE> remove_opts(nshift, cur_opt);
 
@@ -2313,14 +2312,14 @@ void stepwise_search_shift_edges(
             max_likelihood_BFGS(try_tree, vobs, vobs_change, obs_decomp, comps,
                                 try_lnl_type, try_opt, try_nlnl, 0);
 
-            // [2026-07-14 disabled] see rlc_penalized_score in optimization.hpp — penalty
-            // must scale by parameters unlocked (n_types_per_edge per edge), not edges.
-            // double try_score = -try_nlnl - lambda * (double)try_shifts.size();
-            double try_score = rlc_penalized_score(try_nlnl, (int)try_shifts.size(), lambda, n_types_per_edge);
+            RlcIC try_ic = compute_rlc_ic(try_nlnl, (int)try_shifts.size(), n_types_per_edge, n_sites, criterion);
+            double try_score = try_ic.score;
 
             remove_evaluated[k] = 1;
             remove_scores[k]    = try_score;
             remove_nlnls[k]     = try_nlnl;
+            remove_aics[k]      = try_ic.aic;
+            remove_bics[k]      = try_ic.bic;
             remove_trees[k]     = std::move(try_tree);
             remove_opts[k]      = std::move(try_opt);
         }
@@ -2336,6 +2335,8 @@ void stepwise_search_shift_edges(
             cout << "[RLC] backward candidate remove_eid=" << current_shifts[k]
                  << " K=" << nshift - 1
                  << " nlnl=" << remove_nlnls[k]
+                 << " AIC=" << remove_aics[k]
+                 << " BIC=" << remove_bics[k]
                  << " score=" << remove_scores[k] << endl;
         }
 
@@ -2393,18 +2394,16 @@ void stepwise_search_shift_edges(
 
 
     // write back final results
-    // For bsr_mode=3, tree comparisons use penalized score = logL - lambda*K.
-    // rtree.score holds the penalized score (larger = better).
-    // min_nlnl holds -(penalized_score) so minimizing min_nlnl = maximizing penalized score.
+    // For bsr_mode=3, tree comparisons use the AIC/BIC score from compute_rlc_ic (per
+    // opt_type.rlc_criterion). rtree.score holds that score (larger = better).
+    // min_nlnl holds -(score) so minimizing min_nlnl = maximizing score.
     rtree                   = cur_tree;
     opt_type.rlc_shift_eids = cur_opt.rlc_shift_eids;
 
     int K = (int)opt_type.rlc_shift_eids.size();
-    double raw_logL        = -cur_nlnl;
-    // [2026-07-14 disabled] see rlc_penalized_score in optimization.hpp — penalty must
-    // scale by parameters unlocked (n_types_per_edge per edge), not edges.
-    // double penalized_score = raw_logL - lambda * K;
-    double penalized_score = rlc_penalized_score(cur_nlnl, K, lambda, n_types_per_edge);
+    RlcIC final_ic = compute_rlc_ic(cur_nlnl, K, n_types_per_edge, n_sites, criterion);
+    double raw_logL        = final_ic.raw_logL;
+    double penalized_score = final_ic.score;
 
     opt_type.rlc_raw_logL = raw_logL;
     opt_type.rlc_penalized_score = penalized_score;
@@ -2417,13 +2416,30 @@ void stepwise_search_shift_edges(
     cout << "[RLC] final: K=" << K << " shift_eids=[ ";
     for(int s : opt_type.rlc_shift_eids) cout << s << " ";
     cout << "] raw_logL=" << raw_logL
-         << " penalized_score=" << penalized_score << endl;
+         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic
+         << " score=" << penalized_score << endl;
 }
 
 
-// Not yet implemented: placeholder so opt_type.rlc_search_method=1 can be wired up
-// and tested end-to-end before the GA itself is written. Must not be selected yet.
+// One candidate solution: which candidate edges (indices into all_candidates,
+// not raw eids) are shift edges. vector<char> rather than vector<bool> because
+// population evaluation will run under #pragma omp parallel for (like
+// stepwise_search_shift_edges), and vector<bool>'s bit-packed storage is not
+// safe to write concurrently at different indices.
+struct GaIndividual {
+    vector<char> genes;              // genes[i]=1 means all_candidates[i] is a shift edge
+    double nlnl  = MAX_NLNL;
+    double score = -MAX_NLNL;
+    double aic   = MAX_NLNL;  // [2026-07-21 added] reported alongside score/bic, not used for selection
+    double bic   = MAX_NLNL;  // [2026-07-21 added] reported alongside score/aic, not used for selection
+};
+
+// Genetic-algorithm search for shift edges under bsr_mode=3 (ML-RLC). Chromosome =
+// one bit per candidate edge (1 = shift edge). Roulette-wheel selection with elitism,
+// uniform crossover, bit-flip mutation; terminates on max generations or a no-improvement
+// streak. Not yet validated against stepwise_search_shift_edges on real data.
 void genetic_search_shift_edges(
+    gsl_rng* r,
     evo_tree& rtree,
     const map<int, vector<vector<int>>>& vobs,
     const map<int, vector<vector<CN_CHANGE>>>& vobs_change,
@@ -2434,12 +2450,419 @@ void genetic_search_shift_edges(
     double& min_nlnl,
     int debug)
 {
-    cerr << "Error: genetic_search_shift_edges (opt_type.rlc_search_method=1) is not implemented yet." << endl;
-    exit(EXIT_FAILURE);
+    vector<int> all_candidates = get_active_bsr_eids(rtree);
+    int ncand = (int)all_candidates.size();
+
+    const int criterion = opt_type.rlc_criterion;  // 0=AIC, 1=BIC (see compute_rlc_ic)
+    const int n_sites = lnl_type.n_sites_for_ic;
+    const int n_types_per_edge = (int)get_bsr_rate_slots(rtree, lnl_type.cn_type).size();
+
+    // Cache keyed by the raw gene pattern (e.g. "0010100..."), shared across the whole
+    // search: the same shift-edge combination can easily reappear across generations
+    // (elitism keeps it around, crossover/mutation can regenerate it by chance), and each
+    // miss costs a full BFGS run. Guarded by #pragma omp critical since evaluate() below
+    // runs inside #pragma omp parallel for.
+    struct GaCacheEntry { double nlnl, score, aic, bic; };
+    unordered_map<string, GaCacheEntry> score_cache;  // gene pattern -> cached result
+
+    // Fitness of one individual: decode its genes into a shift-edge set, warm-start
+    // that set's multipliers at 1.0 (same convention as stepwise_search_shift_edges),
+    // run BFGS from a fresh copy of the input rtree (not an evolving "current best"
+    // tree — unlike the stepwise search, each individual is an independent candidate
+    // solution, not an incremental extension of a shared one), and score it.
+    auto evaluate = [&](GaIndividual& indiv){
+        string key(indiv.genes.begin(), indiv.genes.end());
+
+        bool cache_hit = false;
+        #pragma omp critical(ga_score_cache)
+        {
+            auto it = score_cache.find(key);
+            if(it != score_cache.end()){
+                indiv.nlnl  = it->second.nlnl;
+                indiv.score = it->second.score;
+                indiv.aic   = it->second.aic;
+                indiv.bic   = it->second.bic;
+                cache_hit = true;
+            }
+        }
+        if(cache_hit) return;
+
+        vector<int> shift_eids;
+        for(int i = 0; i < ncand; ++i){
+            if(indiv.genes[i]) shift_eids.push_back(all_candidates[i]);
+        }
+
+        evo_tree cand_tree = rtree;
+        OPT_TYPE cand_opt  = opt_type;
+        LNL_TYPE cand_lnl_type = lnl_type;
+        cand_opt.rlc_shift_eids = shift_eids;
+
+        vector<RateSet> ones(shift_eids.size(), RateSet(1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+        update_edge_rates_rlc(cand_tree, shift_eids, ones);
+
+        double cand_nlnl = MAX_NLNL;
+        // debug off inside the parallel region below, same reasoning as stepwise_search_shift_edges
+        max_likelihood_BFGS(cand_tree, vobs, vobs_change, obs_decomp, comps,
+                            cand_lnl_type, cand_opt, cand_nlnl, 0);
+
+        RlcIC cand_ic = compute_rlc_ic(cand_nlnl, (int)shift_eids.size(), n_types_per_edge, n_sites, criterion);
+        indiv.nlnl  = cand_nlnl;
+        indiv.score = cand_ic.score;
+        indiv.aic   = cand_ic.aic;
+        indiv.bic   = cand_ic.bic;
+
+        #pragma omp critical(ga_score_cache)
+        {
+            score_cache[key] = {indiv.nlnl, indiv.score, indiv.aic, indiv.bic};
+        }
+    };
+
+    const int pop_size = 20;
+    const double p_init = 0.1;
+
+    vector<GaIndividual> population(pop_size);
+    for(auto& indiv : population){
+        indiv.genes.assign(ncand, 0);
+        for(int i = 0; i < ncand; ++i){
+            if(gsl_rng_uniform(r) < p_init) indiv.genes[i] = 1;
+        }
+    }
+
+    #pragma omp parallel for schedule(dynamic)
+    for(int p = 0; p < pop_size; ++p){
+        evaluate(population[p]);
+    }
+
+    if(debug){
+        for(int p = 0; p < pop_size; ++p){
+            int k = 0;
+            cout << "[GA init] indiv " << p << ": shift_eids=[ ";
+            for(int i = 0; i < ncand; ++i){
+                if(population[p].genes[i]){ cout << all_candidates[i] << " "; k++; }
+            }
+            cout << "] K=" << k
+                 << " nlnl=" << population[p].nlnl
+                 << " score=" << population[p].score << endl;
+        }
+    }
+
+    // Elites: the nelites best-scoring individuals bypass crossover/mutation entirely
+    // and are copied unchanged into the next generation, so the best solution found so
+    // far can never be lost to the stochastic steps below.
+    const int nelites = std::min(2, pop_size);
+    // Expected ~1 gene flips per individual, a standard GA default; guarded against
+    // ncand==0 (no candidate edges) to avoid a division by zero.
+    const double mutation_rate = (ncand > 0) ? (1.0 / ncand) : 0.0;
+    const double mate_prob     = 0.5;  // uniform crossover mixing probability
+    const int max_generation   = 30;
+    const int max_no_improve   = 10;
+    const double eps           = 1e-6;
+
+    auto by_score_desc = [](const GaIndividual& a, const GaIndividual& b){
+        return a.score > b.score;
+    };
+
+    // Roulette-wheel selection: builds a pop_size-long pool of parents to draw pairs from
+    // for crossover. Scores are shifted so the worst individual in pop gets a weight just
+    // above 0 (same rescaling idea as ga_roulette_wheel_selection in ga.c, which shifts by
+    // the minimum fitness when fitness can be negative — compute_rlc_ic's score here is
+    // always deeply negative, being the negated AIC/BIC value). The pool itself is not the
+    // next generation: elites (above) bypass it entirely.
+    auto select_parent_pool = [&](const vector<GaIndividual>& pop) -> vector<GaIndividual> {
+        int n = (int)pop.size();
+        double min_score = pop[0].score;
+        for(const auto& indiv : pop) min_score = std::min(min_score, indiv.score);
+
+        vector<double> weights(n);
+        double total_weight = 0;
+        for(int i = 0; i < n; ++i){
+            weights[i] = (pop[i].score - min_score) + 1e-6;
+            total_weight += weights[i];
+        }
+
+        vector<GaIndividual> pool;
+        pool.reserve(n);
+        for(int k = 0; k < n; ++k){
+            double target = gsl_rng_uniform(r) * total_weight;
+            double acc = 0;
+            int chosen = n - 1;
+            for(int i = 0; i < n; ++i){
+                acc += weights[i];
+                if(acc >= target){ chosen = i; break; }
+            }
+            pool.push_back(pop[chosen]);
+        }
+        return pool;
+    };
+
+    // Uniform crossover: child starts as a copy of parent 1, then each gene independently
+    // has probability mate_prob of being overwritten by parent 2's corresponding gene.
+    auto crossover = [&](const GaIndividual& p1, const GaIndividual& p2) -> GaIndividual {
+        GaIndividual child;
+        child.genes = p1.genes;
+        for(int i = 0; i < ncand; ++i){
+            if(gsl_rng_uniform(r) < mate_prob) child.genes[i] = p2.genes[i];
+        }
+        return child;
+    };
+
+    // Bit-flip mutation: each gene independently has probability mutation_rate of flipping.
+    auto mutate = [&](GaIndividual& indiv){
+        for(int i = 0; i < ncand; ++i){
+            if(gsl_rng_uniform(r) < mutation_rate) indiv.genes[i] = 1 - indiv.genes[i];
+        }
+    };
+
+    double best_score_so_far = -MAX_NLNL;
+    int n_no_improve = 0;
+
+    for(int gen = 0; gen < max_generation; ++gen){
+        std::sort(population.begin(), population.end(), by_score_desc);
+
+        double gen_best = population.front().score;
+        if(gen_best > best_score_so_far + eps){
+            best_score_so_far = gen_best;
+            n_no_improve = 0;
+        } else {
+            n_no_improve++;
+        }
+
+        cout << "[GA] generation " << gen
+             << " best_nlnl=" << population.front().nlnl
+             << " best_score=" << gen_best
+             << " n_no_improve=" << n_no_improve << endl;
+
+        // Stop once the population hasn't improved for max_no_improve generations, or
+        // once max_generation is reached — same two termination conditions as
+        // ga_default_termination in ga.c (max generations / no-improvement streak).
+        if(n_no_improve >= max_no_improve) break;
+        if(gen == max_generation - 1) break;
+
+        vector<GaIndividual> parents = select_parent_pool(population);
+
+        // Elites carry over unchanged; the remaining slots are filled by crossover+mutation.
+        vector<GaIndividual> next_population(population.begin(), population.begin() + nelites);
+        while((int)next_population.size() < pop_size){
+            int i1 = gsl_rng_uniform_int(r, pop_size);
+            int i2 = gsl_rng_uniform_int(r, pop_size);
+            GaIndividual child = crossover(parents[i1], parents[i2]);
+            mutate(child);
+            next_population.push_back(child);
+        }
+
+        // Only the newly created offspring need evaluating — elites already carry a
+        // valid nlnl/score from the previous generation (or from cache, if this exact
+        // gene pattern was seen before).
+        #pragma omp parallel for schedule(dynamic)
+        for(int p = nelites; p < pop_size; ++p){
+            evaluate(next_population[p]);
+        }
+
+        population = std::move(next_population);
+    }
+
+    // ------------------------------------------------------------------
+    // Write back final results, same convention as stepwise_search_shift_edges:
+    // rtree.score holds the penalized score (larger = better); min_nlnl holds
+    // -(penalized_score) so minimizing min_nlnl = maximizing penalized score.
+    // Unlike stepwise (which keeps its best tree copy, cur_tree, updated throughout the
+    // search), GaIndividual doesn't carry an evo_tree — keeping a full tree copy per
+    // individual per generation would be wasteful, and isn't needed for anything but the
+    // eventual winner. So the winning gene pattern is decoded once more here and its tree
+    // rematerialized with one extra BFGS run (negligible next to the pop_size*generations
+    // runs already spent finding it).
+    // ------------------------------------------------------------------
+    std::sort(population.begin(), population.end(), by_score_desc);
+    const GaIndividual& best = population.front();
+
+    vector<int> best_shift_eids;
+    for(int i = 0; i < ncand; ++i){
+        if(best.genes[i]) best_shift_eids.push_back(all_candidates[i]);
+    }
+
+    opt_type.rlc_shift_eids = best_shift_eids;
+
+    vector<RateSet> ones(best_shift_eids.size(), RateSet(1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+    update_edge_rates_rlc(rtree, best_shift_eids, ones);
+
+    double final_nlnl = MAX_NLNL;
+    max_likelihood_BFGS(rtree, vobs, vobs_change, obs_decomp, comps,
+                        lnl_type, opt_type, final_nlnl, debug);
+
+    int K = (int)best_shift_eids.size();
+    RlcIC final_ic = compute_rlc_ic(final_nlnl, K, n_types_per_edge, n_sites, criterion);
+    double raw_logL        = final_ic.raw_logL;
+    double penalized_score = final_ic.score;
+
+    opt_type.rlc_raw_logL        = raw_logL;
+    opt_type.rlc_penalized_score = penalized_score;
+    rtree.rlc_shift_eids         = opt_type.rlc_shift_eids;
+    rtree.rlc_raw_logL           = raw_logL;
+    rtree.rlc_penalized_score    = penalized_score;
+    rtree.score                  = penalized_score;
+    min_nlnl                     = -penalized_score;
+
+    cout << "[GA] final: K=" << K << " shift_eids=[ ";
+    for(int s : opt_type.rlc_shift_eids) cout << s << " ";
+    cout << "] raw_logL=" << raw_logL
+         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic
+         << " score=" << penalized_score << endl;
+}
+
+
+// [2026-07-21 added] Brute-force baseline for bsr_mode=3 ML-RLC: evaluates every subset of
+// get_active_bsr_eids's candidate edges (2^ncand subsets) instead of searching greedily
+// (stepwise) or heuristically (GA). Only feasible for small ncand (9 candidates on a
+// 5-sample tree -> 512 subsets). Because every subset is evaluated, the AIC-best and
+// BIC-best subsets are both known from one run at no extra BFGS cost — reported alongside
+// each other regardless of opt_type.rlc_criterion, which only decides which one is written
+// back into rtree/opt_type.
+void exhaustive_search_shift_edges(
+    evo_tree& rtree,
+    const map<int, vector<vector<int>>>& vobs,
+    const map<int, vector<vector<CN_CHANGE>>>& vobs_change,
+    const OBS_DECOMP& obs_decomp,
+    const set<vector<int>>& comps,
+    LNL_TYPE& lnl_type,
+    OPT_TYPE& opt_type,
+    double& min_nlnl,
+    int debug)
+{
+    assert(opt_type.bsr_mode == 3);
+    assert(opt_type.estmu == 0);
+
+    const int criterion = opt_type.rlc_criterion;  // 0=AIC, 1=BIC (see compute_rlc_ic)
+    const int n_sites = lnl_type.n_sites_for_ic;
+    const int n_types_per_edge = (int)get_bsr_rate_slots(rtree, lnl_type.cn_type).size();
+
+    vector<int> all_candidates = get_active_bsr_eids(rtree);
+    int ncand = (int)all_candidates.size();
+    long long n_subsets = 1LL << ncand;
+
+    if(ncand > 20){
+        cerr << "[RLC][exhaustive] warning: ncand=" << ncand << " candidate edges -> "
+             << n_subsets << " subsets to evaluate; this brute-force search is meant as a "
+                "small-tree validation baseline, not routine use on larger trees." << endl;
+    }
+
+    vector<double> subset_nlnls(n_subsets, MAX_NLNL);
+    vector<double> subset_aics(n_subsets, MAX_NLNL);
+    vector<double> subset_bics(n_subsets, MAX_NLNL);
+    vector<double> subset_scores(n_subsets, -MAX_NLNL);
+
+    // [2026-07-22 added] progress counter so a long exhaustive run has some visible heartbeat instead of total silence until the whole parallel loop finishes. Prints roughly every 10% of subsets done (~10 lines total, regardless of n_subsets), guarded by a critical section since cout isn't thread-safe against interleaving from concurrent threads.
+    long long completed = 0;
+    long long print_every = std::max(1LL, n_subsets / 10);
+
+    #pragma omp parallel for schedule(dynamic)
+    for(long long mask = 0; mask < n_subsets; ++mask){
+        vector<int> shift_eids;
+        for(int i = 0; i < ncand; ++i){
+            if(mask & (1LL << i)) shift_eids.push_back(all_candidates[i]);
+        }
+
+        evo_tree cand_tree = rtree;
+        OPT_TYPE cand_opt  = opt_type;
+        LNL_TYPE cand_lnl_type = lnl_type;
+        cand_opt.rlc_shift_eids = shift_eids;
+
+        vector<RateSet> ones(shift_eids.size(), RateSet(1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+        update_edge_rates_rlc(cand_tree, shift_eids, ones);
+
+        double cand_nlnl = MAX_NLNL;
+        // Keep debug off inside the parallel region to avoid interleaved output.
+        max_likelihood_BFGS(cand_tree, vobs, vobs_change, obs_decomp, comps,
+                            cand_lnl_type, cand_opt, cand_nlnl, 0);
+
+        RlcIC ic = compute_rlc_ic(cand_nlnl, (int)shift_eids.size(), n_types_per_edge, n_sites, criterion);
+        subset_nlnls[mask]  = cand_nlnl;
+        subset_aics[mask]   = ic.aic;
+        subset_bics[mask]   = ic.bic;
+        subset_scores[mask] = ic.score;
+
+        long long done;
+        #pragma omp atomic capture
+        done = ++completed;
+        if(done % print_every == 0 || done == n_subsets){
+            #pragma omp critical(rlc_exhaustive_progress)
+            {
+                cout << "[RLC][exhaustive] progress: " << done << "/" << n_subsets << " subsets done" << endl;
+            }
+        }
+    }
+
+    // Serial scan: best-by-active-criterion (drives the write-back below), plus
+    // best-by-AIC and best-by-BIC purely for reporting — both already known from the same
+    // pass, unlike stepwise/GA which only explore one criterion-dependent path.
+    const double eps = 1e-6;
+    long long best_mask = 0, best_aic_mask = 0, best_bic_mask = 0;
+    double best_score = subset_scores[0];
+    double best_aic = subset_aics[0], best_bic = subset_bics[0];
+    for(long long mask = 1; mask < n_subsets; ++mask){
+        if(subset_scores[mask] > best_score + eps){ best_score = subset_scores[mask]; best_mask = mask; }
+        if(subset_aics[mask] < best_aic - eps){ best_aic = subset_aics[mask]; best_aic_mask = mask; }
+        if(subset_bics[mask] < best_bic - eps){ best_bic = subset_bics[mask]; best_bic_mask = mask; }
+    }
+
+    auto mask_to_shifts = [&](long long mask){
+        vector<int> shifts;
+        for(int i = 0; i < ncand; ++i) if(mask & (1LL << i)) shifts.push_back(all_candidates[i]);
+        return shifts;
+    };
+
+    auto print_combo = [&](const char* label, long long mask){
+        vector<int> shifts = mask_to_shifts(mask);
+        cout << "[RLC][exhaustive] " << label << ": K=" << shifts.size() << " shift_eids=[ ";
+        for(int s : shifts) cout << s << " ";
+        cout << "] nlnl=" << subset_nlnls[mask]
+             << " AIC=" << subset_aics[mask] << " BIC=" << subset_bics[mask] << endl;
+    };
+
+    // Always-on diagnostic (independent of the general debug flag), same convention as
+    // stepwise_search_shift_edges's per-candidate prints — full dump of all subsets is
+    // debug-gated since it can be hundreds of lines.
+    if(debug){
+        for(long long mask = 0; mask < n_subsets; ++mask) print_combo("candidate", mask);
+    }
+    print_combo("AIC-best", best_aic_mask);
+    print_combo("BIC-best", best_bic_mask);
+
+    // --- write back final results using the subset selected by opt_type.rlc_criterion ---
+    vector<int> best_shift_eids = mask_to_shifts(best_mask);
+    opt_type.rlc_shift_eids = best_shift_eids;
+
+    vector<RateSet> ones(best_shift_eids.size(), RateSet(1.0, 1.0, 1.0, 1.0, 1.0, 1.0));
+    update_edge_rates_rlc(rtree, best_shift_eids, ones);
+
+    double final_nlnl = MAX_NLNL;
+    max_likelihood_BFGS(rtree, vobs, vobs_change, obs_decomp, comps,
+                        lnl_type, opt_type, final_nlnl, debug);
+
+    int K = (int)best_shift_eids.size();
+    RlcIC final_ic = compute_rlc_ic(final_nlnl, K, n_types_per_edge, n_sites, criterion);
+    double raw_logL        = final_ic.raw_logL;
+    double penalized_score = final_ic.score;
+
+    opt_type.rlc_raw_logL = raw_logL;
+    opt_type.rlc_penalized_score = penalized_score;
+    rtree.rlc_shift_eids = opt_type.rlc_shift_eids;
+    rtree.rlc_raw_logL = raw_logL;
+    rtree.rlc_penalized_score = penalized_score;
+    rtree.score = penalized_score;
+    min_nlnl = -penalized_score;
+
+    cout << "[RLC][exhaustive] final (criterion=" << (criterion == 0 ? "AIC" : "BIC")
+         << "): K=" << K << " shift_eids=[ ";
+    for(int s : opt_type.rlc_shift_eids) cout << s << " ";
+    cout << "] raw_logL=" << raw_logL
+         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic
+         << " score=" << penalized_score
+         << " (evaluated " << n_subsets << " subsets)" << endl;
 }
 
 
 void optimize_tree_by_bsr_mode(
+    gsl_rng* r,
     evo_tree& rtree,
     const map<int, vector<vector<int>>>& vobs,
     const map<int, vector<vector<CN_CHANGE>>>& vobs_change,
@@ -2456,13 +2879,12 @@ void optimize_tree_by_bsr_mode(
     // estimating global rates and per-edge multipliers in one run is non-identifiable
     // (scaling rates up and multipliers down by the same factor leaves every edge rate,
     // and the likelihood, unchanged), so calibration must happen as a separate,
-    // isolated sub-optimization first. See docs/flowcharts.md "Two-step calibration
-    // workflow for bsr_mode=3".
+    // isolated sub-optimization first.
     // [2026-07-14 disabled] ran the calibration sub-optimization on every call, including
     // retries from maximize_tree_likelihood's outer `while(!(nlnl < MAX_NLNL))` loop
     // (cnetml.cpp) — if calibration itself had already succeeded and only the later
     // shift-edge search failed, a retry redid the whole calibration for nothing, with no
-    // record of whether the redo was actually necessary. See docs/flowcharts.md.
+    // record of whether the redo was actually necessary.
     // if(opt_type.bsr_mode > 0){
     if(opt_type.bsr_mode > 0 && !opt_type.bsr_calibrated){
         OPT_TYPE calib_opt = opt_type;
@@ -2504,11 +2926,17 @@ void optimize_tree_by_bsr_mode(
     }
 
     if(opt_type.bsr_mode == 3){
+        // 0=exhaustive, 1=stepwise (default), 2=GA — exhaustive is the baseline method;
+        // stepwise remains the practical default via cnetml.cpp's rlc_search_method
+        // default_value(1).
         if(opt_type.rlc_search_method == 0){
+            exhaustive_search_shift_edges(rtree, vobs, vobs_change, obs_decomp,
+                                          comps, lnl_type, opt_type, min_nlnl, debug);
+        } else if(opt_type.rlc_search_method == 1){
             stepwise_search_shift_edges(rtree, vobs, vobs_change, obs_decomp,
                                         comps, lnl_type, opt_type, min_nlnl, debug);
-        } else if(opt_type.rlc_search_method == 1){
-            genetic_search_shift_edges(rtree, vobs, vobs_change, obs_decomp,
+        } else if(opt_type.rlc_search_method == 2){
+            genetic_search_shift_edges(r, rtree, vobs, vobs_change, obs_decomp,
                                        comps, lnl_type, opt_type, min_nlnl, debug);
         } else {
             cerr << "Error: unknown opt_type.rlc_search_method=" << opt_type.rlc_search_method << endl;

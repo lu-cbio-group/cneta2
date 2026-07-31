@@ -22,7 +22,7 @@ const double MIN_MRATE = 1.0e-20;
 const double MAX_MRATE = 1;
 
 const double M_MIN = 1.0e-3;  // minimum multiplier for mutation rates
-const double M_MAX = 10;   // maximum multiplier for mutation rates
+const double M_MAX = 100;   // maximum multiplier for mutation rates
 
 // Bounds for mode-3 RLC multipliers (not absolute mutation rates — rates can be multiplied up or down)
 const double RLC_MULT_MIN = 1e-3;
@@ -54,12 +54,14 @@ struct OPT_TYPE{
   double scale_tobs;   // scale factor to get lower limit of root age when doing constrained optimization (BFGS) based on maximimum sample time difference
   // bsr_mode=3 (ML-RLC) fields
   vector<int> rlc_shift_eids;  // current δ=1 shift edges selected by outer search
-  double rlc_lambda;           // penalty per shift edge: score = logL - rlc_lambda * K
   double rlc_raw_logL = std::numeric_limits<double>::quiet_NaN();
   double rlc_penalized_score = std::numeric_limits<double>::quiet_NaN();
   // which outer search drives shift-edge selection under bsr_mode=3:
-  // 0: stepwise greedy search (default), 1: genetic algorithm search
-  int rlc_search_method = 0;
+  // 0: exhaustive search, 1: stepwise greedy search (default), 2: genetic algorithm search
+  int rlc_search_method = 1;
+  // [2026-07-21 added] model-selection criterion driving shift-edge search comparisons
+  // (see compute_rlc_ic): 0 = AIC (default), 1 = BIC.
+  int rlc_criterion = 0;
   // [2026-07-14 added] cache of get_bsr_rate_slots(rtree, cn_type), refreshed once per
   // max_likelihood_BFGS call (bsr_mode>0) instead of being recomputed on every BFGS
   // objective/gradient evaluation by update_variables_transformed/
@@ -373,18 +375,30 @@ void update_edge_rates_rlc_from_x(
     const vector<BsrRateSlot>& bsr_slots
 );
 
-// [2026-07-14 added] Penalized model-selection score for ML-RLC (bsr_mode=3).
-// Each shift edge unlocks n_types_per_edge independent multipliers (5 for cn_type=ALL,
-// fewer for other cn_type values — see get_bsr_rate_slots), not just 1, so the AIC-style
-// "1 nat per free parameter" penalty must charge K*n_types_per_edge, not K. Previously
-// the penalty charged per shift *edge* only (see the disabled lines this replaces in
-// stepwise_search_shift_edges), which undercounted model complexity by ~n_types_per_edge
-// and was the likely cause of selecting far more shift edges than truly present (see
-// docs/flowcharts.md). Centralized here (not re-derived at each call site) so
-// stepwise_search_shift_edges and the future genetic_search_shift_edges always score
-// candidates the same way.
-inline double rlc_penalized_score(double nlnl, int K, double rlc_lambda, int n_types_per_edge){
-    return -nlnl - rlc_lambda * (double)K * (double)n_types_per_edge;
+// [2026-07-21 added] AIC/BIC model-selection values for ML-RLC (bsr_mode=3), replacing
+// rlc_penalized_score above. K*n_types_per_edge is the number of free parameters unlocked
+// by the accepted shift edges (see rlc_penalized_score's original comment for why
+// n_types_per_edge must multiply K). n_sites (lnl_type.n_sites_for_ic) is the effective
+// number of independent observations backing logL, used as BIC's sample size. `score` is
+// "higher is better" (negated IC) for whichever of AIC/BIC opt_type.rlc_criterion selects,
+// so existing comparison code (pick_best_improving, sorting) keeps working unchanged; aic
+// and bic are both always computed so callers can log/report the non-selected criterion
+// too (search decisions still follow `score`/rlc_criterion only, not the other one).
+struct RlcIC {
+    double raw_logL;
+    double aic;
+    double bic;
+    double score;
+};
+
+inline RlcIC compute_rlc_ic(double nlnl, int K, int n_types_per_edge, int n_sites, int criterion){
+    RlcIC ic;
+    ic.raw_logL = -nlnl;
+    double k_params = (double)K * (double)n_types_per_edge;
+    ic.aic = -2.0 * ic.raw_logL + 2.0 * k_params;
+    ic.bic = -2.0 * ic.raw_logL + log((double)n_sites) * k_params;
+    ic.score = -(criterion == 0 ? ic.aic : ic.bic);
+    return ic;
 }
 
 // [2026-07-14 added] Scans indices [0, n), skipping any where evaluated[i] is false, and
@@ -409,8 +423,8 @@ inline int pick_best_improving(int n, const vector<char>& evaluated, const vecto
 }
 
 // Outer stepwise greedy search for shift edges under ML-RLC.
-// At each step adds the shift edge that most improves: logL - rlc_lambda * K * n_types_per_edge
-// (see rlc_penalized_score above).
+// At each step adds/removes the shift edge that most improves compute_rlc_ic's score
+// (AIC or BIC per opt_type.rlc_criterion).
 // Updates rtree, opt_type.rlc_shift_eids, and min_nlnl in place.
 void stepwise_search_shift_edges(
     evo_tree& rtree,
@@ -425,9 +439,10 @@ void stepwise_search_shift_edges(
 );
 
 // Outer genetic-algorithm search for shift edges under ML-RLC (bsr_mode=3).
-// Alternative to stepwise_search_shift_edges, selected via opt_type.rlc_search_method=1.
+// Alternative to stepwise_search_shift_edges, selected via opt_type.rlc_search_method=2.
 // Not yet implemented.
 void genetic_search_shift_edges(
+    gsl_rng* r,
     evo_tree& rtree,
     const map<int, vector<vector<int>>>& vobs,
     const map<int, vector<vector<CN_CHANGE>>>& vobs_change,
@@ -439,9 +454,30 @@ void genetic_search_shift_edges(
     int debug = 0
 );
 
-// Wrapper: dispatches to stepwise_search_shift_edges or genetic_search_shift_edges
-// for bsr_mode=3 (per opt_type.rlc_search_method), or max_likelihood_BFGS for all other modes.
+// Brute-force search over all 2^ncand subsets of get_active_bsr_eids
+// (ncand = candidate shift edges), used as a baseline to check what the best achievable
+// model fit is. Only feasible for small ncand (e.g. 9 candidates -> 512 subsets on a 5-sample tree); prints a
+// runtime warning for large ncand instead of refusing to run. Reports both the AIC-best and
+// BIC-best subsets found (see compute_rlc_ic) since exhaustive enumeration makes both free
+// from one run, but writes back rtree/opt_type using only the subset picked by
+// opt_type.rlc_criterion. Selected via opt_type.rlc_search_method=0.
+void exhaustive_search_shift_edges(
+    evo_tree& rtree,
+    const map<int, vector<vector<int>>>& vobs,
+    const map<int, vector<vector<CN_CHANGE>>>& vobs_change,
+    const OBS_DECOMP& obs_decomp,
+    const set<vector<int>>& comps,
+    LNL_TYPE& lnl_type,
+    OPT_TYPE& opt_type,
+    double& min_nlnl,
+    int debug = 0
+);
+
+// Wrapper: dispatches to stepwise_search_shift_edges, genetic_search_shift_edges, or
+// exhaustive_search_shift_edges for bsr_mode=3 (per opt_type.rlc_search_method), or
+// max_likelihood_BFGS for all other modes.
 void optimize_tree_by_bsr_mode(
+    gsl_rng* r,
     evo_tree& rtree,
     const map<int, vector<vector<int>>>& vobs,
     const map<int, vector<vector<CN_CHANGE>>>& vobs_change,

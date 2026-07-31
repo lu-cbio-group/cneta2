@@ -1105,23 +1105,22 @@ void write_simulation_edge_rate_table(const evo_tree& tree, int bsr_mode, const 
                         int cid = next_clock_id++;
                         node_clock[child] = cid;
                         local_clock_id[eid] = to_string(cid);
-                        double shared = infer_shared_multiplier_from_reference(parent_rate, child_rate);
-                        string sm = report_sim_double(shared);
-                        m_shared[eid] = sm;
-                        if(parent_rate.dup > 0.0) m_dup[eid] = sm;
-                        if(parent_rate.del > 0.0) m_del[eid] = sm;
-                        if(parent_rate.chr_gain > 0.0) m_chr_gain[eid] = sm;
-                        if(parent_rate.chr_loss > 0.0) m_chr_loss[eid] = sm;
-                        if(parent_rate.wgd > 0.0) m_wgd[eid] = sm;
+                        // RLC draws each rate type's multiplier independently (sample_rateset_by_multiplier),
+                        // same as bsr_mode==2 — report each type's own ratio to its parent, not one shared
+                        // value copied across all five columns.
+                        m_dup[eid] = parent_rate.dup > 0.0 ? report_sim_double(child_rate.dup / parent_rate.dup) : "NA";
+                        m_del[eid] = parent_rate.del > 0.0 ? report_sim_double(child_rate.del / parent_rate.del) : "NA";
+                        m_chr_gain[eid] = parent_rate.chr_gain > 0.0 ? report_sim_double(child_rate.chr_gain / parent_rate.chr_gain) : "NA";
+                        m_chr_loss[eid] = parent_rate.chr_loss > 0.0 ? report_sim_double(child_rate.chr_loss / parent_rate.chr_loss) : "NA";
+                        m_wgd[eid] = parent_rate.wgd > 0.0 ? report_sim_double(child_rate.wgd / parent_rate.wgd) : "NA";
                     }else{
                         node_clock[child] = node_clock[nid];
                         local_clock_id[eid] = to_string(node_clock[child]);
-                        m_shared[eid] = "1";
-                        if(parent_rate.dup > 0.0) m_dup[eid] = "1";
-                        if(parent_rate.del > 0.0) m_del[eid] = "1";
-                        if(parent_rate.chr_gain > 0.0) m_chr_gain[eid] = "1";
-                        if(parent_rate.chr_loss > 0.0) m_chr_loss[eid] = "1";
-                        if(parent_rate.wgd > 0.0) m_wgd[eid] = "1";
+                        m_dup[eid] = parent_rate.dup > 0.0 ? "1" : "NA";
+                        m_del[eid] = parent_rate.del > 0.0 ? "1" : "NA";
+                        m_chr_gain[eid] = parent_rate.chr_gain > 0.0 ? "1" : "NA";
+                        m_chr_loss[eid] = parent_rate.chr_loss > 0.0 ? "1" : "NA";
+                        m_wgd[eid] = parent_rate.wgd > 0.0 ? "1" : "NA";
                     }
 
                     node_rate[child] = child_rate;
