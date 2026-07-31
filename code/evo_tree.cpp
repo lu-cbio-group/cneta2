@@ -424,6 +424,11 @@ void evo_tree::init_edge_rates(const RateSet& global) {
   edge_rates.assign(edges.size(), global);
 }
 
+// [2026-07-14 added] see declaration in evo_tree.hpp.
+bool evo_tree::is_normal_sample_edge(int eid) const {
+  return edges[eid].end == nleaf - 1;
+}
+
 // Return a vector of rates for the specified edge, in the order: dup, del, chr_gain, chr_loss, wgd.
 vector<double> evo_tree::get_edge_rate_vec(int edge_id) const {
   if(edge_id < 0 || edge_id >= (int)edge_rates.size()){
@@ -473,7 +478,20 @@ void evo_tree::init_edge_rates_independent(const RateSet& mean_rates, int bsr_di
 // bsr_p:        probability of a rate change at each node; must be in (0, 1), validated by the caller.
 void evo_tree::init_edge_rates_rlc(const RateSet& mean_rates, int bsr_dist, double bsr_variance, double bsr_p, gsl_rng* r) {
   edge_rates.resize(edges.size());
-  
+
+  // [2026-07-14 added] two fixes so the simulated ground truth matches what the
+  // inference side (bsr_mode=3) actually assumes. See docs/flowcharts.md.
+  // 1. rlc_shift_eids was never recorded here, so write_simulation_edge_rate_table's
+  //    is_shift_edge/m_shared/etc. columns always reported "no shift" even when a
+  //    shift really was drawn below.
+  // 2. This loop used to roll the shift Bernoulli draw for every edge, including the
+  //    normal-sample edge — but that edge is excluded from bsr candidates on the
+  //    inference side (get_active_bsr_eids), so the simulator should never let it
+  //    shift either. Harmless in practice (that edge has length 0, so its rate never
+  //    affects simulated events), but it produced a confusing, inconsistent-looking
+  //    row in the ground-truth table.
+  rlc_shift_eids.clear();
+
   vector<RateSet> node_rates(nodes.size(), mean_rates);
 
   stack<int> stk;
@@ -483,9 +501,14 @@ void evo_tree::init_edge_rates_rlc(const RateSet& mean_rates, int bsr_dist, doub
     stk.pop();
     for(int child : nodes[nid].daughters){
       int eid = nodes[child].e_in;
-      RateSet child_rates = gsl_ran_bernoulli(r, bsr_p)
+      // [2026-07-14 disabled] see evo_tree::is_normal_sample_edge above
+      // bool is_normal_edge = (edges[eid].start == nleaf - 1 || edges[eid].end == nleaf - 1);
+      bool is_normal_edge = is_normal_sample_edge(eid);
+      bool did_shift = !is_normal_edge && gsl_ran_bernoulli(r, bsr_p);
+      RateSet child_rates = did_shift
       ? sample_rateset_by_multiplier(mean_rates, bsr_dist, bsr_variance, r)
       : node_rates[nid];
+      if(did_shift) rlc_shift_eids.push_back(eid);
       edge_rates[eid]   = child_rates;
       node_rates[child] = child_rates;
       stk.push(child);

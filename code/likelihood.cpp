@@ -6,15 +6,16 @@ using timing::now;
 using timing::elapsed_seconds;
 
 // global variables to track time spent in likelihood computation
-static double time_revised_all   = 0.0;
-static double time_revised_valid = 0.0;
-static long   cnt_revised_all    = 0;
-static long   cnt_revised_valid  = 0;
+// unused (never read) and unsafe to update from parallel candidate evaluation (OpenMP) -- disabled
+// static double time_revised_all   = 0.0;
+// static double time_revised_valid = 0.0;
+// static long   cnt_revised_all    = 0;
+// static long   cnt_revised_valid  = 0;
 
-static double time_decomp_all    = 0.0;
-static double time_decomp_valid  = 0.0;
-static long   cnt_decomp_all     = 0;
-static long   cnt_decomp_valid   = 0;
+// static double time_decomp_all    = 0.0;
+// static double time_decomp_valid  = 0.0;
+// static long   cnt_decomp_all     = 0;
+// static long   cnt_decomp_valid   = 0;
 
 
 
@@ -339,12 +340,12 @@ double get_likelihood_revised(evo_tree& rtree, const map<int, vector<vector<int>
     // int debug = 0;
     // if(debug) cout << "\tget_likelihood by matrix exponential" << endl;
 
-    TimePoint start_time = now();
-    ++cnt_revised_all;
+    // TimePoint start_time = now();
+    // ++cnt_revised_all;
 
     if(!is_tree_valid(rtree, lnl_type.max_tobs, lnl_type.patient_age, lnl_type.cons)){// invalid tree only count toward "all" calls
-        TimePoint end_all_invalid = now();
-        time_revised_all += elapsed_seconds(start_time, end_all_invalid);
+        // TimePoint end_all_invalid = now();
+        // time_revised_all += elapsed_seconds(start_time, end_all_invalid);
         return SMALL_LNL;
     }
 
@@ -512,12 +513,12 @@ double get_likelihood_revised(evo_tree& rtree, const map<int, vector<vector<int>
     for_each(pmat_per_blen.begin(), pmat_per_blen.end(), DeleteObject());
 
     // end time measurement, only count toward "valid" calls
-    TimePoint end_all_valid = now();
-    double dt_valid = elapsed_seconds(start_time, end_all_valid);
-    
-    time_revised_all   += dt_valid; // valid also count toward all, so time for all is always updated
-    time_revised_valid += dt_valid; // only update time for valid calls
-    ++cnt_revised_valid; // only update count for valid calls
+    // TimePoint end_all_valid = now();
+    // double dt_valid = elapsed_seconds(start_time, end_all_valid);
+
+    // time_revised_all   += dt_valid; // valid also count toward all, so time for all is always updated
+    // time_revised_valid += dt_valid; // only update time for valid calls
+    // ++cnt_revised_valid; // only update count for valid calls
 
     return logL;
 }
@@ -1779,13 +1780,13 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
     if(debug) cout << "\tget likelihood using multiple chains based on copy number changes" << endl;
 
     // start calculating time
-    TimePoint start_time = now();
-    ++cnt_decomp_all;
+    // TimePoint start_time = now();
+    // ++cnt_decomp_all;
 
     if(!is_tree_valid(rtree, lnl_type.max_tobs, lnl_type.patient_age, lnl_type.cons)){
         // invalid tree only count toward "all" calls
-        TimePoint end_all_invalid = now();
-        time_decomp_all += elapsed_seconds(start_time, end_all_invalid);
+        // TimePoint end_all_invalid = now();
+        // time_decomp_all += elapsed_seconds(start_time, end_all_invalid);
 
         return SMALL_LNL;
     }
@@ -1834,14 +1835,14 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
         cout << "Free memory" << endl;
     }
 
-    TimePoint end_all_valid = now();
-    double dt_valid = elapsed_seconds(start_time, end_all_valid);
-    
-    time_decomp_all += dt_valid; // valid also count toward all, so time for all is always updated
-    time_decomp_valid += dt_valid; // only update time for valid calls
-    ++cnt_decomp_valid; // only update count for valid calls
+    // TimePoint end_all_valid = now();
+    // double dt_valid = elapsed_seconds(start_time, end_all_valid);
 
-    if(debug > 1)  cout << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
+    // time_decomp_all += dt_valid; // valid also count toward all, so time for all is always updated
+    // time_decomp_valid += dt_valid; // only update time for valid calls
+    // ++cnt_decomp_valid; // only update count for valid calls
+
+    // if(debug > 1)  cout << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
 
     return logL;
 }
@@ -1860,14 +1861,14 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
 double get_likelihood_change_variable_rate(evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, int debug){
     if(debug) cout << "\tget likelihood using multiple chains based on copy number changes" << endl;
 
-    // start calculating time
-    TimePoint start_time = now();
-    ++cnt_decomp_all;
+    // // start calculating time
+    // TimePoint start_time = now();
+    // ++cnt_decomp_all;
 
     if(!is_tree_valid(rtree, lnl_type.max_tobs, lnl_type.patient_age, lnl_type.cons)){
-        // invalid tree only count toward "all" calls
-        TimePoint end_all_invalid = now();
-        time_decomp_all += elapsed_seconds(start_time, end_all_invalid);
+        // // invalid tree only count toward "all" calls
+        // TimePoint end_all_invalid = now();
+        // time_decomp_all += elapsed_seconds(start_time, end_all_invalid);
 
         return SMALL_LNL;
     }
@@ -1943,14 +1944,14 @@ double get_likelihood_change_variable_rate(evo_tree& rtree, const map<int, vecto
         cout << "Free memory" << endl;
     }
 
-    TimePoint end_all_valid = now();
-    double dt_valid = elapsed_seconds(start_time, end_all_valid);
+    // TimePoint end_all_valid = now();
+    // double dt_valid = elapsed_seconds(start_time, end_all_valid);
     
-    time_decomp_all += dt_valid; // valid also count toward all, so time for all is always updated
-    time_decomp_valid += dt_valid; // only update time for valid calls
-    ++cnt_decomp_valid; // only update count for valid calls
+    // time_decomp_all += dt_valid; // valid also count toward all, so time for all is always updated
+    // time_decomp_valid += dt_valid; // only update time for valid calls
+    // ++cnt_decomp_valid; // only update count for valid calls
 
-    if(debug > 1)  cout << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
+    // if(debug > 1)  cout << "Likelihood calculation time for this tree: " << dt_valid << " seconds." << endl;
 
     return logL;
 }

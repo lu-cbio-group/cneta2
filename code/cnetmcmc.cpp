@@ -2430,7 +2430,9 @@ int main (int argc, char ** const argv) {
     }
 
     max_tobs = *max_element(tobs.begin(), tobs.end());
-    lnl_type = {model, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, cn_type, knodes};
+
+    int n_sites_for_ic = Nchar;
+    lnl_type = {model, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, n_sites_for_ic, cn_type, knodes};
 
     obs_decomp = {m_max, max_wgd_sample, max_chr_change_haplotype, max_site_change_haplotype};
 
