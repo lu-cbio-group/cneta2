@@ -49,7 +49,7 @@ flowchart TD
     Z --> AA
 ```
 
-## Inference workflow (`cnetml`)
+## Maximum Likelihood Inference workflow (`cnetml`)
 
 `cnetml` reads observed copy-number profiles and either searches for a
 maximum-likelihood tree, scores a supplied tree, optimizes a supplied
@@ -115,3 +115,6 @@ each as required, optional, diagnostic, or intermediate.
 ## Future direction
 
 TODO: in-memory exchange via `libcneta`; Nextflow as an orchestration layer.
+
+A Nextflow pipeline from raw sequencing data, or sequence alignments, or copy number calls to phylogenetic analysis and downstream analysis (such as copy number signature attachment to the tree branches).
+<!-- https://github.com/sivaranjanjohnson/building  -->
