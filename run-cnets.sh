@@ -2,7 +2,11 @@
 
 # This script is used to run program cnets, which can generate a random colesence tree (of tumor samples from a single patient) and structual variations along the tree branches.
 
-seed=$RANDOM  # used for reproducing the results
+# Where the compiled executables live. The CMake build puts them in <repo>/bin;
+# override with CNETA_BIN to point at a different build.
+CNETA_BIN="${CNETA_BIN:-$(cd "$(dirname "$0")" && pwd)/bin}"
+
+seed="${CNETA_SEED:-$RANDOM}"  # used for reproducing the results
 verbose=0   # Whether or not to print debug information. 0: default, 1: standard debug, 2: debug with details on tree
 Nsim=1  # The number of simulations. Number of patients to simulate
 
@@ -46,7 +50,7 @@ s2=5
 ####################### Set output directory and run simulation ################
 # The output directory
 # dir="./example/method${method}"
-dir="./example"
+dir="${CNETA_OUT:-./example}"
 if [[ ! -d $dir ]]; then
   mkdir -p $dir
 fi
@@ -59,7 +63,7 @@ echo "Start running cnets"
 
 echo "seed $seed"  > $dir/std_cnets_cons${cons}_model${model}_method${method}
 # valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes -v
-/usr/bin/time ./code/cnets --tree_file "${tree_file}" -p "${prefix}" -o $dir -r $Ns -n $Nsim --mode $mode --method $method --fix_nseg $fix_nseg --seg_max $seg_max --cn_max $cn_max --dup_rate $r1 --del_rate $r2 --chr_gain $r3 --chr_loss $r4 --wgd $r5 --dup_size $s1 --del_size $s2 -e $Ne -b $beta --gtime $gtime -t $dt --verbose $verbose --constrained $cons --model $model --age $age --stime "$stime" --seed $seed --print_relative $print_relative  >> $dir/std_cnets_cons${cons}_model${model}_method${method}
+/usr/bin/time "$CNETA_BIN/cnets" --tree_file "${tree_file}" -p "${prefix}" -o $dir -r $Ns -n $Nsim --mode $mode --method $method --fix_nseg $fix_nseg --seg_max $seg_max --cn_max $cn_max --dup_rate $r1 --del_rate $r2 --chr_gain $r3 --chr_loss $r4 --wgd $r5 --dup_size $s1 --del_size $s2 -e $Ne -b $beta --gtime $gtime -t $dt --verbose $verbose --constrained $cons --model $model --age $age --stime "$stime" --seed $seed --print_relative $print_relative  >> $dir/std_cnets_cons${cons}_model${model}_method${method}
 
 wait
 

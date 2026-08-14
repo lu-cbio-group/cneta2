@@ -7,9 +7,24 @@ if(POLICY CMP0167)
 endif()
 
 # 1. Set Global C++ Standards
-set(CMAKE_CXX_STANDARD 11)
+# C++14 is the minimum for Catch2 v3 (see tests/unit/). The sources build
+# cleanly at this level; only std::random_shuffle warns as deprecated.
+# Moving to C++17 additionally requires replacing the two random_shuffle
+# calls in tree_op.cpp and genome.cpp, which changes RNG draw order and so
+# shifts fixed-seed simulation output -- deliberately left for later.
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Forces standard C++ over compiler-specific extensions
+
+# All three user-facing tools land in <repo>/bin, regardless of where the
+# build tree lives. The run-*.sh scripts and the test suite look there.
+#
+# Guarded so that -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=... still wins: that is how
+# a throwaway build (CI, the build-system tests) writes its executables
+# somewhere else instead of overwriting the ones in the working tree.
+if(NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/../bin)
+endif()
 
 # Apply the Boost flags from the legacy makefile globally
 add_compile_definitions(BOOST_ERROR_CODE_HEADER_ONLY BOOST_SYSTEM_NO_LIB)
@@ -75,3 +90,15 @@ target_link_libraries(cnetml cneta_core)
 
 add_executable(cnetmcmc cnetmcmc.cpp)
 target_link_libraries(cnetmcmc cneta_core)
+
+# 6. Tests (opt-in)
+# OFF by default, so `./build.sh local` behaves exactly as it always has and
+# needs no network access. Turn on with:
+#     cmake -S code -B code/build -DCNETA_BUILD_TESTING=ON
+option(CNETA_BUILD_TESTING "Build the Catch2 unit tests" OFF)
+if(CNETA_BUILD_TESTING)
+    enable_testing()
+    # The tests live outside this source tree, so the binary directory has
+    # to be named explicitly.
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../tests/unit ${CMAKE_BINARY_DIR}/tests-unit)
+endif()

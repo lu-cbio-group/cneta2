@@ -25,6 +25,11 @@ Required to build `cnets`, `cnetml`, and `cnetmcmc`:
 R and Python are only needed for the postprocessing scripts in `util/` —
 see [Utility scripts](../user-guide/utility-scripts.md).
 
+To run the test suite as well you additionally need Python 3.9+ with pytest,
+and CMake >= 3.16 (the main build still works with 3.10). Catch2 is fetched
+automatically at configure time if it is not already installed. See
+[Testing](../developer-guide/index.md#testing).
+
 ## Building from source
 
 Clone the repository:
@@ -91,8 +96,10 @@ conventions for `sbatch`/`srun`) — not yet documented here.
 :::
 ::::
 
-`build.sh` configures a CMake build in `code/build/`. The three executables 
-(`cnets`, `cnetml`, `cnetmcmc`) land directly in `code/build/`.
+`build.sh` configures a CMake build in `code/build/`. The three executables
+(`cnets`, `cnetml`, `cnetmcmc`) land in `bin/` at the top of the repository,
+which is where the `run-*.sh` scripts and the test suite look for them. Set
+`CNETA_BIN` if you want the run scripts to use a different build.
 
 Other `build.sh` usage:
 

@@ -1,0 +1,127 @@
+name: ci
+
+# Deliberately *not* run on every pushed commit.
+#
+#   pull_request → the review gate: runs when a PR is opened and whenever it
+#                  is updated, so a branch is only checked once someone asks
+#                  for it to be merged
+#   push to main → confirms the merge result, which is the state everyone
+#                  else pulls
+#   manual       → workflow_dispatch, for checking a branch before opening
+#                  a PR
+#
+# Work-in-progress commits on a feature branch with no open PR run nothing.
+# The same trigger model as docs.yml.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'code/**'
+      - 'tests/**'
+      - 'run-*.sh'
+      - 'mcmc.cfg'
+      - '.github/workflows/ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'code/**'
+      - 'tests/**'
+      - 'run-*.sh'
+      - 'mcmc.cfg'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Superseded PR runs are worth cancelling; a run against main is not.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS is where the research team develops, Linux is where HPC runs.
+        # Both are Clang-vs-GCC and libc++-vs-libstdc++ differences worth
+        # catching.
+        os: [ubuntu-latest, macos-latest]
+
+    env:
+      # cnetml parallelises its tree search with OpenMP. Floating-point
+      # reductions over a varying number of threads are not bit-reproducible,
+      # so pin to one thread to keep scores comparable across runs.
+      OMP_NUM_THREADS: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake libboost-program-options-dev libboost-filesystem-dev \
+            libgsl-dev zlib1g-dev
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # `brew install` on an already-present formula is noisy and can
+          # fail; only install what is actually missing. CMake ships with the
+          # runner image but is listed here so the step is self-contained.
+          for pkg in cmake boost gsl; do
+            brew list --formula "$pkg" >/dev/null 2>&1 || brew install "$pkg"
+          done
+
+      # Catch2 is fetched at configure time when no system copy is present.
+      # Cache it so the fetch happens once per pinned version, not per run.
+      - name: Cache Catch2
+        uses: actions/cache@v4
+        with:
+          path: code/build/_deps
+          key: catch2-${{ runner.os }}-${{ hashFiles('tests/unit/CMakeLists.txt') }}
+
+      - name: Configure
+        run: cmake -S code -B code/build -DCNETA_BUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build code/build -j 4
+
+      - name: Check the executables landed in bin/
+        run: |
+          ls -l bin/
+          for prog in cnets cnetml cnetmcmc; do
+            test -x "bin/$prog" || { echo "bin/$prog missing"; exit 1; }
+          done
+
+      - name: Unit tests (Catch2)
+        run: ctest --test-dir code/build --output-on-failure
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tests/requirements.txt
+
+      - name: Install test dependencies
+        run: python -m pip install -r tests/requirements.txt
+
+      # `build_system` tests are excluded: they configure and compile the
+      # project from scratch several more times, which this job has already
+      # done. Run them locally when changing CMakeLists.txt or build.sh.
+      - name: End-to-end tests (pytest)
+        run: pytest tests -v -m "not build" --junitxml=pytest-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: pytest-results.xml
+          retention-days: 7
