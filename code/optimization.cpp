@@ -1178,17 +1178,80 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         RateSet global_rates(0, rtree.dup_rate, rtree.del_rate,
                              rtree.chr_gain_rate, rtree.chr_loss_rate, rtree.wgd_rate);
 
+        // [14 AUG 2026 DEBUG] confirm LUCA edge really gets updated each call. Uncapped
+        // for now -- this run is a single fixed-tree, single-thread BFGS optimization
+        // (mode=3, bsr_mode=1, no population/parallel search), so total call count stays
+        // manageable and the log is written to a file, not a terminal. The [2026-07-14
+        // disabled] flooding problem this guards against was specifically about
+        // population/parallel candidate search (many trees x many calls each, under
+        // OpenMP) -- not this scenario. Re-add a cap (see git history) before using this
+        // print in that kind of run.
+        static int luca_debug_calls = 0;
+        // [16 AUG 2026 DEBUG] gated on this function's own local `debug`
+        // if set it to 1 and rebuild to turn all of the LUCA/mu0/branch-length prints below on; 
+        // leave at 0 for a normal run. Not wired to --verbose 
+        // (a different, global `debug` set from cnetml.cpp's CLI parsing).
+        bool print_this_call = debug && !opt_type.estimate_bsr0_first;
+        if(print_this_call){
+            luca_debug_calls++;
+            cout << "\n[14 AUG 2026 DEBUG] call #" << luca_debug_calls
+                 << " -- global_rates (= mu0, from rtree.dup_rate etc) BEFORE loop: "
+                 << "dup=" << global_rates.dup
+                 << " del=" << global_rates.del
+                 << " chr_gain=" << global_rates.chr_gain
+                 << " chr_loss=" << global_rates.chr_loss
+                 << " wgd=" << global_rates.wgd
+                 << endl;
+
+            // [16 AUG 2026 DEBUG] x[1..nparams_est] are the branch-length/node-age params
+            // these come BEFORE the multiplier/mu0 block in x[]'s layout, 
+            // so derivativeFunk's dim=1..ndim sweep (optimization.cpp:1438-1447) perturbs all of these first. 
+            // Printed raw (not derived through rtree) so this is direct proof of what's actually changing call-to-call
+            // independent of whether the rate-related prints above/below happen to show a change yet.
+            cout << "[16 AUG 2026 DEBUG] branch-length params x[1.." << nparams_est << "]: ";
+            for(int i = 1; i <= nparams_est; i++){
+                cout << "x[" << i << "]=" << x[i] << " ";
+            }
+            cout << endl;
+        }
+
         for(int k = 0; k < (int)active_eids.size(); k++){
             int eid = active_eids[k];
             double m = x[nparams_est + k + 1];
             rtree.edge_rates[eid] = global_rates * m;
+
+            // [16 AUG 2026 DEBUG] print every active (non-LUCA) edge. 
+            // It lets you grep a specific eid and see which BFGS call its m first moves off its warm-start value
+            // i.e. where in derivativeFunk's dim=1..ndim sweep this edge's slot sits.
+            if(print_this_call){
+                cout << "[16 AUG 2026 DEBUG] k=" << k
+                     << " eid=" << eid
+                     << " m=" << m
+                     << " -> dup=" << rtree.edge_rates[eid].dup
+                     << " del=" << rtree.edge_rates[eid].del
+                     << " wgd=" << rtree.edge_rates[eid].wgd
+                     << endl;
+            }
         }
+
         // [2026-08-12 added] estimate_bsr0_first=false: LUCA edge was excluded from the
         // loop above, so it needs its own rate set directly here (global_rates now
         // *is* mu0, since it was built from rtree.dup_rate etc, already overwritten
         // with mu0 earlier in this function).
         if(luca_eid_bsr1 >= 0){
             rtree.edge_rates[luca_eid_bsr1] = global_rates;
+            if(print_this_call){
+                // This is the number that actually matters: the real edge_rates entry
+                // the likelihood function reads for LUCA, not the local global_rates copy.
+                cout << "[14 AUG 2026 DEBUG] LUCA edge eid=" << luca_eid_bsr1
+                     << " edge_rates AFTER assignment: "
+                     << "dup=" << rtree.edge_rates[luca_eid_bsr1].dup
+                     << " del=" << rtree.edge_rates[luca_eid_bsr1].del
+                     << " chr_gain=" << rtree.edge_rates[luca_eid_bsr1].chr_gain
+                     << " chr_loss=" << rtree.edge_rates[luca_eid_bsr1].chr_loss
+                     << " wgd=" << rtree.edge_rates[luca_eid_bsr1].wgd
+                     << endl;
+            }
         }
 
         // cout << "\n[BSR1 DEBUG] after edge_rates update" << endl;
