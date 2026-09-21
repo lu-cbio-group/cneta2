@@ -76,7 +76,7 @@ fi
 echo "Configuring cneta..."
 mkdir -p build
 cd build
-cmake -Wno-dev ..
+cmake ..
 
 echo "Compiling with $CORES core(s)..."
 make -j"$CORES"
