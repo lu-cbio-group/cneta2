@@ -921,15 +921,6 @@ double infer_shared_multiplier(const evo_tree& tree, const RateSet& rs){
     return std::numeric_limits<double>::quiet_NaN();
 }
 
-double infer_rateset_multiplier(const RateSet& parent_rate, const RateSet& child_rate){
-    if(parent_rate.dup > 0.0) return child_rate.dup / parent_rate.dup;
-    if(parent_rate.del > 0.0) return child_rate.del / parent_rate.del;
-    if(parent_rate.chr_gain > 0.0) return child_rate.chr_gain / parent_rate.chr_gain;
-    if(parent_rate.chr_loss > 0.0) return child_rate.chr_loss / parent_rate.chr_loss;
-    if(parent_rate.wgd > 0.0) return child_rate.wgd / parent_rate.wgd;
-    return std::numeric_limits<double>::quiet_NaN();
-}
-
 struct EdgeRateReport {
     vector<string> m_shared;
     vector<string> m_dup;
@@ -984,18 +975,20 @@ EdgeRateReport build_rlc_edge_rate_report(const evo_tree& tree, const vector<int
                 node_clock[child] = cid;
                 report.local_clock_id[eid] = to_string(cid);
 
-                double m = infer_rateset_multiplier(parent_rate, child_rate);
-                string sm = report_double(m);
-                report.m_shared[eid] = sm;
-                if(parent_rate.dup > 0.0) report.m_dup[eid] = sm;
-                if(parent_rate.del > 0.0) report.m_del[eid] = sm;
-                if(parent_rate.chr_gain > 0.0) report.m_chr_gain[eid] = sm;
-                if(parent_rate.chr_loss > 0.0) report.m_chr_loss[eid] = sm;
-                if(parent_rate.wgd > 0.0) report.m_wgd[eid] = sm;
+                // m_dup/m_del/m_chr_gain/m_chr_loss/m_wgd must each be computed from
+                // their OWN type's parent/child rate: bsr_mode=3's true generative
+                // model assigns independent multipliers per rate type, no single
+                // scalar represents all 5. m_shared is left at its default "NA" here
+                // (no assignment) -- there is no real "shared multiplier" concept for
+                // bsr_mode=3, same as bsr_mode=2 which also leaves m_shared as NA.
+                if(parent_rate.dup > 0.0) report.m_dup[eid] = report_double(child_rate.dup / parent_rate.dup);
+                if(parent_rate.del > 0.0) report.m_del[eid] = report_double(child_rate.del / parent_rate.del);
+                if(parent_rate.chr_gain > 0.0) report.m_chr_gain[eid] = report_double(child_rate.chr_gain / parent_rate.chr_gain);
+                if(parent_rate.chr_loss > 0.0) report.m_chr_loss[eid] = report_double(child_rate.chr_loss / parent_rate.chr_loss);
+                if(parent_rate.wgd > 0.0) report.m_wgd[eid] = report_double(child_rate.wgd / parent_rate.wgd);
             }else{
                 node_clock[child] = node_clock[nid];
                 report.local_clock_id[eid] = to_string(node_clock[child]);
-                report.m_shared[eid] = "1";
                 if(parent_rate.dup > 0.0) report.m_dup[eid] = "1";
                 if(parent_rate.del > 0.0) report.m_del[eid] = "1";
                 if(parent_rate.chr_gain > 0.0) report.m_chr_gain[eid] = "1";
@@ -1032,6 +1025,13 @@ void write_run_summary(ostream& out, const evo_tree& tree, int mode, const LNL_T
     out << "cn_type\t" << lnl_type.cn_type << "\n";
     out << "constrained\t" << lnl_type.cons << "\n";
     out << "estmu\t" << opt_type.estmu << "\n";
+    // [2026-08-12 added] lets R-side analysis tell which reference-parameterization
+    // this run used without guessing from directory naming: bsr_mode>0 &&
+    // estimate_bsr0_first=0 means the "reference"/dup_rate_reference etc fields below
+    // are root-LUCA edge's own rate (mu0), estimated jointly with per-edge multipliers,
+    // not an independently-calibrated bsr_mode=0 reference. NA when bsr_mode==0 (no
+    // such distinction applies). See worklog_2026-08-11.md.
+    out << "estimate_bsr0_first\t" << (bsr_mode > 0 ? (opt_type.estimate_bsr0_first ? "1" : "0") : "NA") << "\n";
 
     out << "rlc_criterion\t" << (bsr_mode == 3 ? (opt_type.rlc_criterion == 0 ? "AIC" : "BIC") : "NA") << "\n";
     out << "raw_logL\t" << report_double(raw_logL) << "\n";
@@ -1637,6 +1637,11 @@ int main(int argc, char** const argv){
     double scale_tobs;  // scaling factor for input times, used in likelihood computation when branch length is constrained by sampling time
     int rlc_search_method;  // outer search for bsr_mode=3 ML-RLC shift edges (0: exhaustive search, 1: stepwise greedy [default], 2: genetic algorithm [not yet implemented])
     int rlc_criterion;  // model-selection criterion for bsr_mode=3 ML-RLC (0: AIC, 1: BIC)
+    // [2026-08-12 added] bsr_mode>0 only: 1 (default) = calibrate bsr0 rates first then
+    // estimate per-edge multipliers relative to that reference [unchanged behavior];
+    // 0 = skip calibration, estimate root-LUCA edge's own rate (mu0) jointly with the
+    // other edges' multipliers/shifts relative to mu0. See worklog_2026-08-11.md.
+    int estimate_bsr0_first;
 
     /********* derived from input ***********/
     map<int, vector<vector<int>>> vobs;   // CNP for each site, grouped by chr
@@ -1759,6 +1764,7 @@ int main(int argc, char** const argv){
     ("wgd_rate", po::value<double>(&wgd_rate)->default_value(0), "WGD (whole genome doubling) rate")
     ("rlc_search_method", po::value<int>(&rlc_search_method)->default_value(1), "outer search for bsr_mode=3 ML-RLC shift edges (0: exhaustive search over all shift-edge subsets [small trees only], 1: stepwise greedy search [default], 2: genetic algorithm [not yet implemented])")
     ("rlc_criterion", po::value<int>(&rlc_criterion)->default_value(0), "model-selection criterion for bsr_mode=3 ML-RLC shift-edge search (0: AIC, 1: BIC)")
+    ("estimate_bsr0_first", po::value<int>(&estimate_bsr0_first)->default_value(1), "for bsr_mode>0: 1=calibrate bsr0 rates first then estimate per-edge multipliers relative to that reference [default, unchanged behavior], 0=skip calibration, estimate root-LUCA edge's own rate jointly with per-edge multipliers/shifts")
 
     ("verbose", po::value<int>(&debug)->default_value(0), "verbose level (0: default, 1: debug)")
     ("seed", po::value<unsigned>(&seed)->default_value(0), "seed used for generating random numbers")
@@ -1967,6 +1973,7 @@ int main(int argc, char** const argv){
     opt_type.rlc_shift_eids = {};
     opt_type.rlc_search_method = rlc_search_method;
     opt_type.rlc_criterion = rlc_criterion;
+    opt_type.estimate_bsr0_first = (bool)estimate_bsr0_first;
     opt_type.rlc_raw_logL = std::numeric_limits<double>::quiet_NaN();
     opt_type.rlc_penalized_score = std::numeric_limits<double>::quiet_NaN();
 
