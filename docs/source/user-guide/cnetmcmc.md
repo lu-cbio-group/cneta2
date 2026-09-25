@@ -26,14 +26,19 @@ code/cnetmcmc [options]
 
 ## Modes
 
-Two modes depending on whether a reference tree is supplied (`--rtree`):
-with one, the topology is fixed and only branch lengths/rates are sampled;
-without one, topology is sampled too.
+Two starting-tree paths depending on whether a reference tree is
+supplied (`--rtreefile`): with one, the starting tree is built from it;
+without one, from `--init_tree`. Either way, whether the topology stays
+fixed during sampling is controlled separately by `--fix_topology` — see
+the [MCMC workflow](../workflows/index.md#mcmc-workflow-cnetmcmc)
+diagram for the full picture (draft; traced from source, not yet
+reviewed).
 
 ## Options
 
-`--rtree`
-: Optional reference tree; fixes the topology if given.
+`--rtreefile`
+: Optional reference tree; used to build the starting tree (see
+  "Modes" above — it does not by itself fix the topology).
 
 `--init_tree`
 : `0` random tree · `1` a provided tree (`--file_itree`) · `2` a random
@@ -54,7 +59,9 @@ The same copy-number and sample-timing files as `cnetml` — see
 
 ## Outputs
 
-MrBayes-compatible trace files:
+MrBayes-compatible trace files, named via `--trace_param_file`/
+`--trace_tree_file` (C++ defaults: `trace-mcmc-params.txt` /
+`trace-mcmc-trees.txt`; `run-cnetmcmc.sh` is what names them `*.p`/`*.t`):
 
 `*.p`
 : Parameter traces. Check convergence with

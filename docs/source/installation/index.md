@@ -23,7 +23,16 @@ Required to build `cnets`, `cnetml`, and `cnetmcmc`:
 `find_package` — there is nothing to configure by hand.
 
 R and Python are only needed for the postprocessing scripts in `util/` —
-see [Utility scripts](../user-guide/utility-scripts.md).
+see [Utility scripts](../user-guide/utility-scripts.md). Packages used
+across those scripts:
+
+- R: `optparse`, `copynumber`, `tools`, `tidyverse`, `ggtree`, `ape`,
+  `phangorn`
+- Python: `networkx` (used by `newick2elist.py`)
+
+None of these are needed to build or run `cnets`, `cnetml`, or
+`cnetmcmc` themselves — only install them if you're using the
+corresponding script.
 
 ## Building from source
 
