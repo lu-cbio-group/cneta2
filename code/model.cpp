@@ -469,7 +469,7 @@ void get_rate_matrix_site_change_haplotype(double* m, double dup_rate, double de
 // -1/-1	-1/0	0/-1	-1/+1	0/0	+1/-1	0/+1	+1/0	+1/+1
 // patterns not so obvious as the matrix for total changes
 void get_rate_matrix_chr_change_haplotype(double* m, double chr_gain_rate, double chr_loss_rate, int max_chr_change_haplotype){
-    int debug = 1;
+    int debug = 0;
     int ncol = compute_haplotype_change_dim(max_chr_change_haplotype);  
     assert(ncol == 9);      
     int lcol = ncol - 1;    // last column
