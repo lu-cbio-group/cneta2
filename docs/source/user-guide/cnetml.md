@@ -83,8 +83,11 @@ Tree search (`tree_search`)
   for at least 5 samples · `2` exhaustive — efficient for up to 7 samples.
 
 Mutation types (`cn_type`)
-: as in `cnets` — `0` segment only, `1` chromosome+WGD, `2` segment+WGD,
-  `3` segment+chromosome, `4` all.
+: which rate categories to estimate: `0` segment only, `1`
+  chromosome+WGD, `2` segment+WGD, `3` segment+chromosome, `4` all. This
+  flag is specific to `cnetml`/`cnetmcmc` — `cnets` has no `cn_type`
+  selector; it turns event types on/off by zeroing the corresponding
+  rate flag instead (see [`cnets` options](cnets.md#options)).
 
 ## Inputs
 
@@ -108,15 +111,31 @@ original README.
 
 ## Outputs
 
-`*-tree.txt` / `*-tree.nex` (reconstructed tree, calendar-time branch
-lengths), `*-tree.nmut.nex` (branch lengths in mutation counts),
-`*-segs.txt` (postprocessed copy-number matrix, written when reading the
-input file).
+:::{warning}
+The original README (and earlier versions of this page) described these
+as `*-tree.txt` / `*-tree.nex` / `*-tree.nmut.nex`. That's not what the
+code does: there is no hardcoded `-tree` suffix. All of the files below
+are `<ofile>` plus a fixed extension, where `<ofile>` is whatever you
+pass to `-o`/`--ofile` (default `maxL-tree.txt`; `run-cnetml.sh` sets it
+to `MaxL-<suffix>.txt`). See [File formats](../file-formats/index.md)
+for the verified naming.
+:::
 
-Ancestral-state mode (`mode=4`) additionally writes `*.mrca.cn` /
-`*.joint.cn` and `*.mrca.state` / `*.joint.state` — see the original
-README (or [File formats](../file-formats/index.md), once migrated) for
-column definitions.
+`<ofile>` / `<ofile>.nex` (reconstructed tree, calendar-time branch
+lengths), `<ofile>.nmut.nex` (branch lengths in mutation counts),
+`<ofile>.summary.txt` (run metadata: mode, model, `bsr_mode`, likelihood,
+mutation-rate estimates), `<ofile>.edge_rates.txt` (per-branch rate and
+expected/observed mutation-count breakdown — only meaningful with
+`bsr_mode > 0`), `*-segs.txt` (postprocessed copy-number matrix, written
+when reading the input file, named by `--seg_file`).
+
+Ancestral-state mode (`mode=4`) additionally writes `<ofile>.mrca.cn` /
+`<ofile>.joint.cn` and `<ofile>.mrca.state` / `<ofile>.joint.state` for
+models 0-2. Model 3 (independent Markov chains) splits the MRCA state
+file by event type instead — `<ofile>.mrca.seg.state` /
+`.mrca.chr.state` / `.mrca.wgd.state` — while the joint state file stays
+a single `<ofile>.joint.state`. See
+[File formats](../file-formats/index.md) for column definitions.
 
 ## Examples
 

@@ -3,8 +3,10 @@
 How the tools are chained together, and what data passes between them.
 
 :::{note}
-The diagrams below cover `cnets` and `cnetml`. `cnetmcmc` is less mature and
-intentionally not diagrammed yet — see [MCMC workflow](#mcmc-workflow-cnetmcmc).
+The `cnets` and `cnetml` diagrams below are the reviewed ones — those
+tools are published and current priority. The [MCMC workflow](#mcmc-workflow-cnetmcmc)
+diagram for `cnetmcmc` is a draft, since that tool isn't officially
+released yet.
 :::
 
 ## Simulation workflow (`cnets`)
@@ -104,13 +106,74 @@ For how the DECOMP likelihood itself is computed once this workflow reaches
 
 ## MCMC workflow (`cnetmcmc`)
 
-TODO + diagram. `cnetmcmc` is under active development; no diagram has been
-supplied for it yet.
+:::{warning}
+**Draft.** `cnetmcmc` is not yet officially released — current focus is
+`cnets` and `cnetml`. This diagram was traced from `code/cnetmcmc.cpp`
+(`main`, `run_mcmc`, `run_with_reference_tree`) rather than from a
+reviewed design doc, and has not been checked against the running
+program's actual behaviour. Treat it as a starting point, not a
+reference.
+:::
+
+```mermaid
+flowchart TD
+    A([Start cnetmcmc]) --> B[Parse command-line options / mcmc.cfg]
+    B --> C[Set up RNG with seed]
+    C --> D[Read copy-number input, build observation vectors]
+    D --> E[Read optional sample-timing file]
+    E --> F{Reference tree given? --rtreefile}
+    F -->|Yes| G[Load reference tree, compute its likelihood]
+    G --> H{fix_topology}
+    H -->|1| I[Start tree: random branch lengths on reference topology]
+    H -->|0| J[Start tree: random coalescent tree]
+    F -->|No| K{init_tree}
+    K -->|0| L[Random coalescent tree]
+    K -->|1| M[Provided tree, --file_itree]
+    K -->|2| N[Random tree with reference topology]
+    I --> O[Assign initial mutation rates, compute start-tree likelihood]
+    J --> O
+    L --> O
+    M --> O
+    N --> O
+    O --> P[run_mcmc: begin chain]
+    P --> Q{Next of n_draws iterations}
+    Q --> R[Randomly pick a move: topology / branch length / rate]
+    R --> S[Propose new state, compute Metropolis-Hastings ratio]
+    S --> T[Accept or reject]
+    T --> U{i > n_burnin and i % n_gap == 0?}
+    U -->|Yes| V[Append sample to *.p trace and *.t tree file]
+    U -->|No| Q
+    V --> Q
+    Q -->|n_draws reached| W([End])
+```
+
+:::{note}
+Whether `--rtreefile` is given only decides where the *starting* tree
+comes from. Whether the topology is actually held fixed during
+sampling is a separate flag, `fix_topology`, used on both paths — this
+differs from the summary in the top-level `README.md`, which describes
+the reference tree itself as fixing the topology.
+:::
 
 ## Which tool produces what
 
-TODO: table mapping outputs to the tools that consume them, and marking
-each as required, optional, diagnostic, or intermediate.
+| file(s) | produced by | consumed by | status |
+| --- | --- | --- | --- |
+| `*-cn.txt.gz` / `*-haplotype-cn.txt.gz` | `cnets` (simulated); or preprocessing scripts for real data | `cnetml`, `cnetmcmc` | required |
+| `*-rcn.txt.gz` / `*-haplotype-rcn.txt.gz` | `cnets` | external tools expecting relative copy number | optional |
+| `*-inodes-cn.txt.gz` / `*-inodes-haplotype-cn.txt.gz` | `cnets` | downstream analysis of internal-node truth | diagnostic |
+| `*-rel-times.txt` | `cnets` (simulated); or supplied directly for real data | `cnetml`, `cnetmcmc` | optional (needed for `estmu`/mutation-rate estimation) |
+| `<prefix>-tree.txt`, `<prefix>-tree.nex`, `<prefix>-tree-nmut.nex` | `cnets` (ground truth) | `cnetml` (as an optional initial tree), `cnetmcmc` (`--file_itree`), accuracy comparisons | primary output |
+| `<ofile>`, `<ofile>.nex`, `<ofile>.nmut.nex` | `cnetml` (reconstructed; `<ofile>` set by `-o`/`--ofile`, **not** `*-tree.*` — see [File formats](../file-formats/index.md#tree-formats)) | tree viewers (e.g. FigTree), downstream analysis, accuracy comparisons against `cnets`' output | primary output |
+| `<ofile>.summary.txt`, `<ofile>.edge_rates.txt` | `cnetml` | run bookkeeping, per-branch rate analysis (`bsr_mode > 0`) | diagnostic |
+| `*-info.txt`, `*-mut.txt`, `*-edge_rates.txt` | `cnets` | mutation-mapping / accuracy analysis; `*-edge_rates.txt` against `cnetml`'s reconstructed `<ofile>.edge_rates.txt` | diagnostic |
+| `*-segs.txt` | `cnetml` (written when reading the input copy-number file, named by `--seg_file`) | intermediate to `cnetml`'s own likelihood computation | intermediate |
+| `<ofile>.mrca.cn`, `<ofile>.joint.cn`, and (models 0-2) `<ofile>.mrca.state`/`<ofile>.joint.state`, or (model 3) `<ofile>.mrca.{seg,chr,wgd}.state`/`<ofile>.joint.state` | `cnetml` (mode 4, ancestral-state reconstruction) | downstream analysis of ancestral states | primary output (mode 4 only) |
+| `mcmc.cfg` | hand-written / copied from the repository root | `cnetmcmc` (`--config_file`) | required by `cnetmcmc` |
+| `*.p`, `*.t` | `cnetmcmc` (via `--trace_param_file`/`--trace_tree_file`; C++ defaults are `trace-mcmc-params.txt`/`trace-mcmc-trees.txt` — `run-cnetmcmc.sh` is what gives them `.p`/`.t` extensions) | Tracer / RWTY (`*.p`), TreeAnnotator (`*.t`) | primary output |
+
+See [File formats](../file-formats/index.md) for column definitions of
+each file.
 
 ## Future direction
 

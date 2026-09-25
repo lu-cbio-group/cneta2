@@ -1,5 +1,22 @@
 # Working on the documentation
 
+## Project structure
+
+- **`docs/source/`** — documentation source files (Markdown, MyST flavour)
+  - **`docs/source/index.md`** — homepage and root `toctree`
+  - **`docs/source/<section>/`** — pages grouped by topic (`installation/`,
+    `user-guide/`, `developer-guide/`, ...)
+  - **`docs/source/conf.py`** — Sphinx configuration
+  - **`docs/source/_static/`** — static assets
+- **`docs/build/`** — generated HTML/Doxygen XML (gitignored, not committed)
+- **`docs/Makefile`** — build automation (see [Everyday use](#everyday-use))
+- **`docs/environment.yml`**, **`docs/requirements.txt`** — conda/pip
+  dependencies; `requirements.txt` is the single source of truth, pulled in
+  by `environment.yml` via pip
+- **`docs/Doxyfile`** — Doxygen config for the C++ API pages
+- **`.github/workflows/docs.yml`** — CI: builds on every pull request,
+  deploys to GitHub Pages on merge to `main`
+
 ## One-time setup
 
 Python packages are listed once, in `docs/requirements.txt`. Everything
