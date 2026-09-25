@@ -1,0 +1,9 @@
+# Test dependencies for the cneta pytest suite.
+#
+#   python3 -m venv .venv && . .venv/bin/activate
+#   pip install -r tests/requirements.txt
+#
+# The helpers and fixtures use only the standard library, so pytest itself is
+# the whole list. Subprocess timeouts are handled by the `run` fixture rather
+# than by a plugin.
+pytest>=8.0

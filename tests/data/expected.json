@@ -1,0 +1,27 @@
+{
+  "_README": [
+    "Reference values for the deterministic regression tests.",
+    "",
+    "These come from `cnetml --mode 2`, which scores one supplied tree with",
+    "no RNG and no tree search, so it is reproducible to the digit. They are",
+    "the refactoring insurance the project plan calls for: if a change to the",
+    "likelihood code moves these numbers, that is a change in scientific",
+    "behaviour and needs to be a deliberate one.",
+    "",
+    "Regenerate with tests/regenerate_fixtures.sh, and only ever commit a new",
+    "value together with the reason it changed.",
+    "",
+    "Note cnetml prints 6 significant figures, so tests compare with a",
+    "relative tolerance of 1e-5 rather than for equality."
+  ],
+  "_generated": {
+    "date": "2026-08-14",
+    "platform": "macOS 15 arm64, AppleClang 17.0.0, GSL 2.8",
+    "cneta_version": "2.0",
+    "omp_num_threads": 1
+  },
+  "mode2_logl": {
+    "tiny-tree.txt": -42.9513,
+    "tiny-tree-alt.txt": -43.4797
+  }
+}

@@ -17,7 +17,8 @@ Required to build `cnets`, `cnetml`, and `cnetmcmc`:
 - [GSL](https://www.gnu.org/software/gsl/) (GNU Scientific Library)
 - zlib (used by the vendored `gzstream` for compressed I/O)
 - OpenMP — optional, accelerates `cnetml`'s tree search; the build still
-  succeeds without it
+  succeeds without it, but `cnetml` then runs single-threaded. See
+  [OpenMP](#openmp) below.
 
 `code/CMakeLists.txt` discovers all of these automatically via
 `find_package` — there is nothing to configure by hand.
@@ -43,6 +44,11 @@ conda env create -f util/environment.yml
 conda activate cnetml-util
 ```
 
+To run the test suite as well you additionally need Python 3.9+ with pytest,
+and CMake >= 3.16 (the main build still works with 3.10). Catch2 is fetched
+automatically at configure time if it is not already installed. See
+[Testing](../developer-guide/index.md#testing).
+
 ## Building from source
 
 Clone the repository:
@@ -58,11 +64,13 @@ Install dependencies and compile for your platform:
 :::{tab-item} macOS / Apple Silicon
 
 ```bash
-brew install cmake boost gsl
+brew install cmake boost gsl libomp
 ./build.sh local        # or: ./build.sh local <cores>, e.g. ./build.sh local 4
 ```
 
-Builds are confirmed working on Apple Silicon.
+Builds are confirmed working on Apple Silicon. `libomp` is what provides
+OpenMP on macOS; Apple's own compiler does not ship it. The build finds the
+Homebrew copy automatically, on both Apple Silicon and Intel.
 :::
 
 :::{tab-item} Linux (local)
@@ -109,8 +117,37 @@ conventions for `sbatch`/`srun`) — not yet documented here.
 :::
 ::::
 
-`build.sh` configures a CMake build in `code/build/`. The three executables 
-(`cnets`, `cnetml`, `cnetmcmc`) land directly in `code/build/`.
+### OpenMP
+
+`cnetml` parallelises its tree search with OpenMP. The configure step reports
+whether it was found:
+
+```text
+-- OpenMP: enabled (-Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include)
+```
+
+or, if it was not:
+
+```text
+-- OpenMP: not found, cnetml will run single-threaded (macOS: brew install libomp)
+```
+
+Without OpenMP the build still succeeds and runs the same algorithm, just
+without the speed-up.
+
+- **macOS:** `brew install libomp`. If you installed it after a first build,
+  re-run `./build.sh local` (CMake re-detects it; no need to clean).
+- **Linux and HPC:** GCC includes OpenMP, so nothing extra is needed.
+- **Thread count:** OpenMP uses all available cores by default. Set
+  `OMP_NUM_THREADS` to limit it, e.g. `OMP_NUM_THREADS=4 ./run-cnetml.sh`.
+  Floating-point sums over a varying number of threads are not
+  bit-reproducible, so pin `OMP_NUM_THREADS=1` when you need exactly
+  repeatable scores (the test suite does).
+
+`build.sh` configures a CMake build in `code/build/`. The three executables
+(`cnets`, `cnetml`, `cnetmcmc`) land in `bin/` at the top of the repository,
+which is where the `run-*.sh` scripts and the test suite look for them. Set
+`CNETA_BIN` if you want the run scripts to use a different build.
 
 Other `build.sh` usage:
 

@@ -9,7 +9,8 @@ from it with `cnetml`.
 cd code && ./build.sh local
 ```
 
-See [Installation](../installation/index.md) for HPC targets.
+The three executables land in `bin/` at the top of the repository. See
+[Installation](../installation/index.md) for HPC targets.
 
 ## 2. Simulate a small dataset
 
@@ -22,6 +23,11 @@ flags by hand. The defaults simulate `Ns=3` tumour regions plus the normal
 sample, using the haplotype-specific model (`model=2`), `cn_max=4`, with
 only duplication/deletion events (`r3=r4=r5=0`, i.e. no chromosome
 gain/loss or WGD). Output goes to `./example/`.
+
+All three `run-*.sh` scripts honour three environment overrides, each
+defaulting to the behaviour described here when unset: `CNETA_BIN` (where the
+executables live), `CNETA_OUT` (the output directory) and `CNETA_SEED` (the
+random seed — set it to reproduce a run).
 
 ## 3. Infer a tree
 

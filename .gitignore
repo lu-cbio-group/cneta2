@@ -68,3 +68,11 @@ cneta.code-workspace
 # always configures out-of-source here, never in code/ or docs/)
 code/build/
 build/
+
+# Executables land here (CMAKE_RUNTIME_OUTPUT_DIRECTORY in code/CMakeLists.txt)
+/bin/
+
+# Python test tooling
+__pycache__/
+.pytest_cache/
+.venv/
