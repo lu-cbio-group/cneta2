@@ -34,6 +34,15 @@ None of these are needed to build or run `cnets`, `cnetml`, or
 `cnetmcmc` themselves — only install them if you're using the
 corresponding script.
 
+Installing R/Bioconductor packages by hand is easy to get wrong (version
+conflicts, `BiocManager` quirks). `util/environment.yml` installs all of
+the above in one step, verified to solve and import cleanly:
+
+```bash
+conda env create -f util/environment.yml
+conda activate cnetml-util
+```
+
 ## Building from source
 
 Clone the repository:
@@ -116,4 +125,6 @@ Other `build.sh` usage:
 
 ## Containers
 
-Planned, not yet available.
+Planned, not yet available. In the meantime, `util/environment.yml`
+(see [Dependencies](#dependencies) above) covers reproducible
+installation of the postprocessing dependencies via conda.
