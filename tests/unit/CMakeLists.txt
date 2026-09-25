@@ -19,7 +19,9 @@ endif()
 find_package(Catch2 3 QUIET)
 
 if(NOT Catch2_FOUND)
-    message(STATUS "System Catch2 not found - fetching v3.7.1")
+    message(STATUS "System Catch2 not found - using v3.7.1, downloaded into "
+                   "${CMAKE_BINARY_DIR}/_deps on first configure "
+                   "(`brew install catch2` avoids the download)")
     include(FetchContent)
     FetchContent_Declare(Catch2
         GIT_REPOSITORY https://github.com/catchorg/Catch2.git

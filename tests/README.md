@@ -106,7 +106,10 @@ fixed — the assertion should then pass as written.
 
 - **A pure function in the C++ library** → `unit/`, next to the closest
   existing case. Add new `.cpp` files to the `add_executable` list in
-  `unit/CMakeLists.txt`.
+  `unit/CMakeLists.txt`, or they are never compiled. See
+  [Writing a unit test](../docs/source/developer-guide/writing-tests.md) for a
+  full walkthrough: how to run just your own test, how to compare doubles, and
+  how to record a bug you cannot fix yet.
 - **Behaviour of a whole program** → `e2e/`. Build the command line with a
   helper from `helpers/cli.py` rather than by hand, overriding only the
   options your test cares about:

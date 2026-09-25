@@ -4,6 +4,7 @@
 :maxdepth: 1
 
 architecture
+writing-tests
 documentation
 ```
 
@@ -20,7 +21,6 @@ cneta/
 │   ├── unit/      Catch2 unit tests (C++)
 │   ├── e2e/       end-to-end tests (pytest)
 │   └── data/      committed fixtures
-├── ilp/           integer-programming experiments
 ├── util/          R and Python helper scripts
 ├── docs/          this documentation site
 └── run-*.sh       example driver scripts
@@ -35,8 +35,8 @@ precursor to the planned `libcneta`.
 
 The three executables are written to `bin/` at the repository root, wherever
 the build tree happens to live. Pass
-`-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=<path>` to send them somewhere else — CI and
-the build-system tests do this so a throwaway build does not overwrite the
+`-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=<path>` to send them somewhere else — the
+build-system tests do this so a throwaway build does not overwrite the
 binaries in your working tree.
 
 `code/build.sh` is a thin wrapper: it optionally sources an HPC environment
@@ -126,6 +126,9 @@ no RNG and no search and so is reproducible to the digit. Reference values
 live in `tests/data/expected.json`. A change there means the likelihood
 calculation changed — which is exactly what needs watching during the
 `libcneta` refactor.
+
+[Writing a unit test](writing-tests.md) is the walkthrough for adding one of
+your own.
 
 `tests/README.md` has the full detail, including what is *not* covered yet and
 a list of known failures the suite records but does not fail on.
