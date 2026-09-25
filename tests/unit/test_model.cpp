@@ -8,6 +8,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <limits>
+#include <utility>
 #include <vector>
 
 #include "model.hpp"
@@ -33,6 +35,34 @@ void require_generator(const double* m, int n){
         REQUIRE_THAT(row_sum(m, n, i),
                      Catch::Matchers::WithinAbs(0.0, 1e-12));
     }
+}
+
+// Entry-by-entry comparison of two n x n matrices, to within rounding.
+//
+// Both matrices are built by summing/negating the same rates, but in a
+// different order, so the last bit can legitimately differ; 1e-12 is far
+// below any real difference between two rate constants.
+void require_same_matrix(const std::vector<double>& expected,
+                         const std::vector<double>& actual, int n){
+    for(int j = 0; j < n; ++j){
+        for(int i = 0; i < n; ++i){
+            CAPTURE(i, j);
+            REQUIRE_THAT(actual[i + j * n],
+                         Catch::Matchers::WithinAbs(expected[i + j * n], 1e-12));
+        }
+    }
+}
+
+// Rate pairs (increase, decrease). The two rates are deliberately unequal in
+// most pairs: with equal rates, swapping gain for loss goes unnoticed.
+const std::vector<std::pair<double, double>> kRatePairs = {
+    {0.01, 0.01}, {0.01, 0.02}, {0.02, 0.01}, {0.3, 0.07}, {0.5, 0.001},
+};
+
+// Start every entry as NaN so that an entry a builder forgets to write shows
+// up as a failure instead of passing as an accidental zero.
+std::vector<double> nan_matrix(int n){
+    return std::vector<double>(n * n, std::numeric_limits<double>::quiet_NaN());
 }
 
 }  // namespace
@@ -99,6 +129,54 @@ TEST_CASE("get_rate_matrix_haplotype_specific is a valid generator", "[model]"){
 
     REQUIRE(n == 15);
     require_generator(q.data(), n);
+}
+
+// get_rate_matrix_site_change_haplotype and
+// get_rate_matrix_chr_change_haplotype
+// fill their matrices entry by entry by hand, for one fixed size each.
+// get_rate_matrix_change_haplotype generates the same matrix from the state
+// space. Whatever the rates, the two routes must give the same matrix.
+
+TEST_CASE("hand-filled site-level haplotype rate matrix matches the generated one",
+          "[model][haplotype]"){
+    const int max_change = 2;
+    const int n = 16;
+    REQUIRE(compute_haplotype_change_dim(max_change) == n);
+
+    for(const auto& rates : kRatePairs){
+        const double dup_rate = rates.first;
+        const double del_rate = rates.second;
+        CAPTURE(dup_rate, del_rate);
+
+        std::vector<double> manual = nan_matrix(n);
+        std::vector<double> generated = nan_matrix(n);
+        get_rate_matrix_site_change_haplotype(manual.data(), dup_rate, del_rate, max_change);
+        get_rate_matrix_change_haplotype(generated.data(), dup_rate, del_rate, max_change);
+
+        require_same_matrix(manual, generated, n);
+        require_generator(generated.data(), n);
+    }
+}
+
+TEST_CASE("hand-filled chromosome-level haplotype rate matrix matches the generated one",
+          "[model][haplotype]"){
+    const int max_change = 1;
+    const int n = 9;
+    REQUIRE(compute_haplotype_change_dim(max_change) == n);
+
+    for(const auto& rates : kRatePairs){
+        const double gain_rate = rates.first;
+        const double loss_rate = rates.second;
+        CAPTURE(gain_rate, loss_rate);
+
+        std::vector<double> manual = nan_matrix(n);
+        std::vector<double> generated = nan_matrix(n);
+        get_rate_matrix_chr_change_haplotype(manual.data(), gain_rate, loss_rate, max_change);
+        get_rate_matrix_change_haplotype(generated.data(), gain_rate, loss_rate, max_change);
+
+        require_same_matrix(manual, generated, n);
+        require_generator(generated.data(), n);
+    }
 }
 
 TEST_CASE("get_rate_matrix_wgd is a valid generator", "[model]"){
