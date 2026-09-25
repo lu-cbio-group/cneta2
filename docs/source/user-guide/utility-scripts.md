@@ -3,6 +3,10 @@
 The `util/` directory contains R and Python helpers used around the main
 tools. They are standalone scripts rather than installed packages.
 
+See [Installation](../installation/index.md#dependencies) for the
+package list, or run `conda env create -f util/environment.yml` to
+install all of it in one step.
+
 :::{note}
 Descriptions below come from each script's own header comments and
 `option_list`/argument parser. Please review — they have not been

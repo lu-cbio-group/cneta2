@@ -78,6 +78,13 @@ struct OPT_TYPE{
   // on calibration failure, so a retry still retries calibration too) instead of assuming
   // "called before" means "succeeded before". See docs/flowcharts.md.
   bool bsr_calibrated = false;
+  // [2026-08-12 added] bsr_mode>0 only. true (default): unchanged behavior -- run an
+  // independent bsr_mode=0/estmu=1 calibration sub-optimization first, freeze the 5
+  // global reference rates, estimate only per-edge multipliers relative to that
+  // reference. false: skip calibration; the root-LUCA edge's own rate (mu0) is
+  // estimated jointly with the other edges' multipliers in the same optimization,
+  // and used as the reference those multipliers scale. See worklog_2026-08-11.md.
+  bool estimate_bsr0_first = true;
 };
 
 struct GSL_PARAM{
@@ -289,6 +296,16 @@ inline int bsr_var_index(int nparams_est, int k, int n_types_per_edge, int t){
     return nparams_est + k * n_types_per_edge + t + 1;
 }
 
+// [2026-08-12 added] estimate_bsr0_first=false only: index of mu0's slot for rate-type
+// t in x[]/variables[]. Placed right after the per-edge multiplier block (n_bsr_edges
+// edges, already excluding the root-LUCA edge -- see get_active_bsr_eids), matching how
+// get_ndim's nrates argument reserves this many extra dims at the end. n_bsr_edges here
+// must be the same active-edge count used to build that block, so this stays consistent
+// with bsr_var_index's own indexing.
+inline int bsr_mu0_index(int nparams_est, int n_types_per_edge, int n_bsr_edges, int t){
+    return nparams_est + n_types_per_edge * n_bsr_edges + t + 1;
+}
+
 inline vector<BsrRateSlot> get_bsr_rate_slots(const evo_tree& rtree, int cn_type){
     vector<BsrRateSlot> slots;
     auto add = [&](const char* name, double evo_tree::* tr, double RateSet::* ef){
@@ -326,16 +343,34 @@ inline vector<BsrRateSlot> get_bsr_rate_slots(const evo_tree& rtree, int cn_type
 }
 
 // Returns edge IDs that receive per-branch rate multipliers (excludes the normal-sample edge).
-inline vector<int> get_active_bsr_eids(const evo_tree& rtree){
+// [2026-08-12 changed] exclude_eid: optional extra edge to exclude, default -1 (exclude
+// nothing extra, original behavior unchanged). Used by the estimate_bsr0_first=false path
+// to keep the root-LUCA edge out of every "which edges get a multiplier / are shift-edge
+// candidates" list, since that edge's rate is mu0 itself, not mu0 times a multiplier.
+inline vector<int> get_active_bsr_eids(const evo_tree& rtree, int exclude_eid = -1){
     vector<int> eids;
     for(int eid = 0; eid < (int)rtree.edges.size(); ++eid){
         // [2026-07-14 disabled] see evo_tree::is_normal_sample_edge in evo_tree.hpp
         // if(rtree.edges[eid].start == rtree.nleaf - 1 ||
         //    rtree.edges[eid].end   == rtree.nleaf - 1) continue;
         if(rtree.is_normal_sample_edge(eid)) continue;
+        if(eid == exclude_eid) continue;
         eids.push_back(eid);
     }
     return eids;
+}
+
+// [2026-08-12 added] Root-to-LUCA edge: the edge leaving root_node_id with length>0
+// (excludes the zero-length normal-sample edge). Used by the estimate_bsr0_first=false
+// path to identify which edge's rate is estimated directly (mu0) rather than as a
+// multiplier on some other reference. Returns -1 if none found (should not happen for a
+// valid tree with at least one non-normal-sample edge).
+inline int find_luca_eid(const evo_tree& rtree){
+    for(int eid = 0; eid < (int)rtree.edges.size(); ++eid){
+        if(rtree.edges[eid].start == rtree.root_node_id && rtree.edges[eid].length > 0)
+            return eid;
+    }
+    return -1;
 }
 
 // Using BFGS method to get the maximum likelihood with lower and upper bounds (minimalize negative likelihood function)
