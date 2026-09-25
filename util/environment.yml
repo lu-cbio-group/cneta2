@@ -1,0 +1,29 @@
+# Conda environment for the R and Python scripts in util/.
+#
+#   conda env create -f util/environment.yml
+#   conda activate cnetml-util
+#
+# This covers postprocessing only — not building cnets/cnetml/cnetmcmc
+# themselves. See docs/source/installation/index.md for the C++ build
+# dependencies (CMake, Boost, GSL), which this environment does not
+# provide.
+#
+# R's `tools` package (listed as a dependency in the top-level README) is
+# part of every R installation via r-base below; it has no separate
+# conda package.
+name: cnetml-util
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - r-base=4.4
+  - python>=3.10
+  - r-optparse
+  - r-tidyverse
+  - r-ape
+  - r-phangorn
+  - bioconductor-copynumber
+  - bioconductor-ggtree
+  - networkx
