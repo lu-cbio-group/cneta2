@@ -2,7 +2,7 @@
 
 The current structure: independent command-line tools sharing C++ sources
 under `code/`, before the planned `libcneta` core exists. See
-[Repository layout](index.md#repository-layout) for the directory-level
+[Repository layout](build.md#repository-layout) for the directory-level
 view.
 
 ## How the main files fit together

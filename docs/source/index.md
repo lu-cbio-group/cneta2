@@ -25,7 +25,7 @@ Sections marked **TODO** are placeholders awaiting content.
 - New to CNETA? Start with [Installation](installation/index.md), then the
   [Quick start](quickstart/index.md).
 - Chaining the tools together? See [Workflows](workflows/index.md).
-- Contributing code? See the [Developer guide](developer-guide/index.md).
+- Contributing code? See the [Developer docs](developer-guide/index.md).
 
 ## Project status
 
@@ -42,22 +42,9 @@ If you use CNETA, please cite:
 
 ```{toctree}
 :maxdepth: 2
-:caption: Users
 :hidden:
 
-installation/index
-quickstart/index
-user-guide/index
-workflows/index
-file-formats/index
-configuration/index
-```
-
-```{toctree}
-:maxdepth: 2
-:caption: Developers
-:hidden:
-
+Home <self>
+users/index
 developer-guide/index
-api/cpp
 ```
