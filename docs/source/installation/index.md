@@ -3,7 +3,7 @@
 `cneta` is written in C++ and built with CMake; a few R and Python scripts
 under `util/` support pre/post-processing but are not required to build
 the main tools. This page covers what has actually been set up and
-verified so far — see the [Developer guide](../developer-guide/index.md)
+verified so far — see the [Developer docs](../developer-guide/index.md)
 for the current architecture and what's still planned.
 
 ## Dependencies
