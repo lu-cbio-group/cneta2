@@ -6,7 +6,7 @@ finishes in about a second — so they are the right place for anything that can
 be checked without running a whole program.
 
 This page is the walkthrough for adding one. See
-[Testing](index.md#testing) for what the three test layers are and how to run
+[Testing](testing.md#testing) for what the three test layers are and how to run
 them all.
 
 ## What can be tested this way

@@ -47,7 +47,7 @@ conda activate cnetml-util
 To run the test suite as well you additionally need Python 3.9+ with pytest,
 and CMake >= 3.16 (the main build still works with 3.10). Catch2 is fetched
 automatically at configure time if it is not already installed. See
-[Testing](../developer-guide/index.md#testing).
+[Testing](../developer-guide/testing.md#testing).
 
 ## Building from source
 
