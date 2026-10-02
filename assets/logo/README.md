@@ -10,6 +10,9 @@
 The mark combines a rooted phylogeny with copy-number profiles drawn as
 heatmap rows, following the usual representation of copy-number trees.
 
+
+## Colours
+
 | State | Colour |
 |---|---|
 | loss | blue `#3B82C4` |
