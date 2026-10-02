@@ -15,9 +15,6 @@ The first two programs are described in the paper:
 
 
 # Installation
-This package is mostly written in C++. There are a few scripts written in R and Python, for plotting and text processing.
-
-## Dependencies
 
 * Required C/C++ libraries for compiling the main programs
   * [CMake](https://cmake.org/install/) is required for BFGS optimization
