@@ -107,8 +107,21 @@ html_theme_options = {
     "collapse_navigation": False,
     "titles_only": False,
     "style_external_links": True,
+    # The logo already contains the wordmark, so don't repeat the project name.
+    "logo_only": True,
+    # The sidebar header is the logo's background. The theme's default blue
+    # swallows the logo's blue "loss" blocks, so use the logo's own dark slate.
+    "style_nav_header_background": "#1D2B36",
 }
 html_static_path = ["_static"]
+
+# Logo and favicon live in assets/logo/ at the repo root, shared with
+# README.md; the exports there are committed, so no TeX is needed to build the
+# docs. The sidebar is always dark, hence the white-ink "-dark" variant; see
+# assets/logo/README.md for which variant goes where.
+LOGO_DIR = DOCS_DIR.parent / "assets" / "logo"
+html_logo = str(LOGO_DIR / "svg" / "cneta-logo-dark.svg")
+html_favicon = str(LOGO_DIR / "favicon.ico")
 html_css_files = ["custom.css"]
 html_title = f"{project} {release}"
 

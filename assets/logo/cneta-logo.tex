@@ -1,0 +1,161 @@
+% CNETA logo -- TikZ source for every exported variant.
+%
+% The mark is a rooted phylogeny whose four tips run into copy-number
+% profiles, drawn as heatmap rows the way copy-number trees are usually
+% plotted. Clades share events: the gain in segment 2 is inherited by the
+% top clade, the loss in segment 1 by its inner cherry.
+%
+% Plain pdflatex on TeX Live "basic" (TikZ + Latin Modern, nothing else).
+% Do not run this file directly; ./build.sh renders all variants. To render
+% one by hand:
+%
+%   pdflatex -jobname=cneta-logo-dark \
+%     "\def\LogoLayout{full}\def\LogoScheme{dark}\input{cneta-logo}"
+%
+%   \LogoLayout  full | tagline | icon | favicon   (default full)
+%   \LogoScheme  light | dark                      (default light) ink colours
+%   \LogoBg      none | light | dark               (default none = transparent)
+%
+% `favicon` is a simplified mark (3 tips, chunkier strokes) on a dark tile,
+% so that it still reads at 16 px; it ignores \LogoScheme and \LogoBg.
+
+\providecommand\LogoLayout{full}
+\providecommand\LogoScheme{light}
+\providecommand\LogoBg{none}
+
+\documentclass{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\pagestyle{empty}
+
+% ---------------------------------------------------------------- palette
+% Copy-number states: L = loss, N = neutral, G = gain, A = amplification.
+\definecolor{cnInkLight}{HTML}{1D2B36}   % tree + wordmark on light ground
+\definecolor{cnInkDark}{HTML}{FFFFFF}    % ... on dark ground
+\definecolor{cnLoss}{HTML}{3B82C4}
+\definecolor{cnGain}{HTML}{F08A3C}
+\definecolor{cnAmp}{HTML}{D1382E}
+\definecolor{cnNeutralLight}{HTML}{CBD5DE}
+\definecolor{cnNeutralDark}{HTML}{5B6E7E}
+\definecolor{cnBgLight}{HTML}{FFFFFF}
+\definecolor{cnBgDark}{HTML}{1D2B36}
+
+\def\tmp{dark}
+\ifx\LogoScheme\tmp
+  \colorlet{cnInk}{cnInkDark}\colorlet{cnNeutral}{cnNeutralDark}
+\else
+  \colorlet{cnInk}{cnInkLight}\colorlet{cnNeutral}{cnNeutralLight}
+\fi
+\colorlet{cnL}{cnLoss}\colorlet{cnN}{cnNeutral}
+\colorlet{cnG}{cnGain}\colorlet{cnA}{cnAmp}
+
+% ------------------------------------------------------------------ mark
+% Drawn in a 10 x 10 box; 1 unit = 1 mm.
+\tikzset{cntree/.style={draw=cnInk, line width=0.78mm,
+                        line cap=round, line join=round}}
+
+\def\tipA{8.3}\def\tipB{6.1}\def\tipC{3.9}\def\tipD{1.7}
+\def\rowH{1.62}                % height of a copy-number row
+\def\rowX{6.25}                % left edge of the rows
+\def\segW{0.94}                % width of one genome segment (4 per row)
+
+% \cnrow{y}{s1,s2,s3,s4}: one copy-number profile, states L/N/G/A
+\newcommand\cnrow[2]{%
+  \begin{scope}
+    \clip[rounded corners=0.32mm] (\rowX,#1-\rowH/2)
+      rectangle ++(4*\segW,\rowH);
+    \foreach \s [count=\i from 0] in {#2}
+      \fill[cn\s] (\rowX+\i*\segW,#1-\rowH/2) rectangle ++(\segW+0.01,\rowH);
+  \end{scope}}
+
+\newcommand\cnicon{%
+  % tree: ((A,(B,C)),D), rectangular, root on the left
+  \pgfmathsetmacro\yBC{(\tipB+\tipC)/2}
+  \pgfmathsetmacro\yX{(\tipA+\yBC)/2}
+  \pgfmathsetmacro\yR{(\yX+\tipD)/2}
+  \begin{scope}[cntree]
+    \draw (0.4,\yR) -- (1.5,\yR);                       % root stem
+    \draw (1.5,\tipD) |- (2.9,\yX) (1.5,\tipD) -- (5.65,\tipD);
+    \draw (2.9,\tipA) -- (2.9,\yBC) (2.9,\tipA) -- (5.65,\tipA);
+    \draw (2.9,\yBC) -- (4.3,\yBC);
+    \draw (4.3,\tipB) -- (4.3,\tipC)
+          (4.3,\tipB) -- (5.65,\tipB) (4.3,\tipC) -- (5.65,\tipC);
+  \end{scope}
+  % copy-number profiles at the tips
+  \cnrow{\tipA}{N,G,N,L}
+  \cnrow{\tipB}{L,G,A,N}
+  \cnrow{\tipC}{L,G,N,G}
+  \cnrow{\tipD}{G,N,L,N}}
+
+% Favicon mark: ((A,B),C) with two segments per row, always light-on-dark.
+% Strokes are ~1.7 px with ~1.8 px gaps and rows ~3.5 px tall at 16 px, about
+% the least that still reads as "a tree ending in coloured blocks".
+\newcommand\cnfavicon{%
+  \colorlet{cnInk}{cnInkDark}\colorlet{cnN}{cnNeutralLight}
+  \begin{scope}[cntree, line width=1.0mm]
+    \draw (1.2,4.35) -- (2.2,4.35);                     % root stem
+    \draw (2.2,2.3) |- (4.3,6.4);                       % C, then the cherry
+    \draw (2.2,2.3) -- (6.0,2.3);
+    \draw (4.3,5.1) -- (4.3,7.7) (4.3,5.1) -- (6.0,5.1) (4.3,7.7) -- (6.0,7.7);
+  \end{scope}
+  \foreach \y/\a/\b in {7.7/G/N, 5.1/G/A, 2.3/N/L} {
+    \begin{scope}
+      \clip[rounded corners=0.3mm] (6.0,\y-0.95) rectangle ++(3.2,1.9);
+      \fill[cn\a] (6.0,\y-0.95) rectangle ++(1.6,1.9);
+      \fill[cn\b] (7.6,\y-0.95) rectangle ++(1.6,1.9);
+    \end{scope}}}
+
+% ---------------------------------------------------------------- output
+% Ship the picture as a page cropped exactly to its bounding box.
+\newcommand\shippicture[1]{%
+  \setbox0\hbox{#1}%
+  \pdfpagewidth=\wd0 \pdfpageheight=\dimexpr\ht0+\dp0\relax
+  \hoffset=-1in \voffset=-1in
+  \shipout\vbox{\box0}}
+
+\pgfdeclarelayer{background}\pgfsetlayers{background,main}
+\def\tmpnone{none}\def\tmpdark{dark}
+% Padding around the drawing; the optional background tile fills it.
+\def\pad{0.9}
+
+\begin{document}
+\shippicture{%
+\begin{tikzpicture}[x=1mm, y=1mm]
+  \def\tmp{favicon}
+  \ifx\LogoLayout\tmp
+    \def\pad{0}\def\LogoBg{dark}
+    \cnfavicon
+  \else
+    \cnicon
+  \fi
+  \def\tmp{full}
+  \ifx\LogoLayout\tmp
+    \node[anchor=base west, inner sep=0, text=cnInk,
+          font=\fontsize{23}{23}\sffamily\bfseries]
+      at (12.4,2.2) {CNETA};
+  \fi
+  \def\tmp{tagline}
+  \ifx\LogoLayout\tmp
+    \node[anchor=base west, inner sep=0, text=cnInk,
+          font=\fontsize{21}{21}\sffamily\bfseries]
+      at (12.4,4.1) {CNETA};
+    \node[anchor=base west, inner sep=0, text=cnInk,
+          font=\fontsize{4.1}{5}\sffamily]
+      at (12.55,0.75) {copy number evolutionary tree analysis};
+  \fi
+  % Fixed extent: the icon's 10 mm box plus padding, so layouts align.
+  \path (0,0) (10,10);
+  \path let \p1=(current bounding box.north east) in
+    coordinate (bbNE) at (\x1+\pad mm, 10mm+\pad mm)
+    coordinate (bbSW) at (-\pad mm, -\pad mm);
+  \useasboundingbox (bbSW) rectangle (bbNE);
+  \ifx\LogoBg\tmpnone\else
+    \ifx\LogoBg\tmpdark\colorlet{cnBg}{cnBgDark}\else\colorlet{cnBg}{cnBgLight}\fi
+    \begin{pgfonlayer}{background}
+      \fill[cnBg, rounded corners=1.8mm] (bbSW) rectangle (bbNE);
+    \end{pgfonlayer}
+  \fi
+\end{tikzpicture}}
+\end{document}

@@ -16,6 +16,8 @@
 - **`docs/Doxyfile`** — Doxygen config for the C++ API pages
 - **`.github/workflows/docs.yml`** — CI: builds on every pull request,
   deploys to GitHub Pages on merge to `main`
+- **`assets/logo/`** — logo: TikZ source, build script and exported
+  SVG/PNG/favicon (see its `README.md`); used by this file and the docs
 
 ## One-time setup
 
