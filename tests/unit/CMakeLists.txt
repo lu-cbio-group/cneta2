@@ -38,6 +38,7 @@ add_executable(cneta_unit_tests
     test_model.cpp
     test_parse_cn.cpp
     test_tree_op.cpp
+    test_optimization.cpp
 )
 
 target_link_libraries(cneta_unit_tests PRIVATE cneta_core Catch2::Catch2WithMain)
