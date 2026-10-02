@@ -1,0 +1,43 @@
+/* Keep the top-level sidebar sections (User docs / Developer docs) always
+   expanded, instead of sphinx_rtd_theme's default of only expanding the
+   section containing the current page. */
+.wy-menu-vertical li.toctree-l1 > ul {
+    display: block !important;
+}
+
+/* The theme's dim text color for non-top-level entries (#404040) assumes
+   the lighter background it only applies to the "current" page's
+   ancestor chain. With both top-level sections open at once, most l2
+   entries never get that background, so give them a color that reads
+   against the dark sidebar instead. */
+.wy-menu-vertical li.toctree-l2:not(.current) > a {
+    color: #b3b3b3;
+}
+.wy-menu-vertical li.toctree-l2:not(.current) > a:hover {
+    color: #fff;
+    background: #4e4a46;
+}
+
+/* The +/- expand toggle is for pre-expanding a branch without
+   navigating into it; with sections forced open there's nothing left to
+   toggle, so drop it. */
+.wy-menu-vertical li button.toctree-expand {
+    display: none !important;
+}
+
+/* The theme only indents l2 entries past l1 while that branch is
+   "current" (see the color rule above for why) - otherwise every level
+   shares the same left padding and the two top-level headings (User
+   docs / Developer docs) read as just another line in the list. Give
+   l2 its own indent, and put some vertical space between each top-level
+   group, so the three sections (Home / User docs / Developer docs)
+   stay visually distinct from their children. */
+.wy-menu-vertical li.toctree-l1 > ul > li.toctree-l2 > a {
+    padding-left: 2.427em;
+}
+.wy-menu-vertical li.toctree-l1 {
+    margin-top: 0.6em;
+}
+.wy-menu-vertical li.toctree-l1:first-child {
+    margin-top: 0;
+}
