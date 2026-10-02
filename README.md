@@ -36,30 +36,6 @@ This package is mostly written in C++. There are a few scripts written in R and 
 * Required Python libraries for data postprocessing
   * newick2elist.py: [networkx](https://networkx.org)
 
-### How to install CMake
-#### Installing with package manager
-On Mac:
-```
-brew install cmake
-```
-
-On Ubunbu:
-```
-sudo apt-get install cmake
-```
-
-#### Compiling from source
-Get the latest “Unix/Linux Source” *.tar.gz file.
-```
-HOME=~/local
-mkdir -p $HOME
-tar -xf cmake*.tar.gz
-cd cmake*
-./configure --prefix=$HOME
-make
-make install
-```
-
 ### How to install R libraries required for data proprocessing
 ```
 if (!requireNamespace("BiocManager", quietly = TRUE))
