@@ -109,6 +109,7 @@ html_theme_options = {
     "style_external_links": True,
 }
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 html_title = f"{project} {release}"
 
 # Used for canonical links and sitemap generation.
