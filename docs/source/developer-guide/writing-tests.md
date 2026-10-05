@@ -184,7 +184,7 @@ change, tag it `[!mayfail]`. It still runs and still reports, but it does not
 fail the build:
 
 ```cpp
-TEST_CASE("order_tree_string_uniq is idempotent", "[tree_op][!mayfail]"){
+TEST_CASE("what should be true once the bug is fixed", "[tree_op][!mayfail]"){
 ```
 
 Write the assertion the way it *should* pass, add a row to the known-failures
@@ -204,7 +204,6 @@ All of these are compiled on every build, so they cannot fall out of date:
 | Run the same check over several inputs with `CAPTURE` | `test_model.cpp` — *"hand-filled site-level haplotype rate matrix matches the generated one"* |
 | Read a fixture file | `test_tree_op.cpp` — *"read_tree_info loads the fixture tree"* |
 | Check two implementations agree | `test_model.cpp` — the two *"hand-filled ... matches the generated one"* cases |
-| Record a known bug | `test_tree_op.cpp` — *"order_tree_string_uniq is idempotent"* |
 
 ## Unit test or end-to-end test?
 
