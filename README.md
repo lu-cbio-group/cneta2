@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/svg/cneta-logo-dark.svg">
+    <img src="assets/logo/svg/cneta-logo.svg" alt="CNETA" width="320">
+  </picture>
+</p>
+
 Copy Number Evolutionary Tree Analysis (Version 2)
 =============
 
@@ -451,6 +458,8 @@ Then open a pull request into `main` on GitHub. You can use your prefered GUI gi
 - **`docs/Doxyfile`** — Doxygen config for the C++ API pages
 - **`.github/workflows/docs.yml`** — CI: builds on every pull request,
   deploys to GitHub Pages on merge to `main`
+- **`assets/logo/`** — logo: TikZ source, build script and exported
+  SVG/PNG/favicon (see its `README.md`); used by this file and the docs
 
 New pages must be added to a `toctree` in their section's `index.md` to
 appear in the site navigation — an unlisted page triggers a warning, which

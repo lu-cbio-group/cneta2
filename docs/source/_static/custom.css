@@ -41,3 +41,9 @@
 .wy-menu-vertical li.toctree-l1:first-child {
     margin-top: 0;
 }
+
+/* The theme shows an SVG logo at its intrinsic size (~160 px here), which is
+   too small in the 300 px sidebar for the copy-number blocks to read. */
+.wy-side-nav-search > a img.logo {
+    width: 230px;
+}
