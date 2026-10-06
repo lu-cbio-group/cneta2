@@ -98,7 +98,6 @@ fixed — the assertion should then pass as written.
 
 | Where | Issue |
 |---|---|
-| `unit/test_tree_op.cpp` (`[!mayfail]`) | `order_tree_string_uniq` sorts before dropping the trailing empty field, so it discards the lexicographically largest node instead. Every canonical tree string is missing one node, which could make tree search treat two distinct topologies as the same. |
 | `e2e/test_cnets.py` (`xfail`) | `cnets --help` and `cnetml --help` exit 1. Asking for help is not an error, and a non-zero status breaks `cmd --help` in scripts and Makefiles. |
 | `e2e/test_run_scripts.py` (`xfail`) | `run-cnetmcmc.sh` passes total copy numbers (`is_total=1`, 4 columns) while `mcmc.cfg` sets `model=2`, which needs the 5-column haplotype file. `cnetmcmc` correctly exits 1, but the script never checks the status inside its chain loop, so it reports success and exits 0 with no traces written. |
 

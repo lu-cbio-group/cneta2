@@ -114,30 +114,30 @@ TEST_CASE("different topologies give different tree strings", "[tree_op]"){
             != order_tree_string_uniq(create_tree_string_uniq(other)));
 }
 
-// KNOWN FAILURE - tagged [!mayfail] so it reports without breaking the build.
-//
-// order_tree_string_uniq() splits on ':' and iterates to split1.size()-1,
-// intending to drop the empty string that the trailing ':' produces. But it
-// sorts first, which moves that empty string to the *front*, so the loop
-// instead drops the lexicographically largest component - a real node. One
-// node is therefore missing from every canonical tree string, and applying
-// the function twice loses another.
-//
-// Two topologies that differ only in their largest component would hash to
-// the same string and tree search would treat one as already visited. Remove
-// the tag once the off-by-one is fixed; the assertion below should then pass
-// as written.
-TEST_CASE("order_tree_string_uniq is idempotent", "[tree_op][!mayfail]"){
+// The next three cases guard against a fixed bug: order_tree_string_uniq()
+// used to sort before skipping the empty string left by the trailing ':'.
+// Sorting moves that empty string to the front, so the loop dropped the
+// lexicographically largest node instead, leaving a leading ':', one node
+// short, and losing another node on every further pass.
+TEST_CASE("order_tree_string_uniq is idempotent", "[tree_op]"){
     evo_tree tree = read_tree_info(data_path("tiny-tree.txt"), NS);
 
     const std::string once = order_tree_string_uniq(create_tree_string_uniq(tree));
     REQUIRE(order_tree_string_uniq(once) == once);
 }
 
-TEST_CASE("canonical tree strings contain no empty component", "[tree_op][!mayfail]"){
-    // Same root cause as above, stated so that it is visible directly. The
-    // sorted-empty-string-first bug shows up as a leading ':' -- an empty
-    // component standing in for the node that was dropped off the end.
+TEST_CASE("canonical tree strings keep every node", "[tree_op]"){
+    // One entry per node: tips 1-4, root 5 with its children in order, then
+    // the two inner nodes, named after the tips below them.
+    evo_tree tree = read_tree_info(data_path("tiny-tree.txt"), NS);
+
+    REQUIRE(order_tree_string_uniq(create_tree_string_uniq(tree))
+            == "1:2:3:4:5;4;7:n_1-3;1;3:n_2-[n_1-3];2;n_1-3:");
+}
+
+TEST_CASE("canonical tree strings contain no empty component", "[tree_op]"){
+    // A leading ':' or a '::' is an empty component, which is what the bug
+    // left in place of the node it dropped.
     evo_tree tree = read_tree_info(data_path("tiny-tree.txt"), NS);
 
     const std::string canonical =

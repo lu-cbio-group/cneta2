@@ -95,7 +95,7 @@ string create_tree_string(const evo_tree& tree){
 // nodes separated by ":", children of internal nodes separated by ";" 
 // The key is to name non-root internal node based on tips with n_tip1-tip2
 // e.g. tree (((2:17.1132000000,1:19.1132000000)6:1.5240200000,3:22.6373000000)7:0.2121310000,4:0.0000000000)5
-// sample format of a tree string: :1:2:3:4:5;4;7:n_1-2;1;2:
+// sample format of a tree string, after order_tree_string_uniq(): 1:2:3:4:5;4;7:n_1-2;1;2:n_3-[n_1-2];3;n_1-2:
 string create_tree_string_uniq(const evo_tree& tree){
   int debug = 0;
 
@@ -206,10 +206,14 @@ string order_tree_string_uniq(const string& tree){
   vector<string> split1;
 
   boost::split(split1, tree, [](char c){ return c == ':'; });
+  // Every node ends in ':', so split creates an empty string at the end.
+  // Drop it before sorting: sorting moves it to the front, and skipping the
+  // last element afterwards would drop a real node instead.
+  split1.erase(remove(split1.begin(), split1.end(), ""), split1.end());
   // Sort split1
   sort(split1.begin(), split1.end());
 
-  for(int i = 0; i < split1.size()-1; ++ i){     // split creates an empty string at the end
+  for(int i = 0; i < split1.size(); ++ i){
     //sstm << split1[i];
     //cout << "\t" << split1[i] << endl;
     vector<string> split2;
