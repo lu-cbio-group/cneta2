@@ -19,10 +19,10 @@ Model 1 (bounded total copy number) is deprecated in favour of model 2
 ## Usage
 
 ```bash
-code/cnets [options]
+bin/cnets [options]
 ```
 
-`run-cnets.sh` is the maintained example driver — copy and edit it rather
+`bin/run-cnets.sh` is the maintained example driver — copy and edit it rather
 than calling `cnets` directly. It sets the seed, verbosity, tree-generation
 parameters, mutation-model parameters, and output directory in one place.
 
@@ -105,7 +105,7 @@ mentioned in the README at all.
 ## Examples
 
 ```bash
-./run-cnets.sh
+bin/run-cnets.sh
 ```
 
 Edit the parameter block at the top of the script (tree size `Ns`,

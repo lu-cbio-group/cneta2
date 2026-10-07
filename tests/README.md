@@ -6,7 +6,7 @@ Three layers, each answering a different question.
 |---|---|---|---|
 | **Unit** (Catch2, C++) | `unit/` | Do the shared library functions still compute the right thing? | < 1 s |
 | **End-to-end** (pytest) | `e2e/` | Do the three programs still run, produce the right files, and give the same numbers? | ~40 s |
-| **Build system** (pytest) | `build_system/` | Does the project still configure and compile from scratch? | ~20 s |
+| **Build system** (pytest) | `build_system/` | Does the project still configure and compile from scratch? Does git track the right files in `bin/` and `config/`? | ~20 s |
 
 The suite is deliberately small. It is a starting point meant to grow, not a
 finished safety net — see [What is not covered yet](#what-is-not-covered-yet).
@@ -59,8 +59,9 @@ are missing, rather than reporting a wall of failures.
 ## How it fits together
 
 **Binaries.** The build writes `cnets`, `cnetml` and `cnetmcmc` to `bin/` at
-the repository root. Tests look there; set `CNETA_BIN` to point at a
-different build.
+the repository root, next to the `run-*.sh` scripts. Tests look there; set
+`CNETA_BIN` to point at a different build. The script tests always run the
+scripts from the repository's own `bin/`.
 
 **Determinism.** Everything runs with `OMP_NUM_THREADS=1` and a fixed seed.
 `cnetml`'s tree search is parallelised with OpenMP, and floating-point sums
@@ -99,7 +100,7 @@ fixed — the assertion should then pass as written.
 | Where | Issue |
 |---|---|
 | `e2e/test_cnets.py` (`xfail`) | `cnets --help` and `cnetml --help` exit 1. Asking for help is not an error, and a non-zero status breaks `cmd --help` in scripts and Makefiles. |
-| `e2e/test_run_scripts.py` (`xfail`) | `run-cnetmcmc.sh` passes total copy numbers (`is_total=1`, 4 columns) while `mcmc.cfg` sets `model=2`, which needs the 5-column haplotype file. `cnetmcmc` correctly exits 1, but the script never checks the status inside its chain loop, so it reports success and exits 0 with no traces written. |
+| `e2e/test_run_scripts.py` (`xfail`) | `bin/run-cnetmcmc.sh` passes total copy numbers (`is_total=1`, 4 columns) while `config/cnet_mcmc.cfg` sets `model=2`, which needs the 5-column haplotype file. `cnetmcmc` correctly exits 1, but the script never checks the status inside its chain loop, so it reports success and exits 0 with no traces written. |
 
 ## Adding a test
 

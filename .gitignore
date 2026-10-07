@@ -49,7 +49,10 @@ code/lbfgsb
 # example files
 example/
 
-# compiled program files
+# compiled program files -- these patterns match at any depth, so they also
+# keep the build output in bin/ out of git while the run-*.sh scripts next to
+# it stay tracked. Do not ignore bin/ itself: new scripts added there would be
+# silently left out.
 cnets
 cnetml
 cnetmcmc
@@ -68,9 +71,6 @@ cneta.code-workspace
 # always configures out-of-source here, never in code/ or docs/)
 code/build/
 build/
-
-# Executables land here (CMAKE_RUNTIME_OUTPUT_DIRECTORY in code/CMakeLists.txt)
-#/bin/
 
 # Python test tooling
 __pycache__/

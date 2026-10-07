@@ -2,9 +2,23 @@
 
 # This script is used to run program cnetml.
 
-# Where the compiled executables live. The CMake build puts them in <repo>/bin;
-# override with CNETA_BIN to point at a different build.
-CNETA_BIN="${CNETA_BIN:-$(cd "$(dirname "$0")" && pwd)/bin}"
+# This script lives in <repo>/bin and finds the programs, config/ and util/
+# relative to the repository, so it can be run from any directory. Output
+# (CNETA_OUT) is still relative to the directory you run it from.
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Where the compiled executables live. The CMake build puts them in <repo>/bin,
+# next to this script; override with CNETA_BIN to point at a different build.
+CNETA_BIN="${CNETA_BIN:-$REPO_ROOT/bin}"
+
+# Where the configuration files live; override with CNETA_CONFIG_DIR.
+CNETA_CONFIG_DIR="${CNETA_CONFIG_DIR:-$REPO_ROOT/config}"
+
+# Settings shared by all run scripts (output directory, seed). Anything already
+# set in the environment takes precedence over this file.
+if [[ -f "$CNETA_CONFIG_DIR/common.conf" ]]; then
+  source "$CNETA_CONFIG_DIR/common.conf"
+fi
 
 seed="${CNETA_SEED:-$RANDOM}" # Setting seed for reproductive results
 verbose=0  # Whether or not to print debug information. 0: default, 1: standard debug, 2: debug with details on tree
@@ -127,7 +141,7 @@ if [[ $mode -eq 0 ]]; then
   fi
 
   if [[ $plot -eq 1 ]]; then
-    Rscript util/plot-trees-all.R -f $mltree -b 0 -t "single" -l "xlim" --time_file "$times"  #>& /dev/null
+    Rscript "$REPO_ROOT/util/plot-trees-all.R" -f $mltree -b 0 -t "single" -l "xlim" --time_file "$times"  #>& /dev/null
   fi
   # Evaluate the estimation error
   # cmp_plot=$dir/cmp_plot-"$suffix".pdf
@@ -148,7 +162,7 @@ if [[ $mode -eq 0 ]]; then
     done
     # Draw the ML tree with bootstrapping support
     if [[ $plot -eq 1 ]]; then
-      Rscript util/plot-trees-all.R -s $bsdir1 -f $mltree -o $dir/MaxL-tree-"$suffix"-bootstrap.pdf -t "bootstrap" -l "age" --time_file "$times" -p "MaxL-"$suffix"-btree-*txt"
+      Rscript "$REPO_ROOT/util/plot-trees-all.R" -s $bsdir1 -f $mltree -o $dir/MaxL-tree-"$suffix"-bootstrap.pdf -t "bootstrap" -l "age" --time_file "$times" -p "MaxL-"$suffix"-btree-*txt"
     fi
   fi
 
@@ -180,7 +194,7 @@ elif [[ $mode -eq 3 ]]; then
 
   # plot the new tree
   if [[ $plot -eq 1 ]]; then
-    Rscript util/plot-trees-all.R -f $mltree2 -b 0 -t "single" -l "xlim" --time_file "$times"  #>& /dev/null
+    Rscript "$REPO_ROOT/util/plot-trees-all.R" -f $mltree2 -b 0 -t "single" -l "xlim" --time_file "$times"  #>& /dev/null
   fi
 
   bootstrap=1
@@ -199,14 +213,14 @@ elif [[ $mode -eq 3 ]]; then
     done
 
     # Draw the ML tree with confidence intervals
-    ci_dup=`Rscript util/compute_ci.R $fdup 4`
-    ci_del=`Rscript util/compute_ci.R $fdel 4`
+    ci_dup=`Rscript "$REPO_ROOT/util/compute_ci.R" $fdup 4`
+    ci_del=`Rscript "$REPO_ROOT/util/compute_ci.R" $fdel 4`
 
     echo $ci_dup
     echo $ci_del
 
     if [[ $plot -eq 1 ]]; then
-      Rscript util/plot-trees-all.R -s $bsdir1 -f $mltree2 -o $dir/MaxL-tree-"$suffix"-fixt-bootstrap.pdf -t "bootstrap" -l "ci" --time_file "$times" -p "MaxL-"$suffix"-btree-*txt" --bstrap_dir2 $bsdir2 --title "duplication rate $ci_dup; deletion rate $ci_del"
+      Rscript "$REPO_ROOT/util/plot-trees-all.R" -s $bsdir1 -f $mltree2 -o $dir/MaxL-tree-"$suffix"-fixt-bootstrap.pdf -t "bootstrap" -l "ci" --time_file "$times" -p "MaxL-"$suffix"-btree-*txt" --bstrap_dir2 $bsdir2 --title "duplication rate $ci_dup; deletion rate $ci_del"
     fi
   fi
 

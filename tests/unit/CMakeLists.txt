@@ -48,8 +48,8 @@ target_link_libraries(cneta_unit_tests PRIVATE cneta_core Catch2::Catch2WithMain
 target_compile_definitions(cneta_unit_tests PRIVATE
     CNETA_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../data")
 
-# bin/ is reserved for the three user-facing tools; test binaries stay in the
-# build tree so `ls bin/` keeps meaning "the programs a user runs".
+# bin/ is reserved for what a user runs -- the three programs and the run-*.sh
+# scripts; test binaries stay in the build tree so `ls bin/` keeps meaning that.
 set_target_properties(cneta_unit_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests)
 

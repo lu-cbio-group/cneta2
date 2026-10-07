@@ -81,4 +81,4 @@ cmake ..
 echo "Compiling with $CORES core(s)..."
 make -j"$CORES"
 
-echo "Build complete! Executables are in build/"
+echo "Build complete! Executables are in $(cd ../.. && pwd)/bin/"

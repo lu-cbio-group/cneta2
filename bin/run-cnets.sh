@@ -2,9 +2,23 @@
 
 # This script is used to run program cnets, which can generate a random colesence tree (of tumor samples from a single patient) and structual variations along the tree branches.
 
-# Where the compiled executables live. The CMake build puts them in <repo>/bin;
-# override with CNETA_BIN to point at a different build.
-CNETA_BIN="${CNETA_BIN:-$(cd "$(dirname "$0")" && pwd)/bin}"
+# This script lives in <repo>/bin and finds the programs, config/ and util/
+# relative to the repository, so it can be run from any directory. Output
+# (CNETA_OUT) is still relative to the directory you run it from.
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Where the compiled executables live. The CMake build puts them in <repo>/bin,
+# next to this script; override with CNETA_BIN to point at a different build.
+CNETA_BIN="${CNETA_BIN:-$REPO_ROOT/bin}"
+
+# Where the configuration files live; override with CNETA_CONFIG_DIR.
+CNETA_CONFIG_DIR="${CNETA_CONFIG_DIR:-$REPO_ROOT/config}"
+
+# Settings shared by all run scripts (output directory, seed). Anything already
+# set in the environment takes precedence over this file.
+if [[ -f "$CNETA_CONFIG_DIR/common.conf" ]]; then
+  source "$CNETA_CONFIG_DIR/common.conf"
+fi
 
 seed="${CNETA_SEED:-$RANDOM}"  # used for reproducing the results
 verbose=0   # Whether or not to print debug information. 0: default, 1: standard debug, 2: debug with details on tree
@@ -75,10 +89,10 @@ echo "Finish running cnets"
 
 if [[ $plot -eq 1 ]]; then
   # Plot all simulated trees
-  Rscript util/plot-trees-all.R -d $dir -b 0 -t "all" -l "xlim"  # >& /dev/null
+  Rscript "$REPO_ROOT/util/plot-trees-all.R" -d $dir -b 0 -t "all" -l "xlim"  # >& /dev/null
   # Plot simulated tree with the number of mutations on the branch
-  Rscript util/plot-trees-all.R -d $dir -b 1 -t "all" -l "xlim" # >& /dev/null
-  Rscript util/plot-cns.R -d $dir -b util/bin_locations_4401.Rdata # >& /dev/null
+  Rscript "$REPO_ROOT/util/plot-trees-all.R" -d $dir -b 1 -t "all" -l "xlim" # >& /dev/null
+  Rscript "$REPO_ROOT/util/plot-cns.R" -d $dir -b "$REPO_ROOT/util/bin_locations_4401.Rdata" # >& /dev/null
 fi 
 
 
@@ -88,8 +102,8 @@ fi
 # tfile=$dir/${prefix}-rel-times.txt
 # ofile=$dir/"$prefix"-tree.txt
 # cfile=$dir/"$prefix"-cn.txt.gz
-# Rscript util/plot-trees-all.R -f $ofile -b 0 -t "single" -l "xlim" --time_file $tfile # >& /dev/null
+# Rscript "$REPO_ROOT/util/plot-trees-all.R" -f $ofile -b 0 -t "single" -l "xlim" --time_file $tfile # >& /dev/null
 # # Plot simulated tree with the number of mutations on the branch
-# Rscript util/plot-trees-all.R -f $ofile -b 1 -t "single"  # >& /dev/null
-# Rscript util/plot-cns.R -f $cfile -b util/bin_locations_4401.Rdata # >& /dev/null
+# Rscript "$REPO_ROOT/util/plot-trees-all.R" -f $ofile -b 1 -t "single"  # >& /dev/null
+# Rscript "$REPO_ROOT/util/plot-cns.R" -f $cfile -b "$REPO_ROOT/util/bin_locations_4401.Rdata" # >& /dev/null
 ################################################################################

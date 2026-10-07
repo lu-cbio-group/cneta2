@@ -9,13 +9,16 @@ from it with `cnetml`.
 cd code && ./build.sh local
 ```
 
-The three executables land in `bin/` at the top of the repository. See
-[Installation](../installation/index.md) for HPC targets.
+The three executables land in `bin/` at the top of the repository, next to
+the `run-*.sh` driver scripts. See [Installation](../installation/index.md)
+for HPC targets.
 
 ## 2. Simulate a small dataset
 
+From the top of the repository:
+
 ```bash
-./run-cnets.sh
+bin/run-cnets.sh
 ```
 
 Edit the parameter block at the top of the script rather than passing
@@ -24,15 +27,26 @@ sample, using the haplotype-specific model (`model=2`), `cn_max=4`, with
 only duplication/deletion events (`r3=r4=r5=0`, i.e. no chromosome
 gain/loss or WGD). Output goes to `./example/`.
 
-All three `run-*.sh` scripts honour three environment overrides, each
-defaulting to the behaviour described here when unset: `CNETA_BIN` (where the
-executables live), `CNETA_OUT` (the output directory) and `CNETA_SEED` (the
-random seed — set it to reproduce a run).
+Settings shared by all three scripts — the output directory and the random
+seed — are in `config/common.conf`. The environment overrides the file, so
+for a one-off change set a variable on the command line instead, e.g.
+`CNETA_SEED=42 bin/run-cnets.sh`:
+
+- `CNETA_OUT` — the output directory (default `./example`, relative to where
+  you run the script)
+- `CNETA_SEED` — the random seed; set it to reproduce a run (default: a new
+  random seed each run, recorded in the log)
+- `CNETA_BIN` — where the executables live (default `bin/`)
+- `CNETA_CONFIG_DIR` — where the configuration files live (default `config/`)
+- `CNETA_CONFIG` — `run-cnetmcmc.sh` only: its config file (default
+  `config/cnet_mcmc.cfg`)
+
+See [Configuration](../configuration/index.md) for more.
 
 ## 3. Infer a tree
 
 ```bash
-./run-cnetml.sh
+bin/run-cnetml.sh
 ```
 
 By default this reads `./example/sim-data-1-cn.txt.gz` — note the matching

@@ -117,7 +117,7 @@ reference.
 
 ```mermaid
 flowchart TD
-    A([Start cnetmcmc]) --> B[Parse command-line options / mcmc.cfg]
+    A([Start cnetmcmc]) --> B[Parse command-line options / config file]
     B --> C[Set up RNG with seed]
     C --> D[Read copy-number input, build observation vectors]
     D --> E[Read optional sample-timing file]
@@ -169,7 +169,7 @@ the reference tree itself as fixing the topology.
 | `*-info.txt`, `*-mut.txt`, `*-edge_rates.txt` | `cnets` | mutation-mapping / accuracy analysis; `*-edge_rates.txt` against `cnetml`'s reconstructed `<ofile>.edge_rates.txt` | diagnostic |
 | `*-segs.txt` | `cnetml` (written when reading the input copy-number file, named by `--seg_file`) | intermediate to `cnetml`'s own likelihood computation | intermediate |
 | `<ofile>.mrca.cn`, `<ofile>.joint.cn`, and (models 0-2) `<ofile>.mrca.state`/`<ofile>.joint.state`, or (model 3) `<ofile>.mrca.{seg,chr,wgd}.state`/`<ofile>.joint.state` | `cnetml` (mode 4, ancestral-state reconstruction) | downstream analysis of ancestral states | primary output (mode 4 only) |
-| `mcmc.cfg` | hand-written / copied from the repository root | `cnetmcmc` (`--config_file`) | required by `cnetmcmc` |
+| `config/cnet_mcmc.cfg` | shipped in `config/`; copy and edit it for your own runs | `cnetmcmc` (`--config_file`) | required by `bin/run-cnetmcmc.sh`; optional for `cnetmcmc` itself |
 | `*.p`, `*.t` | `cnetmcmc` (via `--trace_param_file`/`--trace_tree_file`; C++ defaults are `trace-mcmc-params.txt`/`trace-mcmc-trees.txt` — `run-cnetmcmc.sh` is what gives them `.p`/`.t` extensions) | Tracer / RWTY (`*.p`), TreeAnnotator (`*.t`) | primary output |
 
 See [File formats](../file-formats/index.md) for column definitions of

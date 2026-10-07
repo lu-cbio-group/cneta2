@@ -2,13 +2,33 @@
 
 # This script is used to run program cnetmcmc.
 
-# Where the compiled executables live. The CMake build puts them in <repo>/bin;
-# override with CNETA_BIN to point at a different build.
-CNETA_BIN="${CNETA_BIN:-$(cd "$(dirname "$0")" && pwd)/bin}"
+# This script lives in <repo>/bin and finds the programs, config/ and util/
+# relative to the repository, so it can be run from any directory. Output
+# (CNETA_OUT) is still relative to the directory you run it from.
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Where the compiled executables live. The CMake build puts them in <repo>/bin,
+# next to this script; override with CNETA_BIN to point at a different build.
+CNETA_BIN="${CNETA_BIN:-$REPO_ROOT/bin}"
+
+# Where the configuration files live; override with CNETA_CONFIG_DIR.
+CNETA_CONFIG_DIR="${CNETA_CONFIG_DIR:-$REPO_ROOT/config}"
+
+# Settings shared by all run scripts (output directory, seed). Anything already
+# set in the environment takes precedence over this file.
+if [[ -f "$CNETA_CONFIG_DIR/common.conf" ]]; then
+  source "$CNETA_CONFIG_DIR/common.conf"
+fi
 
 # Use MCMC to infer tree
-# With configuration file
-config_file="${CNETA_CONFIG:-./mcmc.cfg}"
+# With configuration file; override with CNETA_CONFIG to use a different one.
+config_file="${CNETA_CONFIG:-$CNETA_CONFIG_DIR/cnet_mcmc.cfg}"
+# cnetmcmc does not complain about a missing config file -- it silently runs
+# with its built-in defaults instead -- so check here.
+if [[ ! -f $config_file ]]; then
+  echo "Configuration file $config_file does not exist!" >&2
+  exit 1
+fi
 
 seed="${CNETA_SEED:-$RANDOM}"
 
@@ -60,7 +80,7 @@ do
 
   echo "seed $seed" > $odir/std_mcmc_"$suffix"_${i}
 
-  "$CNETA_BIN/cnetmcmc" -s $Ns --is_total $is_total -c $input -t "$times" --rtree "$rtree" --trace_param_file $trace_param_file --trace_tree_file $trace_tree_file --config_file $config_file --init_tree $init_tree --file_itree $file_itree --seed $seed >> $odir/std_mcmc_"$suffix"_${i}
+  "$CNETA_BIN/cnetmcmc" -s $Ns --is_total $is_total -c $input -t "$times" --rtree "$rtree" --trace_param_file $trace_param_file --trace_tree_file $trace_tree_file --config_file "$config_file" --init_tree $init_tree --file_itree $file_itree --seed $seed >> $odir/std_mcmc_"$suffix"_${i}
 
   # Summarize the sampled trees into a maximum credibility tree with median heights
   # treeannotator -burnin 10 -heights median $trace_tree_file $sum_tree_file
