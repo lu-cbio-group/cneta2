@@ -70,7 +70,7 @@ code/build/
 build/
 
 # Executables land here (CMAKE_RUNTIME_OUTPUT_DIRECTORY in code/CMakeLists.txt)
-/bin/
+#/bin/
 
 # Python test tooling
 __pycache__/
