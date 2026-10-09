@@ -19,10 +19,10 @@ README as "in development, at test branch".
 ## Usage
 
 ```bash
-code/cnetml [options]
+bin/cnetml [options]
 ```
 
-`run-cnetml.sh` is the maintained example driver, parameterised by a
+`bin/run-cnetml.sh` is the maintained example driver, parameterised by a
 `mode` variable at the top of the script.
 
 ## Modes (`mode`)
@@ -140,7 +140,7 @@ a single `<ofile>.joint.state`. See
 ## Examples
 
 ```bash
-./run-cnetml.sh
+bin/run-cnetml.sh
 ```
 
 See [Quick start](../quickstart/index.md) for how this chains onto

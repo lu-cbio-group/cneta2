@@ -2,8 +2,8 @@
 
 cnetmcmc is the least mature of the three tools, so these tests stay at the
 level of "it runs and writes traces of the right shape". They use
-tests/data/mcmc-ci.cfg, which is mcmc.cfg with the chain shortened from 2000
-draws to 50 so the suite stays quick.
+tests/data/mcmc-ci.cfg, which is config/cnet_mcmc.cfg with the chain shortened
+from 2000 draws to 50 so the suite stays quick.
 """
 
 from __future__ import annotations
@@ -105,14 +105,46 @@ def test_tree_trace_contains_valid_newick(mcmc_run):
         )
 
 
+def test_shipped_config_loads_and_the_command_line_overrides_it(
+    tmp_path, repo_root, tiny_sim: Simulation, cnetmcmc, run
+):
+    """config/cnet_mcmc.cfg must stay loadable by the current cnetmcmc.
+
+    cnetmcmc rejects unknown keys, so a renamed or removed option would break
+    every default run of bin/run-cnetmcmc.sh. The chain is cut short on the
+    command line, which takes precedence over the config file -- the sample
+    count shows which one won.
+    """
+    trace_param = tmp_path / "chain.p"
+    n_draws, n_burnin, n_gap = 20, 10, 5    # the file says 2000, 1000, 10
+
+    run([
+        cnetmcmc,
+        *cli.cnetmcmc_args(
+            cn_file=tiny_sim.haplotype_cn,
+            times_file=tiny_sim.times,
+            tree_file=tiny_sim.tree,
+            config_file=repo_root / "config" / "cnet_mcmc.cfg",
+            trace_param=trace_param,
+            trace_tree=tmp_path / "chain.t",
+            **{"--n_draws": n_draws, "--n_burnin": n_burnin, "--n_gap": n_gap},
+        ),
+    ]).assert_ok()
+
+    _, samples = read_mcmc_params(trace_param)
+    assert len(samples) == (n_draws - n_burnin) // n_gap, (
+        "the command-line chain length did not override the config file"
+    )
+
+
 def test_total_copy_number_input_is_rejected_for_the_haplotype_model(
     tmp_path, data_dir, tiny_sim: Simulation, cnetmcmc, run
 ):
     """model=2 needs five columns; passing total copy numbers must not be
     silently accepted.
 
-    This is exactly the mismatch that run-cnetmcmc.sh currently ships with --
-    see test_run_scripts.py.
+    This is exactly the mismatch that bin/run-cnetmcmc.sh currently ships
+    with -- see test_run_scripts.py.
     """
     result = run([
         cnetmcmc,
@@ -141,7 +173,7 @@ def test_rejected_input_exits_non_zero(tmp_path, data_dir, tiny_sim: Simulation,
     """A fatal input error must be visible to the caller as a non-zero status.
 
     This is what lets a shell script, CI job, or Nextflow process notice that
-    a chain never ran. run-cnetmcmc.sh currently discards it -- see
+    a chain never ran. bin/run-cnetmcmc.sh currently discards it -- see
     test_run_scripts.py.
     """
     result = run([

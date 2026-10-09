@@ -1,7 +1,8 @@
 # File formats
 
 :::{note}
-Content below is migrated from the top-level `README.md`, `mcmc.cfg`,
+Content below is migrated from the top-level `README.md`, `mcmc.cfg` (now
+`config/cnet_mcmc.cfg`),
 and example output in `example/`. Please review for accuracy — some
 sections flag open questions that need confirming against the current
 code.
@@ -231,11 +232,13 @@ this is in `README.md`; model 3 is still described there as
 
 ## MCMC configuration and trace files
 
-### Config file (`mcmc.cfg`)
+### Config file (`config/cnet_mcmc.cfg`)
 
 Plain-text `key=value` pairs, one per line, `#` for comments and blank
-lines allowed. Passed to `cnetmcmc` with `--config_file` (see
-`run-cnetmcmc.sh`). Grouped in the file by purpose:
+lines allowed. Each key is a `cnetmcmc` long option name without the
+leading `--`; an unknown key is an error. A value given on the command line
+overrides the same key in the file. Passed to `cnetmcmc` with `--config_file`
+(see `bin/run-cnetmcmc.sh`). Grouped in the file by purpose:
 
 ```text
 verbose=0
@@ -263,8 +266,8 @@ gtime=0.002739726
 ...followed by blocks for the true/initial mutation rates, per-rate-type
 prior/proposal parameters (`sigma_l*` for the log-normal prior,
 `sigma_*` for the proposal, one pair per event type), tree-height
-parameters, and branch-length parameters. See `mcmc.cfg` in the
-repository root for the full set with inline comments, and
+parameters, and branch-length parameters. See `config/cnet_mcmc.cfg` for
+the full set with inline comments, and
 [`cnetmcmc` options](../user-guide/cnetmcmc.md#options) for what each
 group controls.
 

@@ -1,6 +1,6 @@
 """Command lines for the three cneta programs.
 
-The parameter values mirror the defaults in the repository's ``run-*.sh``
+The parameter values mirror the defaults in the repository's ``bin/run-*.sh``
 scripts, shrunk to a size that finishes in seconds. Keeping them here as
 dictionaries rather than inline in the tests means a test can override a
 single option without restating thirty of them, and means there is one place

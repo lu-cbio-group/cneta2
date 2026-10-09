@@ -18,16 +18,16 @@ on:
     paths:
       - 'code/**'
       - 'tests/**'
-      - 'run-*.sh'
-      - 'mcmc.cfg'
+      - 'bin/*.sh'
+      - 'config/**'
       - '.github/workflows/ci.yml'
   push:
     branches: [main]
     paths:
       - 'code/**'
       - 'tests/**'
-      - 'run-*.sh'
-      - 'mcmc.cfg'
+      - 'bin/*.sh'
+      - 'config/**'
       - '.github/workflows/ci.yml'
   workflow_dispatch:
 

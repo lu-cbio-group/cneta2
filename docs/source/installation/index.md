@@ -139,15 +139,16 @@ without the speed-up.
   re-run `./build.sh local` (CMake re-detects it; no need to clean).
 - **Linux and HPC:** GCC includes OpenMP, so nothing extra is needed.
 - **Thread count:** OpenMP uses all available cores by default. Set
-  `OMP_NUM_THREADS` to limit it, e.g. `OMP_NUM_THREADS=4 ./run-cnetml.sh`.
+  `OMP_NUM_THREADS` to limit it, e.g. `OMP_NUM_THREADS=4 bin/run-cnetml.sh`.
   Floating-point sums over a varying number of threads are not
   bit-reproducible, so pin `OMP_NUM_THREADS=1` when you need exactly
   repeatable scores (the test suite does).
 
 `build.sh` configures a CMake build in `code/build/`. The three executables
 (`cnets`, `cnetml`, `cnetmcmc`) land in `bin/` at the top of the repository,
-which is where the `run-*.sh` scripts and the test suite look for them. Set
-`CNETA_BIN` if you want the run scripts to use a different build.
+next to the `run-*.sh` driver scripts, which is where the scripts and the test
+suite look for them. The compiled programs are not tracked by git; the scripts
+are. Set `CNETA_BIN` if you want the run scripts to use a different build.
 
 Other `build.sh` usage:
 

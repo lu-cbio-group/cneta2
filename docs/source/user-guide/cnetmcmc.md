@@ -5,7 +5,8 @@ Bayesian MCMC approach.
 
 :::{note}
 This page is migrated from the top-level `README.md`, `run-cnetmcmc.sh`,
-and `mcmc.cfg`. Please review for accuracy and completeness.
+and `mcmc.cfg` (now `config/cnet_mcmc.cfg`). Please review for accuracy and
+completeness.
 :::
 
 ## Status
@@ -18,11 +19,12 @@ exist for it yet; see [Workflows](../workflows/index.md).
 ## Usage
 
 ```bash
-code/cnetmcmc [options]
+bin/cnetmcmc [options]
 ```
 
-`run-cnetmcmc.sh` runs multiple chains and reads most parameters from
-`mcmc.cfg` via `--config_file`.
+`bin/run-cnetmcmc.sh` runs multiple chains and reads most parameters from
+`config/cnet_mcmc.cfg` via `--config_file`. Set `CNETA_CONFIG` to use a
+different file; the script stops if the file does not exist.
 
 ## Modes
 
@@ -44,7 +46,7 @@ reviewed).
 : `0` random tree · `1` a provided tree (`--file_itree`) · `2` a random
   tree sharing the real tree's topology.
 
-`mcmc.cfg` (via `--config_file`)
+`config/cnet_mcmc.cfg` (via `--config_file`)
 : MCMC control (`n_draws`, `n_burnin`, `n_gap`, `sample_prior`,
   `fix_topology`); proposal/prior parameters for mutation rates
   (`sigma_l*` for the log-normal prior, `sigma_*` for the proposal, per
@@ -76,5 +78,5 @@ MrBayes-compatible trace files, named via `--trace_param_file`/
 ## Examples
 
 ```bash
-./run-cnetmcmc.sh
+bin/run-cnetmcmc.sh
 ```

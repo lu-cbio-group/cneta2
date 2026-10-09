@@ -21,8 +21,8 @@ set(CMAKE_CXX_EXTENSIONS OFF) # Forces standard C++ over compiler-specific exten
 
 # Where the finished programs (cnets, cnetml, cnetmcmc) are written.
 #
-# Default: <repo>/bin, wherever the build directory is. The run-*.sh scripts
-# and the tests look there.
+# Default: <repo>/bin, wherever the build directory is, next to the
+# bin/run-*.sh scripts. The scripts and the tests look there.
 #
 # To send them somewhere else, pass -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=<dir> when
 # configuring. The build-system tests do this so a throwaway build does not

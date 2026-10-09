@@ -4,15 +4,24 @@
 
 ```text
 cneta/
+├── bin/           what you run
+│   ├── run-*.sh   example driver scripts (in git)
+│   └── cnets, cnetml, cnetmcmc   built executables (written by the build, not in git)
+├── config/        configuration: common.conf (shared by the scripts), one .cfg per tool
 ├── code/          C++ sources for cnets, cnetml, cnetmcmc
 │   ├── gzstream/  vendored: gzip streams
 │   ├── lbfgsb/    vendored: L-BFGS-B optimiser
 │   └── matexp/    vendored: matrix exponential
-├── ilp/           integer-programming experiments
+├── tests/         unit, end-to-end and build-system tests
 ├── util/          R and Python helper scripts
-├── docs/          this documentation site
-└── run-*.sh       example driver scripts
+├── assets/        logo artwork
+└── docs/          this documentation site
 ```
+
+`bin/` mixes tracked scripts with untracked build output. `.gitignore`
+excludes the three programs by name rather than ignoring `bin/` as a whole,
+so a new script added there is picked up by git as usual;
+`tests/build_system/test_repo_layout.py` checks this.
 
 ## Building
 

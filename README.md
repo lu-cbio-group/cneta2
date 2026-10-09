@@ -61,31 +61,41 @@ installed.packages()[, c("Package", "LibPath")]
 ```
 
 ## Building C++ source files
-OpenMP is used to accelerate tree search in cnetml.
-To turned off OpenMP, please set "omp =" in makefile.
+OpenMP is used to accelerate tree search in cnetml. The build detects it
+automatically and builds without it if it is not available (on macOS, install
+it with `brew install libomp`).
 
-To build the C++ code, change into the code directory and type make:
+To build the C++ code, change into the code directory and run the build script:
 ```shell
 > cd code
-> make
+> ./build.sh local
 ```
+
+The executables (`cnets`, `cnetml`, `cnetmcmc`) are written to `bin/` at the top
+of the repository, where the run scripts look for them.
 
 
 ## Running
-You may use the provided bash scripts to run the programs.
+You may use the provided scripts in `bin/` to run the programs. Run them from
+the top of the repository; output goes to `./example`.
 
 ```shell
 # Simulating mutations on a coalescence tree
-> bash run-cnets.sh
+> bin/run-cnets.sh
 
 # Build a tree from copy number profile with maximum likelihood method
-> bash run-cnetml.sh
+> bin/run-cnetml.sh
 
 # Build a tree from copy number profile with MCMC method
-> bash run-cnetmcmc.sh
+> bin/run-cnetmcmc.sh
 ```
 
-The most recent Mac switches to zsh. In that case, please replace `bash` with `zsh` in the commands above.
+Each script sets the parameters of its program in a block at the top of the
+file. Settings shared by all three scripts (the output directory and the random
+seed) are in `config/common.conf`, and cnetmcmc reads most of its parameters
+from `config/cnet_mcmc.cfg`. To change a shared setting for a single run, set it
+in the environment, e.g. `CNETA_SEED=42 bin/run-cnets.sh`. See
+[config/README.md](config/README.md) for details.
 
 
 
@@ -140,7 +150,7 @@ The mutation probability of each site is limited by its current copy number stat
 Chromosomal gain is ONLY possible when the maximum copy number in the chromosome is smaller than the specified maximum copy number.
 The units of mutation rates are different at site, chromosome, and whole genome levels. When computing the relative rates of a specific mutation type, they are summarized at different scales: total duplication/deletion rates obtained by summarizing over all sites, chromosome gain/loss rates obtained by summarizing over all chromosomes.
 
-Please see run-cnets.sh to learn how to set different parameters.
+Please see bin/run-cnets.sh to learn how to set different parameters.
 
 ## Input
 * `--epop Ne`: Ne (effective population size) is used to scale the tree height so that the branch length is measured in the unit of year, by multiplying each branch length with Ne.
@@ -209,7 +219,7 @@ There are 4 running modes in cnetml.
 
 The last three modes can be used to validate the computation of likelihood.
 
-Please see run-cnetml.sh to learn how to set different parameters.
+Please see bin/run-cnetml.sh to learn how to set different parameters.
 
 When estimating branch length, time constraints (in longitudinal samples) can be considered by specifying the following parameters.
 * `cons`: When cons = 1, optimization is done with time constraints on patient age and/or tip timing. Mutation rates can be estimated when there are considerate time differences among tips.
@@ -338,7 +348,7 @@ Only the implementation under the bounded model of haplotype-specific copy numbe
 
 Only basic MCMC algorithm is implemented here and not comprehensively tested.
 
-Please see run-cnetmcmc.sh to learn how to set different parameters.
+Please see bin/run-cnetmcmc.sh and config/cnet_mcmc.cfg to learn how to set different parameters.
 
 There are two running modes depending on whether a reference tree is provided or not.
 With a reference tree, the tree topology is fixed.
@@ -346,7 +356,7 @@ With a reference tree, the tree topology is fixed.
 ## Input
 * (Required) A file containing copy numbers for all the samples, including the normal sample (*-cn.txt.gz or *-haplotype-cn.txt.gz)
 * (Optional) A file containing the timing information of tip nodes (*-rel-times.txt)
-* (Optional) A configuration file which sets most input parameters (mcmc.cfg)
+* (Optional) A configuration file which sets most input parameters (config/cnet_mcmc.cfg)
 
 
 ## Output

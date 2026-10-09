@@ -86,8 +86,9 @@ def test_the_output_directory_holds_only_the_user_facing_tools(
 ):
     """Test binaries and vendored libraries must not land in bin/.
 
-    `ls bin/` should keep meaning "the programs a user runs", even when the
-    tests are enabled.
+    `ls bin/` should keep meaning "what a user runs" -- the three programs
+    plus the tracked run-*.sh scripts -- even when the tests are enabled. The
+    build writes only the programs, which is what this checks.
     """
     build_dir = tmp_path / "build"
     bin_dir = tmp_path / "bin"
