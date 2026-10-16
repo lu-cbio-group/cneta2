@@ -37,6 +37,7 @@ DOXYGEN_XML = DOCS_DIR / "build" / "doxygen" / "xml"
 extensions = [
     "myst_parser",              # Markdown authoring
     "sphinxcontrib.mermaid",    # workflow diagrams
+    "sphinxcontrib.images",     # click-to-enlarge lightbox for figures
     "breathe",                  # C++ API via Doxygen XML
     "sphinx_copybutton",        # copy button on code blocks
     "sphinx_design",            # tab-sets used in developer-guide/documentation.md
@@ -46,6 +47,11 @@ extensions = [
 ]
 
 exclude_patterns = ["build", "Thumbs.db", ".DS_Store"]
+
+# _templates/layout.html overrides the theme layout to add a "View on
+# GitHub" link pinned to the bottom of the sidebar, for visitors who land
+# on the docs site directly rather than coming from the repo.
+templates_path = ["_templates"]
 
 # `make strict` runs with -n (nitpicky), which turns every unresolved
 # cross-reference into a warning-as-error. Breathe generates a cpp:identifier
@@ -95,6 +101,12 @@ myst_fence_as_directive = ["mermaid"]
 # Values usable in pages as {{ repo_url }} etc.
 myst_substitutions = {
     "repo_url": "https://github.com/lu-cbio-group/cneta2",
+}
+
+# Same URL, exposed to Jinja templates (see _templates/layout.html) rather
+# than MyST page content.
+html_context = {
+    "github_repo_url": myst_substitutions["repo_url"],
 }
 
 # ---------------------------------------------------------------------------
