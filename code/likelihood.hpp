@@ -248,8 +248,36 @@ const double MAX_NLNL = 1e20;
 
 
 /****************** common functions *******************/
+/**
+ * @brief Print the likelihood table at the tips
+ * @param rtree Evolutionary tree
+ * @param obs Observed copy number states at tips
+ * @param L_sk_k Likelihood table
+ * @param nstate Number of possible states
+ *
+ * Defined here rather than in likelihood.cpp: it is a template used from
+ * other files (state.cpp), and each of them must see the body to instantiate
+ * it. With the body in likelihood.cpp only, linking relied on likelihood.cpp
+ * happening to emit a copy for each type, which GCC at -O3 does not when its
+ * own calls sit behind a constant debug flag ("undefined reference to
+ * print_lnl_at_tips<CN_CHANGE>").
+ */
 template <typename T>
-void print_lnl_at_tips(const evo_tree& rtree, const vector<T>& obs, const vector<vector<double>>& L_sk_k, int nstate);
+void print_lnl_at_tips(const evo_tree& rtree, const vector<T>& obs, const vector<vector<double>>& L_sk_k, int nstate){
+    cout << "\nObserved copy numbers at tips:\n";
+    for(int i = 0; i < rtree.nleaf - 1; ++i){
+        cout<< "\t" << obs[i];
+    }
+    cout << endl;
+
+    cout << "Likelihood for tips:\n";
+    for(int i = 0; i < rtree.nleaf; ++i){
+        for(int j = 0; j < nstate; ++j){
+            cout << "\t" << L_sk_k[i][j];
+        }
+        cout << endl;
+    }
+}
 
 
 void print_tree_lnl(const evo_tree& rtree, vector<vector<double>>& L_sk_k, int nstate);
