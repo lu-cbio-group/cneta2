@@ -23,5 +23,25 @@
   "mode2_logl": {
     "tiny-tree.txt": -42.9513,
     "tiny-tree-alt.txt": -43.4797
+  },
+  "seeded": {
+    "_README": [
+      "Cross-platform pins, checked by e2e/test_cross_platform.py: what a",
+      "fixed seed produces, recorded on one platform and compared on every",
+      "other. Agreement is the point; a failure on one CI runner only means",
+      "the platforms disagree. The tests print replacement values when a",
+      "change is intended. Record a change together with its reason."
+    ],
+    "_generated": {
+      "date": "2026-10-15",
+      "platform": "macOS 15 arm64, AppleClang 17.0.0, GSL 2.8, -O3 -ffp-contract=off",
+      "omp_num_threads": 1
+    },
+    "cnets_ns3_seed12345_cn_sha256": "19efd3cfc37d55e9a7d452ca6ab043b53e61dd85e4772ff6160828a8c337e642",
+    "cnets_ns5_seed12345_cn_sha256": "066e9a4940ec2e45a4bcdf9f0f39a1d90cc07d9f53b74ab0430319edee2df202",
+    "hill_climbing_ns5_seed12345": {
+      "neg_logl": 73.0621,
+      "clades": [[1, 2], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5, 6], [1, 2, 4, 5], [4, 5]]
+    }
   }
 }

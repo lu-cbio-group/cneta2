@@ -127,6 +127,27 @@ def read_tree(path: Path) -> Tree:
     return Tree(edges)
 
 
+def clades(tree: Tree) -> list[list[int]]:
+    """The topology of a tree as the set of leaves under each internal node.
+
+    Branch lengths and node numbering are ignored, so two trees compare
+    equal exactly when they have the same shape on the same leaves. Returned
+    sorted, as a JSON-friendly list of lists, so it can be stored in
+    expected.json and compared directly.
+    """
+    children: dict[int, list[int]] = {}
+    for edge in tree.edges:
+        children.setdefault(edge.start, []).append(edge.end)
+
+    def leaves_below(node: int) -> list[int]:
+        if node not in children:
+            return [node]
+        return sorted(leaf for child in children[node]
+                      for leaf in leaves_below(child))
+
+    return sorted(leaves_below(node) for node in children)
+
+
 # --------------------------------------------------------------------------
 # cnetml run summary (<output>.summary.txt)
 # --------------------------------------------------------------------------

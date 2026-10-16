@@ -93,10 +93,11 @@ directly without `--seed`.
 
 To repeat a run, put that number in front of the script, e.g.
 `CNETA_SEED=<number> bin/run-cnetml.sh`, or pass `--seed <number>` when
-calling a program directly. On one machine, the same seed and the same
-input give the same result, whatever the number of OpenMP threads. Two
-machines with different C++ standard libraries do not currently give the
-same result for the same seed.
+calling a program directly. The same seed and the same input give the
+same result whatever the number of OpenMP threads, and the random choices
+no longer depend on the C++ standard library, so they are the same on a
+Mac and on the HPC. The test suite checks on both Linux and macOS that
+the results agree.
 
 ### Tool config files: `config/*.cfg`
 
