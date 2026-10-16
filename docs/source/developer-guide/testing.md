@@ -28,9 +28,9 @@ pip install -r tests/requirements.txt
 OMP_NUM_THREADS=1 pytest tests -m "not build"
 ```
 
-`OMP_NUM_THREADS=1` matters: `cnetml` parallelises its tree search with
-OpenMP, and floating-point sums over a varying number of threads are not
-bit-reproducible.
+`OMP_NUM_THREADS=1` keeps timings comparable and a failure easy to repeat by
+hand. `cnetml` parallelises its tree search with OpenMP, but the result does
+not depend on the thread count; `test_cnetml.py` checks that.
 
 The regression anchor is `cnetml --mode 2`, which scores a supplied tree with
 no RNG and no search and so is reproducible to the digit. Reference values
