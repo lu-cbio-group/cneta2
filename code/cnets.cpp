@@ -19,6 +19,7 @@ Here, the ID for sample, chromosome and segment start from 1.
 #include "evo_tree.hpp"
 #include "tree_op.hpp"
 #include "genome.hpp"
+#include "portable_shuffle.hpp"
 
 
 #include <boost/program_options.hpp>
@@ -96,7 +97,10 @@ void get_error_sites(int num_seg, int nerr, vector<int>& err_sites){
 
     vector<int> v(num_seg);
     iota(v.begin(), v.end(), 1);
-    random_shuffle(v.begin(), v.end());
+    // Drawn from the seeded GSL generator like every other random choice.
+    // This used to be random_shuffle with no generator argument, i.e. the
+    // standard library's own unseeded one, so error placement ignored --seed.
+    portable_shuffle(v.begin(), v.end(), fp_myrng);
 
     // randomly sample nerr numbers from [0, num_seg])
     for(int i = 0; i < nerr; i++){

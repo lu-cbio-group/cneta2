@@ -1,4 +1,5 @@
 #include "tree_op.hpp"
+#include "portable_shuffle.hpp"
 
 
 // check if the age of tip node is maintained
@@ -252,13 +253,13 @@ evo_tree perturb_tree(evo_tree& tree, long unsigned (*fp_myrng)(long unsigned)){
     for(int i = 0; i < tree.nleaf - 1; ++i) n_0.push_back(i);
 
     // shuffle(n_0.begin(), n_0.end(), default_random_engine(seed));
-    random_shuffle(n_0.begin(), n_0.end(), fp_myrng);
+    portable_shuffle(n_0.begin(), n_0.end(), fp_myrng);
 
     int n1 = n_0[tree.nleaf - 2];
     n_0.pop_back();
 
     // shuffle(n_0.begin(), n_0.end(), default_random_engine(seed));
-    random_shuffle(n_0.begin(), n_0.end(), fp_myrng);
+    portable_shuffle(n_0.begin(), n_0.end(), fp_myrng);
 
     int n2 = n_0[0];
 
@@ -392,7 +393,7 @@ void generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)
 
     t_tot += t;
     // choose two random nodes from available list
-    random_shuffle(nodes.begin(), nodes.end(), fp_myrng);
+    portable_shuffle(nodes.begin(), nodes.end(), fp_myrng);
 
     // edge node_count -> node
     edges.push_back(node_count);
@@ -500,7 +501,7 @@ evo_tree generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_my
      t_tot += t;
 
      // choose two random nodes from available list
-     random_shuffle(nodes.begin(), nodes.end(), fp_myrng);
+     portable_shuffle(nodes.begin(), nodes.end(), fp_myrng);
 
      // edge node_count -> node
      edges.push_back(node_count);
@@ -737,7 +738,7 @@ evo_tree generate_time_tree(int nsample, gsl_rng* r, long unsigned (*fp_myrng)(l
         if(debug > 1) cout << "total time " << t_tot << endl;
 
         // choose two random nodes from available list
-        random_shuffle(nodes.begin(), nodes.end(), fp_myrng);
+        portable_shuffle(nodes.begin(), nodes.end(), fp_myrng);
 
         // edge node_count -> node
         edges.push_back(node_count);

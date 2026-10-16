@@ -7,6 +7,7 @@
 
 #include "evo_tree.hpp"
 #include "stats.hpp"
+#include "portable_shuffle.hpp"
 #include "parse_cn.hpp"
 #include "nni.hpp"
 
@@ -327,7 +328,7 @@ evo_tree create_new_coal_tree(int nsample, int epop){
     t_tot += t ;
 
     // choose two random nodes from available list
-    random_shuffle(nodes.begin(), nodes.end(), fp_myrng);
+    portable_shuffle(nodes.begin(), nodes.end(), fp_myrng);
 
     // edge node_count -> node
     edges.push_back(node_count);
