@@ -32,7 +32,10 @@ inline int pairInteger(int int1, int int2){
     }
 }
 
-void setup_rng(gsl_rng* r, unsigned set_seed);
+// Seed r with set_seed, or with a clock-derived seed when set_seed is 0.
+// Returns the seed actually used (printed as "seed:<tab><n>" as well), so the
+// caller can record it in its outputs.
+unsigned setup_rng(gsl_rng* r, unsigned set_seed);
 
 
 // A callable over a GSL generator: rng(n) returns a draw in [0, n). This is

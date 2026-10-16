@@ -51,6 +51,9 @@ bool exhausted_tree_search = false;
 
 gsl_rng* r;
 
+// The seed in use, written into the run summary so that the record travels
+// with the result. Set once in main.
+unsigned seed_in_use = 0;
 
 // Shuffles and tree generation draw through Rng(r) (see stats.hpp).
 
@@ -1020,6 +1023,7 @@ void write_run_summary(ostream& out, const evo_tree& tree, int mode, const LNL_T
     }
 
     out << "mode\t" << mode << "\n";
+    out << "seed\t" << seed_in_use << "\n";
     out << "model\t" << lnl_type.model << "\n";
     out << "bsr_mode\t" << bsr_mode << "\n";
     out << "cn_type\t" << lnl_type.cn_type << "\n";
@@ -1824,7 +1828,8 @@ int main(int argc, char** const argv){
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
-    setup_rng(r, seed);
+    seed = setup_rng(r, seed);
+    seed_in_use = seed;
 
     int num_total_bins = 0;
     int Nchar = 0;  // number of sites

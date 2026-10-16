@@ -189,8 +189,11 @@ To recover haplotype separately: `mutation.chr >= 22` (i.e.
 
 ### Per-branch mutation counts (`*-info.txt`, from `cnets`)
 
-The time of each node and the total number of mutations simulated on
-each branch, grouped by the lineages of tip nodes.
+The first two lines record the seeds that produced the data set:
+`SEED: <number>`, and `TREE SEED: <number>` or `TREE SEED: same stream as
+SEED` when `--tree_seed` was not given. Then the time of each node and the
+total number of mutations simulated on each branch, grouped by the
+lineages of tip nodes.
 
 ### Simulation edge-rate table (`*-edge_rates.txt`, from `cnets`)
 

@@ -38,7 +38,10 @@ Tree generation
   `run-cnets.sh` calls this `cons`, but the actual flag is
   `--constrained`; `cnetmcmc` is the one tool where `--cons` is real,
   see its [Options](cnetmcmc.md#options)), `--age` (patient age at
-  first sample).
+  first sample), `--tree_seed` (draw the trees from a generator of their
+  own, so that runs which differ only in later settings such as
+  `--bsr_mode` get the same trees; 0, the default, draws everything from
+  the one stream seeded by `--seed`).
 
 Mutation model
 : `--model` (1: bounded total copy number, deprecated; 2:

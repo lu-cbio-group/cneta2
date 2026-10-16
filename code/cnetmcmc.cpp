@@ -2261,7 +2261,7 @@ int main (int argc, char ** const argv) {
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
-    setup_rng(r, seed);
+    seed = setup_rng(r, seed);
 
     ITREE_PARAM itree_param{epop, beta, gtime};
 
