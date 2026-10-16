@@ -71,3 +71,41 @@ figure.centered-figure figcaption {
     margin-top: 2em;
     margin-bottom: 12px;
 }
+
+/* "View on GitHub" link (see _templates/layout.html), pinned to the
+   sidebar's bottom-left corner so visitors who land on the docs site
+   directly can still find the repo. .wy-nav-side is itself `position:
+   fixed; width:300px`, so matching those here keeps it aligned without
+   depending on the sidebar's DOM structure. Hidden below the theme's own
+   mobile breakpoint, where the sidebar is off-canvas by default and this
+   would otherwise float over the page content instead. */
+.sidebar-repo-link {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 300px;
+    z-index: 201;
+    box-sizing: border-box;
+    padding: 10px 1.618em;
+    background: #1d2b36;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.sidebar-repo-link a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #cfd8dc;
+    font-size: 0.85em;
+    text-decoration: none;
+}
+.sidebar-repo-link a:hover {
+    color: #fff;
+}
+.sidebar-repo-link svg {
+    flex-shrink: 0;
+}
+@media screen and (max-width: 768px) {
+    .sidebar-repo-link {
+        display: none;
+    }
+}
