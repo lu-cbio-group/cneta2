@@ -419,10 +419,14 @@ void update_edge_rates_rlc_from_x(
 // so existing comparison code (pick_best_improving, sorting) keeps working unchanged; aic
 // and bic are both always computed so callers can log/report the non-selected criterion
 // too (search decisions still follow `score`/rlc_criterion only, not the other one).
+// [2026-10-05 added] aicc is the small-sample-corrected AIC (AIC + 2k(k+1)/(n-k-1)),
+// reported alongside aic/bic for diagnostics only -- not wired into `score` or
+// rlc_criterion, so it never changes which shift edges get selected.
 struct RlcIC {
     double raw_logL;
     double aic;
     double bic;
+    double aicc;
     double score;
 };
 
@@ -432,6 +436,11 @@ inline RlcIC compute_rlc_ic(double nlnl, int K, int n_types_per_edge, int n_site
     double k_params = (double)K * (double)n_types_per_edge;
     ic.aic = -2.0 * ic.raw_logL + 2.0 * k_params;
     ic.bic = -2.0 * ic.raw_logL + log((double)n_sites) * k_params;
+    // undefined when n_sites <= k_params+1 (denominator non-positive); report as NaN
+    // rather than a nonsensical or misleadingly finite value.
+    double denom = (double)n_sites - k_params - 1.0;
+    ic.aicc = (denom > 0.0) ? ic.aic + (2.0 * k_params * (k_params + 1.0)) / denom
+                            : std::numeric_limits<double>::quiet_NaN();
     ic.score = -(criterion == 0 ? ic.aic : ic.bic);
     return ic;
 }
