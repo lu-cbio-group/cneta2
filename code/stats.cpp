@@ -1,13 +1,12 @@
 #include "stats.hpp"
 
-// long unsigned (*myrng)(long unsigned){ &myrng };
-
 
 // Seed the generator. A seed of 0 (the programs' default for --seed) means
 // "no seed given": one is derived from the clock and the process id, so two
 // runs started in the same second still differ. Whichever seed ends up in use
-// is printed, so any log is enough to repeat the run with --seed <number>.
-void setup_rng(gsl_rng* r, unsigned set_seed){
+// is printed and returned, so any log is enough to repeat the run with
+// --seed <number> and the programs can write it into their outputs.
+unsigned setup_rng(gsl_rng* r, unsigned set_seed){
   unsigned seed = set_seed;
   if(seed == 0){
     unsigned long t = (unsigned long)time(NULL);
@@ -19,6 +18,7 @@ void setup_rng(gsl_rng* r, unsigned set_seed){
   }
   cout << "seed:" << "\t" << seed << endl;
   gsl_rng_set(r, seed);
+  return seed;
 }
 
 

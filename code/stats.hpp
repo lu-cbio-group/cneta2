@@ -32,7 +32,22 @@ inline int pairInteger(int int1, int int2){
     }
 }
 
-void setup_rng(gsl_rng* r, unsigned set_seed);
+// Seed r with set_seed, or with a clock-derived seed when set_seed is 0.
+// Returns the seed actually used (printed as "seed:<tab><n>" as well), so the
+// caller can record it in its outputs.
+unsigned setup_rng(gsl_rng* r, unsigned set_seed);
+
+
+// A callable over a GSL generator: rng(n) returns a draw in [0, n). This is
+// the form portable_shuffle and the tree-generation code take, so any
+// generator can drive them, including one reserved for trees (cnets
+// --tree_seed). Copying an Rng copies only the pointer; the generator's
+// state lives in the gsl_rng it points at.
+struct Rng {
+    gsl_rng* r;
+    explicit Rng(gsl_rng* r_) : r(r_) {}
+    unsigned long operator()(unsigned long n) const { return gsl_rng_uniform_int(r, n); }
+};
 
 
 // factorial for choose(n,k)

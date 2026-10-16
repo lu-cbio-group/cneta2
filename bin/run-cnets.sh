@@ -47,6 +47,7 @@ plot=0 # Whether or not to plot the simulated trees and copy numbers
 ####################### Parameters related to tree generation ##################
 Ns=3 # The number of tumor regions to sample. Output will be Ns+1 including germline normal region
 tree_file=""  # The input tree file. If given, mutations will be generated along this tree
+tree_seed=0  # 0: trees come from the same random stream as everything else. Set a number to draw the same trees in runs that differ only in later steps (e.g. bsr_mode)
 Ne=9000000  # effective population size for the coalescence tree
 beta=1.563e-3  # exponential growth rate
 gtime=0.002739726 # generation time in year
@@ -94,9 +95,10 @@ echo "Start running cnets"
 
 log=$dir/std_cnets_cons${cons}_model${model}_method${method}
 echo "seed $seed" > $log
+if [[ $tree_seed -ne 0 ]]; then echo "tree_seed $tree_seed" >> $log; fi
 record_seed "$dir" "$seed" "$(basename "$log")"
 # valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes -v
-/usr/bin/time "$CNETA_BIN/cnets" --tree_file "${tree_file}" -p "${prefix}" -o $dir -r $Ns -n $Nsim --mode $mode --method $method --fix_nseg $fix_nseg --seg_max $seg_max --cn_max $cn_max --dup_rate $r1 --del_rate $r2 --chr_gain $r3 --chr_loss $r4 --wgd $r5 --dup_size $s1 --del_size $s2 -e $Ne -b $beta --gtime $gtime -t $dt --verbose $verbose --constrained $cons --model $model --age $age --stime "$stime" --seed $seed --print_relative $print_relative  >> $log
+/usr/bin/time "$CNETA_BIN/cnets" --tree_file "${tree_file}" -p "${prefix}" -o $dir -r $Ns -n $Nsim --mode $mode --method $method --fix_nseg $fix_nseg --seg_max $seg_max --cn_max $cn_max --dup_rate $r1 --del_rate $r2 --chr_gain $r3 --chr_loss $r4 --wgd $r5 --dup_size $s1 --del_size $s2 -e $Ne -b $beta --gtime $gtime -t $dt --verbose $verbose --constrained $cons --model $model --age $age --stime "$stime" --seed $seed --tree_seed $tree_seed --print_relative $print_relative  >> $log
 
 wait
 

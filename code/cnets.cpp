@@ -51,13 +51,12 @@ struct SV_SIZE{
 
 gsl_rng* r;
 
-// unary function and pointer to unary function
-// allows use of gsl rng for standard template algorithms
-inline long unsigned myrng(long unsigned n){
-  return gsl_rng_uniform_int(r, n);
-}
+// The seeds in use, written into every <prefix>-info.txt so that the record
+// travels with the data whatever launched the program. Set once in main.
+unsigned seed_in_use = 0;
+unsigned tree_seed_in_use = 0;   // 0: trees come from the same stream as everything else
 
-long unsigned (*fp_myrng)(long unsigned);
+// Shuffles and tree generation draw through Rng(r) (see stats.hpp).
 
 
 // Set the initial copy number matrix
@@ -100,7 +99,7 @@ void get_error_sites(int num_seg, int nerr, vector<int>& err_sites){
     // Drawn from the seeded GSL generator like every other random choice.
     // This used to be random_shuffle with no generator argument, i.e. the
     // standard library's own unseeded one, so error placement ignored --seed.
-    portable_shuffle(v.begin(), v.end(), fp_myrng);
+    portable_shuffle(v.begin(), v.end(), Rng(r));
 
     // randomly sample nerr numbers from [0, num_seg])
     for(int i = 0; i < nerr; i++){
@@ -401,6 +400,9 @@ void print_sequences(map<int, copy_number>& cn_matrix, int cn_max, int model, in
     cout << "Writing all the mutational events" << endl;
     sstm << dir << prefix << "-info.txt";
     ofstream out_info(sstm.str());
+    out_info << "SEED: " << seed_in_use << endl;
+    out_info << "TREE SEED: " << (tree_seed_in_use ? to_string(tree_seed_in_use) : string("same stream as SEED")) << endl;
+    out_info << endl;
     out_info << "NODE TIMES:";
     out_info << "\tnid\ttime" << endl;
     for(int j = 0; j <  test_tree.nodes.size(); ++j){
@@ -524,7 +526,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
             site = rchoose(r, site_dup_rates);
             seg_id = site;
             int loc = site2chr(site, c, chr_lengths, debug);    // loc is the relative location of a site on c, previously used as seg_id
-            select_haplotype_by_seg(g, c, seg_id, fp_myrng);
+            select_haplotype_by_seg(g, c, seg_id, Rng(r));
             res = generate_duplication(g, c, seg_id, sv_size.mean_dup_size, model, cn_max, r, debug);
             if(debug){
                 cout << "duplication of site " << site << ", chr " << c + 1 << " seg " << seg_id + 1 << " location " << loc + 1 << endl;
@@ -533,7 +535,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
             site = rchoose(r, site_del_rates);
             seg_id = site;
             int loc = site2chr(site, c, chr_lengths, debug);
-            select_haplotype_by_seg(g, c, seg_id, fp_myrng);
+            select_haplotype_by_seg(g, c, seg_id, Rng(r));
             res = generate_deletion(g, c, seg_id, sv_size.mean_del_size, model, cn_max, r, debug);
             if(debug){
                 cout << "deletion of site " << site << ", chr " << c + 1 << " seg " << seg_id + 1 << " location " << loc + 1 << endl;
@@ -541,7 +543,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
         }else if(e == GAIN){   //chr gain
             c = rchoose(r, chr_gain_rates);
             seg_id = -1;
-            select_haplotype(g, c, fp_myrng);
+            select_haplotype(g, c, Rng(r));
             res = generate_chr_gain(g, c, cn_max, debug);
             if(debug){
                 cout << "chosen chr " << c + 1 << " for gain event" << endl;
@@ -549,7 +551,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
         }else if(e == LOSS){   //chr loss
             c = rchoose(r, chr_loss_rates);
             seg_id = -1;
-            select_haplotype(g, c, fp_myrng);
+            select_haplotype(g, c, Rng(r));
             res = generate_chr_loss(g, c, debug);
             if(debug){
                 cout << "chosen chr " << c + 1 << " for loss event" << endl;
@@ -880,7 +882,7 @@ void run_sample_set(int Ns, gsl_rng* r, unsigned seed, const ITREE_PARAM& itree_
   //cout << "\n\n###### New sample collection ######" << endl;
   //cout << "###### Ns + 1= " << Ns + 1 << endl;
 
-  generate_coal_tree(Ns, r, fp_myrng, edges, lengths, epoch_times, node_times, itree_param);
+  generate_coal_tree(Ns, r, Rng(r), edges, lengths, epoch_times, node_times, itree_param);
   evo_tree test_tree(Ns + 1, edges, lengths);
 
   //for(int i = 0; i < 6; ++i) epars.push_back( ptree[i]);
@@ -1355,6 +1357,9 @@ void print_simulations(int mode, int model, int num_seg, int bsr_mode, const vec
     cout << "Writing all the mutational events" << endl;
     sstm << dir << prefix << "-info.txt";
     ofstream out_info(sstm.str());
+    out_info << "SEED: " << seed_in_use << endl;
+    out_info << "TREE SEED: " << (tree_seed_in_use ? to_string(tree_seed_in_use) : string("same stream as SEED")) << endl;
+    out_info << endl;
     out_info << "NODE TIMES:\n";
     out_info << "\tnid\ttime" << endl;
     for(int j = 0; j <  test_tree.nodes.size(); ++j){
@@ -1449,7 +1454,10 @@ void print_simulations(int mode, int model, int num_seg, int bsr_mode, const vec
 }
 
 
-void run_simulations(string tree_file, int mode, int method, const vector<int>& chr_lengths, int num_seg, int Ns, int Nsims, int cn_max, int model, int cons, const ITREE_PARAM& itree_param, double delta_t, int age, const vector<double>& rate_consts, const vector<int>& time_sampling, const SV_SIZE& sv_size, string dir, string prefix, PRINT_LEVEL print_level, gsl_rng* r, int nerr = 0, int debug = 0, int bsr_mode = 0, int bsr_dist = 0, double bsr_variance = 0.25, double bsr_p = 0.3){
+// r_tree: the generator the trees are drawn from. Normally r itself; with
+// --tree_seed a separate one, so that runs differing only in what happens after
+// tree generation (e.g. bsr_mode, which draws rate multipliers) draw the same trees.
+void run_simulations(string tree_file, int mode, int method, const vector<int>& chr_lengths, int num_seg, int Ns, int Nsims, int cn_max, int model, int cons, const ITREE_PARAM& itree_param, double delta_t, int age, const vector<double>& rate_consts, const vector<int>& time_sampling, const SV_SIZE& sv_size, string dir, string prefix, PRINT_LEVEL print_level, gsl_rng* r, gsl_rng* r_tree, int nerr = 0, int debug = 0, int bsr_mode = 0, int bsr_dist = 0, double bsr_variance = 0.25, double bsr_p = 0.3){
     genome germline(chr_lengths, NORM_PLOIDY);
 
     string orig_prefix = prefix;
@@ -1473,9 +1481,9 @@ void run_simulations(string tree_file, int mode, int method, const vector<int>& 
             test_tree = read_tree_info(tree_file, Ns);
         }else{
             if(time_sampling.size() > 0){
-                test_tree = generate_time_tree(Ns, r, fp_myrng, itree_param, time_sampling, debug);
+                test_tree = generate_time_tree(Ns, r_tree, Rng(r_tree), itree_param, time_sampling, debug);
             }else{
-                test_tree = generate_random_tree(Ns, r, fp_myrng, age, itree_param, delta_t, cons, debug);
+                test_tree = generate_random_tree(Ns, r_tree, Rng(r_tree), age, itree_param, delta_t, cons, debug);
             }
 
         }
@@ -1601,6 +1609,7 @@ int main (int argc, char** const argv) {
     /********* major input parameters ***********/
     int debug;
     unsigned seed;
+    unsigned tree_seed;
 
     int Ns;   // number of multi-region samples
     int Nsims;  // number of simulations
@@ -1713,6 +1722,7 @@ int main (int argc, char** const argv) {
       ("bsr_p", po::value<double>(&bsr_p)->default_value(0.3), "probability of a rate change at each node, used only for random local clock (bsr_mode=3); must be in (0, 1)")
 
       ("seed", po::value<unsigned>(&seed)->default_value(0), "seed used for generating random numbers")
+      ("tree_seed", po::value<unsigned>(&tree_seed)->default_value(0), "seed of a separate generator used only to draw the trees, so that runs differing only in what happens after tree generation (e.g. --bsr_mode) draw the same trees. 0 (default): trees come from the same stream as everything else")
       ("verbose", po::value<int>(&debug)->default_value(0), "verbose level (0: default, 1: standard debug, 2: debug with details on tree)")
       ;
 
@@ -1748,9 +1758,20 @@ int main (int argc, char** const argv) {
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
-    setup_rng(r, seed);
+    seed = setup_rng(r, seed);
+    seed_in_use = seed;
+    tree_seed_in_use = tree_seed;
 
-    fp_myrng = &myrng;
+    // Trees may come from their own generator (--tree_seed), so that batches
+    // differing only in what happens after tree generation (e.g. --bsr_mode,
+    // which draws rate multipliers) still draw the same trees. Unset: one
+    // stream for everything, exactly as before.
+    gsl_rng* r_tree = r;
+    if(tree_seed){
+        r_tree = gsl_rng_alloc(gsl_rng_mt19937);
+        gsl_rng_set(r_tree, tree_seed);
+        cout << "tree seed:" << "\t" << tree_seed << endl;
+    }
 
     // read tip times for input string
     vector<int> time_sampling;
@@ -1858,11 +1879,12 @@ int main (int argc, char** const argv) {
         if(beta > 0){
             cout << "\nSimulating exponential growth" << endl;
         }
-        run_simulations(tree_file, mode, method, chr_lengths, num_seg, Ns, Nsims, cn_max, model, cons, itree_param, delta_t, age, rate_consts, time_sampling, sv_size, dir, prefix, print_level, r, nerr, debug, bsr_mode, bsr_dist, bsr_variance, bsr_p);
+        run_simulations(tree_file, mode, method, chr_lengths, num_seg, Ns, Nsims, cn_max, model, cons, itree_param, delta_t, age, rate_consts, time_sampling, sv_size, dir, prefix, print_level, r, r_tree, nerr, debug, bsr_mode, bsr_dist, bsr_variance, bsr_p);
     }else{
         cout << "\nRunning test" << endl;
         run_test(r, mode, dir, seed, itree_param, sv_size, debug);
     }
 
+    if(r_tree != r) gsl_rng_free(r_tree);
     gsl_rng_free(r);
 }

@@ -89,7 +89,9 @@ and each is recorded under its own log name.
 
 The programs also print the seed they actually used, as `seed:` followed by
 a tab and the number, including the clock-based seed they pick when called
-directly without `--seed`.
+directly without `--seed`. The record also travels with the data: `cnets`
+writes its seeds at the top of `<prefix>-info.txt`, and `cnetml` writes its
+seed into `<output>.summary.txt`, whatever launched them.
 
 To repeat a run, put that number in front of the script, e.g.
 `CNETA_SEED=<number> bin/run-cnetml.sh`, or pass `--seed <number>` when
