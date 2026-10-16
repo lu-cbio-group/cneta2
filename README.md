@@ -21,11 +21,11 @@ For installation, usage, and full documentation, see our website: https://lu-cbi
 
 
 # Overview
-
 <p align="center">
+  <picture>
   <img src="assets/briefing/briefing.png" alt="CNETA overview" width="700">
+  </picture>
 </p>
-
 
 # Versions and references
 The first version is at https://github.com/ucl-cssb/cneta
