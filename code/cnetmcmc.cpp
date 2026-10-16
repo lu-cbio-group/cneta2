@@ -68,13 +68,7 @@ OBS_DECOMP obs_decomp;
 //create a list of nodes to loop over, making sure the root is last
 vector<int> knodes;
 
-// unary function and pointer to unary function
-// allows use of gsl rng for standard template algorithms
-inline long unsigned myrng(long unsigned n){
-  return gsl_rng_uniform_int(r, n);
-}
-
-long unsigned (*fp_myrng)(long unsigned);
+// Shuffles and tree generation draw through Rng(r) (see stats.hpp).
 
 
 // Compute the total lengths of branches to estimate
@@ -328,7 +322,7 @@ evo_tree create_new_coal_tree(int nsample, int epop){
     t_tot += t ;
 
     // choose two random nodes from available list
-    portable_shuffle(nodes.begin(), nodes.end(), fp_myrng);
+    portable_shuffle(nodes.begin(), nodes.end(), Rng(r));
 
     // edge node_count -> node
     edges.push_back(node_count);
@@ -2087,7 +2081,7 @@ void run_with_reference_tree(string rtreefile, int Ns, int Nchar, int num_invar_
     }
     else{
         cout << "   starting with a random coalescence tree" << endl;
-        rtree = generate_coal_tree(Ns, r, fp_myrng, itree_param);
+        rtree = generate_coal_tree(Ns, r, Rng(r), itree_param);
     }
     revise_init_tree(rtree, rates, tobs, cons);
 
@@ -2268,8 +2262,6 @@ int main (int argc, char ** const argv) {
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
     setup_rng(r, seed);
-
-    fp_myrng = &myrng;
 
     ITREE_PARAM itree_param{epop, beta, gtime};
 
@@ -2458,7 +2450,7 @@ int main (int argc, char ** const argv) {
         if(init_tree == 0){
           cout << "\tUsing random coalescence tree " << endl;
           // start with a random coalescence tree
-          rtree = generate_coal_tree(Ns, r, fp_myrng, itree_param);
+          rtree = generate_coal_tree(Ns, r, Rng(r), itree_param);
         }else if(init_tree == 1){
           cout << "\tUsing provided tree " << endl;
           rtree = read_tree_info(file_itree, Ns);

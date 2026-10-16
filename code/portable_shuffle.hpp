@@ -18,7 +18,7 @@
  * sequence of rng() calls changes every seeded result.
  *
  * @param first, last: random-access iterators
- * @param rng: callable, rng(n) in [0, n); typically fp_myrng over the GSL RNG
+ * @param rng: callable, rng(n) in [0, n); typically an Rng (stats.hpp) over a GSL generator
  */
 template <typename RandomIt, typename Rng>
 void portable_shuffle(RandomIt first, RandomIt last, Rng&& rng){

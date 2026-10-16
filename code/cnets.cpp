@@ -51,13 +51,7 @@ struct SV_SIZE{
 
 gsl_rng* r;
 
-// unary function and pointer to unary function
-// allows use of gsl rng for standard template algorithms
-inline long unsigned myrng(long unsigned n){
-  return gsl_rng_uniform_int(r, n);
-}
-
-long unsigned (*fp_myrng)(long unsigned);
+// Shuffles and tree generation draw through Rng(r) (see stats.hpp).
 
 
 // Set the initial copy number matrix
@@ -100,7 +94,7 @@ void get_error_sites(int num_seg, int nerr, vector<int>& err_sites){
     // Drawn from the seeded GSL generator like every other random choice.
     // This used to be random_shuffle with no generator argument, i.e. the
     // standard library's own unseeded one, so error placement ignored --seed.
-    portable_shuffle(v.begin(), v.end(), fp_myrng);
+    portable_shuffle(v.begin(), v.end(), Rng(r));
 
     // randomly sample nerr numbers from [0, num_seg])
     for(int i = 0; i < nerr; i++){
@@ -524,7 +518,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
             site = rchoose(r, site_dup_rates);
             seg_id = site;
             int loc = site2chr(site, c, chr_lengths, debug);    // loc is the relative location of a site on c, previously used as seg_id
-            select_haplotype_by_seg(g, c, seg_id, fp_myrng);
+            select_haplotype_by_seg(g, c, seg_id, Rng(r));
             res = generate_duplication(g, c, seg_id, sv_size.mean_dup_size, model, cn_max, r, debug);
             if(debug){
                 cout << "duplication of site " << site << ", chr " << c + 1 << " seg " << seg_id + 1 << " location " << loc + 1 << endl;
@@ -533,7 +527,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
             site = rchoose(r, site_del_rates);
             seg_id = site;
             int loc = site2chr(site, c, chr_lengths, debug);
-            select_haplotype_by_seg(g, c, seg_id, fp_myrng);
+            select_haplotype_by_seg(g, c, seg_id, Rng(r));
             res = generate_deletion(g, c, seg_id, sv_size.mean_del_size, model, cn_max, r, debug);
             if(debug){
                 cout << "deletion of site " << site << ", chr " << c + 1 << " seg " << seg_id + 1 << " location " << loc + 1 << endl;
@@ -541,7 +535,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
         }else if(e == GAIN){   //chr gain
             c = rchoose(r, chr_gain_rates);
             seg_id = -1;
-            select_haplotype(g, c, fp_myrng);
+            select_haplotype(g, c, Rng(r));
             res = generate_chr_gain(g, c, cn_max, debug);
             if(debug){
                 cout << "chosen chr " << c + 1 << " for gain event" << endl;
@@ -549,7 +543,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
         }else if(e == LOSS){   //chr loss
             c = rchoose(r, chr_loss_rates);
             seg_id = -1;
-            select_haplotype(g, c, fp_myrng);
+            select_haplotype(g, c, Rng(r));
             res = generate_chr_loss(g, c, debug);
             if(debug){
                 cout << "chosen chr " << c + 1 << " for loss event" << endl;
@@ -880,7 +874,7 @@ void run_sample_set(int Ns, gsl_rng* r, unsigned seed, const ITREE_PARAM& itree_
   //cout << "\n\n###### New sample collection ######" << endl;
   //cout << "###### Ns + 1= " << Ns + 1 << endl;
 
-  generate_coal_tree(Ns, r, fp_myrng, edges, lengths, epoch_times, node_times, itree_param);
+  generate_coal_tree(Ns, r, Rng(r), edges, lengths, epoch_times, node_times, itree_param);
   evo_tree test_tree(Ns + 1, edges, lengths);
 
   //for(int i = 0; i < 6; ++i) epars.push_back( ptree[i]);
@@ -1473,9 +1467,9 @@ void run_simulations(string tree_file, int mode, int method, const vector<int>& 
             test_tree = read_tree_info(tree_file, Ns);
         }else{
             if(time_sampling.size() > 0){
-                test_tree = generate_time_tree(Ns, r, fp_myrng, itree_param, time_sampling, debug);
+                test_tree = generate_time_tree(Ns, r, Rng(r), itree_param, time_sampling, debug);
             }else{
-                test_tree = generate_random_tree(Ns, r, fp_myrng, age, itree_param, delta_t, cons, debug);
+                test_tree = generate_random_tree(Ns, r, Rng(r), age, itree_param, delta_t, cons, debug);
             }
 
         }
@@ -1749,8 +1743,6 @@ int main (int argc, char** const argv) {
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
     setup_rng(r, seed);
-
-    fp_myrng = &myrng;
 
     // read tip times for input string
     vector<int> time_sampling;

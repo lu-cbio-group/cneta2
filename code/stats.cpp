@@ -1,7 +1,5 @@
 #include "stats.hpp"
 
-// long unsigned (*myrng)(long unsigned){ &myrng };
-
 
 // Seed the generator. A seed of 0 (the programs' default for --seed) means
 // "no seed given": one is derived from the clock and the process id, so two

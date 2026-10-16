@@ -145,9 +145,9 @@ double get_total_rates_haplotype_specific(genome& g, vector<double>& site_dup_ra
 */
 int site2chr(int site, int& chr, const vector<int>& chr_lengths, int debug);
 // Randomly choose a haplotype of a chromosome, used in generating chromosome gain/loss
-void select_haplotype(genome& g, int& c, long unsigned (*fp_myrng)(long unsigned));
+void select_haplotype(genome& g, int& c, const Rng& rng);
 // Randomly select a haplotype of a chromosome with the chosen segments, used in generating site duplication/deletion
-void select_haplotype_by_seg(genome& g, int& c, int seg_id, long unsigned (*fp_myrng)(long unsigned));
+void select_haplotype_by_seg(genome& g, int& c, int seg_id, const Rng& rng);
 
 int generate_duplication(genome& g, int c, int seg_id, int mean_dup_size, int model, int cn_max, gsl_rng* r, int debug);
 int generate_deletion(genome& g, int c, int seg_id, int mean_del_size, int model, int cn_max, gsl_rng* r, int debug);

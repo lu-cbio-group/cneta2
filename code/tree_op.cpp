@@ -243,7 +243,7 @@ string order_tree_string_uniq(const string& tree){
 
 
 // Randomly swap two leaves
-evo_tree perturb_tree(evo_tree& tree, long unsigned (*fp_myrng)(long unsigned)){
+evo_tree perturb_tree(evo_tree& tree, const Rng& rng){
     int debug = 0;
     if(debug) cout << "\tperturb one tree" << endl;
 
@@ -253,13 +253,13 @@ evo_tree perturb_tree(evo_tree& tree, long unsigned (*fp_myrng)(long unsigned)){
     for(int i = 0; i < tree.nleaf - 1; ++i) n_0.push_back(i);
 
     // shuffle(n_0.begin(), n_0.end(), default_random_engine(seed));
-    portable_shuffle(n_0.begin(), n_0.end(), fp_myrng);
+    portable_shuffle(n_0.begin(), n_0.end(), rng);
 
     int n1 = n_0[tree.nleaf - 2];
     n_0.pop_back();
 
     // shuffle(n_0.begin(), n_0.end(), default_random_engine(seed));
-    portable_shuffle(n_0.begin(), n_0.end(), fp_myrng);
+    portable_shuffle(n_0.begin(), n_0.end(), rng);
 
     int n2 = n_0[0];
 
@@ -357,7 +357,7 @@ void test_evo_tree(const evo_tree& tree){
 // generate neutral coalescent trees
 // here nsample is the number of cancer samples (not including germline node)
 // here we directly calculate the edges in the tree
-void generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), vector<int>& edges, vector<double>& lengths, vector<double>& epoch_times, vector<double>& times, const ITREE_PARAM& itree_param){
+void generate_coal_tree(const int nsample, gsl_rng* r, const Rng& rng, vector<int>& edges, vector<double>& lengths, vector<double>& epoch_times, vector<double>& times, const ITREE_PARAM& itree_param){
   vector<int> nodes;
 
   int Ne = itree_param.Ne;
@@ -393,7 +393,7 @@ void generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)
 
     t_tot += t;
     // choose two random nodes from available list
-    portable_shuffle(nodes.begin(), nodes.end(), fp_myrng);
+    portable_shuffle(nodes.begin(), nodes.end(), rng);
 
     // edge node_count -> node
     edges.push_back(node_count);
@@ -463,7 +463,7 @@ void generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)
 
 
 // Scale the total time by given time
-evo_tree generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), const ITREE_PARAM& itree_param){
+evo_tree generate_coal_tree(const int nsample, gsl_rng* r, const Rng& rng, const ITREE_PARAM& itree_param){
    int debug = 0;
    if(debug) cout << "GENERATING COALESCENCE TREE" << endl;
    vector<int> edges;
@@ -501,7 +501,7 @@ evo_tree generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_my
      t_tot += t;
 
      // choose two random nodes from available list
-     portable_shuffle(nodes.begin(), nodes.end(), fp_myrng);
+     portable_shuffle(nodes.begin(), nodes.end(), rng);
 
      // edge node_count -> node
      edges.push_back(node_count);
@@ -609,7 +609,7 @@ void assign_tip_times(double delta_t, int Ns, gsl_rng* r, vector<double>& tobs, 
 }
 
 
-evo_tree generate_random_tree(int Ns, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), int age, const ITREE_PARAM& itree_param, double delta_t, int cons, int debug){
+evo_tree generate_random_tree(int Ns, gsl_rng* r, const Rng& rng, int age, const ITREE_PARAM& itree_param, double delta_t, int cons, int debug){
     vector<int> edges;
     vector<double> lengths;
     vector<double> epoch_times;
@@ -621,7 +621,7 @@ evo_tree generate_random_tree(int Ns, gsl_rng* r, long unsigned (*fp_myrng)(long
     if(itree_param.beta > 0){
         cout << " The exponential growth rate is " << itree_param.beta << endl;
     }
-    generate_coal_tree(Ns, r, fp_myrng, edges, lengths, epoch_times, node_times, itree_param);
+    generate_coal_tree(Ns, r, rng, edges, lengths, epoch_times, node_times, itree_param);
 
     if(debug){
       cout << "Initial coalescence tree: " << endl;
@@ -669,7 +669,7 @@ evo_tree generate_random_tree(int Ns, gsl_rng* r, long unsigned (*fp_myrng)(long
 // treat the number of samples and their sampling times as given, and use the times to form time intervals.  
 // The number of lineages (and the coalescent rate) changes at each sampling time as well as at each coalescent time.  
 // Other things are the same as in coalescent simulation for contemporary samples
-evo_tree generate_time_tree(int nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), const ITREE_PARAM& itree_param, const vector<int>& time_sampling, int debug){
+evo_tree generate_time_tree(int nsample, gsl_rng* r, const Rng& rng, const ITREE_PARAM& itree_param, const vector<int>& time_sampling, int debug){
     cout << "Generating random coalescence trees with different sampling times" << endl;
     cout << " The effective population size is " << itree_param.Ne << endl;
     cout << " The generation time is " << itree_param.gtime << endl;
@@ -738,7 +738,7 @@ evo_tree generate_time_tree(int nsample, gsl_rng* r, long unsigned (*fp_myrng)(l
         if(debug > 1) cout << "total time " << t_tot << endl;
 
         // choose two random nodes from available list
-        portable_shuffle(nodes.begin(), nodes.end(), fp_myrng);
+        portable_shuffle(nodes.begin(), nodes.end(), rng);
 
         // edge node_count -> node
         edges.push_back(node_count);
