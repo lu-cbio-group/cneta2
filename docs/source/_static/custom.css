@@ -47,3 +47,27 @@
 .wy-side-nav-search > a img.logo {
     width: 230px;
 }
+
+/* sphinxcontrib-images leaves its <figcaption> at the default block
+   left-alignment, which reads oddly under a centered image. */
+figure.centered-figure figcaption {
+    text-align: center;
+    color: #666;
+    font-size: 0.9em;
+    margin-top: 0.5em;
+}
+
+/* The theme sets margin-top:0 on every heading and margin-bottom:24px via
+   .rst-content, so a heading hugs the section above it and pushes away
+   from its own content below - backwards from how the hierarchy should
+   read. Give subheadings room above (separating sections) and tighten
+   below (keeping them close to their own content). Page titles (h1) are
+   left alone since they're always the first thing on the page. */
+.rst-content h2,
+.rst-content h3,
+.rst-content h4,
+.rst-content h5,
+.rst-content h6 {
+    margin-top: 2em;
+    margin-bottom: 12px;
+}

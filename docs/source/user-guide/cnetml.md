@@ -4,30 +4,20 @@
 likelihood, jointly inferring tree topology, node ages, and mutation rates
 from (optionally longitudinal) samples of a single patient.
 
-:::{figure} /_static/briefing.jpeg
+:::{thumbnail} /_static/briefing.jpeg
 :alt: Overview of the cnetml2 workflow, from longitudinal sampling to copy number profiles to evolutionary inference
 :align: center
-
-cnetml2 takes longitudinal copy number profiles (total, haplotype-specific,
-and relative) from multiple samples of the same patient and jointly models
-segmental, chromosomal, and whole-genome-doubling changes to reconstruct a
-clonal phylogeny with branch-specific evolutionary rates and event timing.
+:class: centered-figure
+:show_caption: true
+:title: Longitudinal tumour sampling, copy-number profiling, and evolutionary inference with cnetml2.
 :::
 
-:::{note}
-This page is migrated from the top-level `README.md` and `run-cnetml.sh`.
-Please review for accuracy and completeness.
-:::
 
 ## Status
-
 Mature and published — see
 [Lu et al., Genome Biology 2023](https://doi.org/10.1186/s13059-023-02983-0).
-Model 3 (independent Markov chain) is newer and described in the original
-README as "in development, at test branch".
 
 ## Usage
-
 ```bash
 bin/cnetml [options]
 ```
@@ -36,71 +26,70 @@ bin/cnetml [options]
 `mode` variable at the top of the script.
 
 ## Modes (`mode`)
-
-`0` (default)
-: Infer the maximum-likelihood tree from input copy numbers. Add `-b 1` to
-  bootstrap.
-
-`1`
-: Simple comprehensive test on a simulated tree.
-
-`2`
-: Compute the likelihood of a given tree and parameters.
-
-`3`
-: Optimize branch lengths (and rates) for a given topology. Add `-b 1` to
-  bootstrap.
-
-`4`
-: Infer marginal and joint ancestral states for a given tree.
+- `0` (default) — Infer the maximum-likelihood tree from input copy
+  numbers. Add `-b 1` to bootstrap.
+- `1` — Simple comprehensive test on a simulated tree.
+- `2` — Compute the likelihood of a given tree and parameters.
+- `3` — Optimize branch lengths (and rates) for a given topology. Add
+  `-b 1` to bootstrap.
+- `4` — Infer marginal and joint ancestral states for a given tree.
 
 Modes 1-3 are mainly used to validate the likelihood computation, per the
 original README.
 
 ## Options
-
 Grouped by purpose; see `run-cnetml.sh` for the full set with example
 values.
 
 Time constraints
-: `--constrained`/`cons` (optimize under patient-age/tip-timing
-  constraints), `--estmu` (estimate mutation rates — only reliable with
-  informative tip-timing, i.e. `cons=1` and non-zero time differences
-  between tips).
+: - `--constrained`/`cons` — optimize under patient-age/tip-timing
+    constraints.
+  - `--estmu` — estimate mutation rates. Only reliable with informative
+    tip-timing, i.e. `cons=1` and non-zero time differences between tips.
 
 Model (`--model`/`-d`)
-: `0` Mk, deprecated · `1` bounded total copy number, deprecated ·
-  `2` bounded haplotype-specific copy number · `3` independent Markov
-  chain, recommended for data with chromosome gain/loss and WGD. Model 3
-  differs from the model typically used to *simulate* such data in
-  `cnets` (usually model 2). Model 2 can also be used for reconstruction,
-  but assumes a strict event order: WGD, then chromosomal gain/loss, then
-  duplication/deletion.
+: - `0` — Mk, deprecated.
+  - `1` — bounded total copy number, deprecated.
+  - `2` — bounded haplotype-specific copy number.
+  - `3` — independent Markov chain, recommended for data with
+    chromosome gain/loss and WGD. Differs from the model typically used
+    to *simulate* such data in `cnets` (usually model 2). Model 2 can
+    also be used for reconstruction, but assumes a strict event order:
+    WGD, then chromosomal gain/loss, then duplication/deletion.
 
 Independent Markov chain dimensions (model 3 only)
-: `max_wgd` (at most 1 — simulations allow at most one WGD per sample),
-  `max_chr_change` (usually 1, higher only if some chromosomes undergo
-  more than one gain/loss event), `max_site_change` (often >1, since
-  site-level CNAs frequently overlap — e.g. with no WGD/chromosome events
-  and a maximum copy number of 5, use `max_site_change = 3`), `m_max`
-  (maximum segment copies before chromosome-level events). Setting these
-  too low gives an incorrect likelihood; too high slows computation. Use
+: - `max_wgd` — at most 1; simulations allow at most one WGD per
+    sample.
+  - `max_chr_change` — usually 1, higher only if some chromosomes
+    undergo more than one gain/loss event.
+  - `max_site_change` — often >1, since site-level CNAs frequently
+    overlap, e.g. with no WGD/chromosome events and a maximum copy
+    number of 5, use `max_site_change = 3`.
+  - `m_max` — maximum segment copies before chromosome-level events.
+
+  Setting these too low gives an incorrect likelihood; too high slows
+  computation. Use
   `Rscript util/check_site_pattern.R -c sim1-cn.txt -t sim1-patterns.txt`
   to help pick values for real data.
 
 Tree search (`tree_search`)
-: `0` genetic algorithm — slow, deprecated · `1` heuristic/hill-climbing —
-  for at least 5 samples · `2` exhaustive — efficient for up to 7 samples.
+: - `0` — genetic algorithm. Slow, deprecated.
+  - `1` — heuristic/hill-climbing. For at least 5 samples.
+  - `2` — exhaustive. Efficient for up to 7 samples.
 
 Mutation types (`cn_type`)
-: which rate categories to estimate: `0` segment only, `1`
-  chromosome+WGD, `2` segment+WGD, `3` segment+chromosome, `4` all. This
-  flag is specific to `cnetml`/`cnetmcmc` — `cnets` has no `cn_type`
-  selector; it turns event types on/off by zeroing the corresponding
-  rate flag instead (see [`cnets` options](cnets.md#options)).
+: - `0` — segment only.
+  - `1` — chromosome+WGD.
+  - `2` — segment+WGD.
+  - `3` — segment+chromosome.
+  - `4` — all.
+
+  Which rate categories to estimate. This flag is specific to
+  `cnetml`/`cnetmcmc` — `cnets` has no `cn_type` selector; it turns
+  event types on/off by zeroing the corresponding rate flag instead
+  (see [`cnets` options](cnets.md#options)).
 
 ## Inputs
-
 Required
 : A copy-number file (`*-cn.txt.gz` or `*-haplotype-cn.txt.gz`), space
   separated, **no header row**: `sample_ID chr_ID site_ID CN` for total
@@ -120,7 +109,6 @@ original README.
 :::
 
 ## Outputs
-
 :::{warning}
 The original README (and earlier versions of this page) described these
 as `*-tree.txt` / `*-tree.nex` / `*-tree.nmut.nex`. That's not what the
@@ -148,7 +136,6 @@ a single `<ofile>.joint.state`. See
 [File formats](../file-formats/index.md) for column definitions.
 
 ## Examples
-
 ```bash
 bin/run-cnetml.sh
 ```

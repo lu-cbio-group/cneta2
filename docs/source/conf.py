@@ -37,6 +37,7 @@ DOXYGEN_XML = DOCS_DIR / "build" / "doxygen" / "xml"
 extensions = [
     "myst_parser",              # Markdown authoring
     "sphinxcontrib.mermaid",    # workflow diagrams
+    "sphinxcontrib.images",     # click-to-enlarge lightbox for figures
     "breathe",                  # C++ API via Doxygen XML
     "sphinx_copybutton",        # copy button on code blocks
     "sphinx_design",            # tab-sets used in developer-guide/documentation.md

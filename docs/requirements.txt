@@ -19,8 +19,9 @@ sphinx-rtd-theme
 myst-parser
 linkify-it-py          # required by the myst "linkify" extension
 
-# Diagrams 
+# Diagrams
 sphinxcontrib-mermaid
+sphinxcontrib-images     # click-to-enlarge lightbox for figures
 
 # C++ API generation 
 breathe                # renders Doxygen XML into Sphinx pages
