@@ -8,16 +8,31 @@ endif()
 
 # 1. Set Global C++ Standards
 # -----------------------------
-# C++14 is the minimum for Catch2 v3 (see tests/unit/). The sources seem to
-# build cleanly at this level; only std::random_shuffle warns as deprecated.
-# TODO: Moving to C++17
-# C++17 additionally requires replacing the two random_shuffle
-# calls in tree_op.cpp and genome.cpp, which changes RNG draw order and so
-# shifts fixed-seed simulation output.
+# C++17. The one thing that blocked it, std::random_shuffle (removed in
+# C++17), was replaced by portable_shuffle.hpp. Catch2 v3 (tests/unit/)
+# needs at least C++14; the legacy code/makefile uses the same standard.
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Forces standard C++ over compiler-specific extensions
+
+# Floating-point contraction (fused multiply-add) is on by default in Clang
+# and off in GCC under a strict -std=c++XX, as used here. Fused and unfused
+# results differ in the last bit, which can be enough to send an optimiser
+# down a different path, so turn it off everywhere: the same seed should give
+# the same tree on a Mac and on the HPC.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-ffp-contract=off)
+endif()
+
+# Build optimised by default. With no build type CMake adds no -O flag at all,
+# so build.sh produced unoptimised programs while the legacy makefile uses
+# -O3. Match the makefile (-O3, assertions kept) so the two builds compute the
+# same thing; pass -DCMAKE_BUILD_TYPE=Debug for an unoptimised build.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # Where the finished programs (cnets, cnetml, cnetmcmc) are written.
 #

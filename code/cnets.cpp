@@ -19,6 +19,7 @@ Here, the ID for sample, chromosome and segment start from 1.
 #include "evo_tree.hpp"
 #include "tree_op.hpp"
 #include "genome.hpp"
+#include "portable_shuffle.hpp"
 
 
 #include <boost/program_options.hpp>
@@ -96,7 +97,10 @@ void get_error_sites(int num_seg, int nerr, vector<int>& err_sites){
 
     vector<int> v(num_seg);
     iota(v.begin(), v.end(), 1);
-    random_shuffle(v.begin(), v.end());
+    // Drawn from the seeded GSL generator like every other random choice.
+    // This used to be random_shuffle with no generator argument, i.e. the
+    // standard library's own unseeded one, so error placement ignored --seed.
+    portable_shuffle(v.begin(), v.end(), fp_myrng);
 
     // randomly sample nerr numbers from [0, num_seg])
     for(int i = 0; i < nerr; i++){
@@ -1740,9 +1744,10 @@ int main (int argc, char** const argv) {
         cout << "Simulating time differences among samples with baseline time difference " << delta_t << endl;
     }
 
-    gsl_rng_env_setup();
-    const gsl_rng_type* T = gsl_rng_default;
-    r = gsl_rng_alloc(T);
+    // Always MT19937 (GSL's default), named here rather than taken from
+    // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
+    // environment silently swap the generator and change every seeded result.
+    r = gsl_rng_alloc(gsl_rng_mt19937);
     setup_rng(r, seed);
 
     fp_myrng = &myrng;

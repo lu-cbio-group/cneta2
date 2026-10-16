@@ -20,7 +20,24 @@ if [[ -f "$CNETA_CONFIG_DIR/common.conf" ]]; then
   source "$CNETA_CONFIG_DIR/common.conf"
 fi
 
-seed="${CNETA_SEED:-$RANDOM}"  # used for reproducing the results
+# Seed for the random number generator. Empty or 0 (the default) means draw a
+# fresh 32-bit seed for this run. The seed in use is written at the top of the
+# log and appended to seed-history.txt in the output directory, so any run can
+# be repeated with   CNETA_SEED=<that number> bin/run-cnets.sh
+if [[ -z "${CNETA_SEED:-}" || "$CNETA_SEED" == "0" ]]; then
+  seed=$(od -An -N4 -tu4 /dev/urandom | tr -d ' ')
+  if [[ $seed -eq 0 ]]; then seed=1; fi
+else
+  seed=$CNETA_SEED
+fi
+
+# record_seed <output dir> <seed> <log file>: append one line to
+# <output dir>/seed-history.txt. Re-running with the same settings overwrites
+# the log, so this file is the record that survives.
+record_seed () {
+  printf '%s\t%s\tseed=%s\tlog=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$(basename "$0")" "$2" "$3" >> "$1/seed-history.txt"
+}
+
 verbose=0   # Whether or not to print debug information. 0: default, 1: standard debug, 2: debug with details on tree
 Nsim=1  # The number of simulations. Number of patients to simulate
 
@@ -75,9 +92,11 @@ prefix=""
 
 echo "Start running cnets"
 
-echo "seed $seed"  > $dir/std_cnets_cons${cons}_model${model}_method${method}
+log=$dir/std_cnets_cons${cons}_model${model}_method${method}
+echo "seed $seed" > $log
+record_seed "$dir" "$seed" "$(basename "$log")"
 # valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes -v
-/usr/bin/time "$CNETA_BIN/cnets" --tree_file "${tree_file}" -p "${prefix}" -o $dir -r $Ns -n $Nsim --mode $mode --method $method --fix_nseg $fix_nseg --seg_max $seg_max --cn_max $cn_max --dup_rate $r1 --del_rate $r2 --chr_gain $r3 --chr_loss $r4 --wgd $r5 --dup_size $s1 --del_size $s2 -e $Ne -b $beta --gtime $gtime -t $dt --verbose $verbose --constrained $cons --model $model --age $age --stime "$stime" --seed $seed --print_relative $print_relative  >> $dir/std_cnets_cons${cons}_model${model}_method${method}
+/usr/bin/time "$CNETA_BIN/cnets" --tree_file "${tree_file}" -p "${prefix}" -o $dir -r $Ns -n $Nsim --mode $mode --method $method --fix_nseg $fix_nseg --seg_max $seg_max --cn_max $cn_max --dup_rate $r1 --del_rate $r2 --chr_gain $r3 --chr_loss $r4 --wgd $r5 --dup_size $s1 --del_size $s2 -e $Ne -b $beta --gtime $gtime -t $dt --verbose $verbose --constrained $cons --model $model --age $age --stime "$stime" --seed $seed --print_relative $print_relative  >> $log
 
 wait
 

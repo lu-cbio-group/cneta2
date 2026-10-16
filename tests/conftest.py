@@ -108,10 +108,10 @@ class Result:
 def run():
     """Run a command with a reproducible environment.
 
-    OMP_NUM_THREADS=1 matters: cnetml parallelises its tree search with
-    OpenMP, and floating-point reductions over a variable number of threads
-    are not bit-reproducible. Pinning to one thread makes scores comparable
-    between runs and between machines.
+    OMP_NUM_THREADS=1 pins cnetml's OpenMP tree search to one thread. The
+    result does not depend on the thread count (test_cnetml.py checks that),
+    but one thread keeps timings comparable and a failure easy to repeat by
+    hand. Pass env={"OMP_NUM_THREADS": ...} to override it.
     """
 
     def _run(argv, cwd: Path | None = None, env: dict[str, str] | None = None,

@@ -10,7 +10,7 @@ for the current architecture and what's still planned.
 
 Required to build `cnets`, `cnetml`, and `cnetmcmc`:
 
-- A C++11-capable compiler (GCC or Clang)
+- A C++17-capable compiler (GCC >= 7 or Clang >= 5)
 - [CMake](https://cmake.org/) >= 3.10
 - [Boost](https://www.boost.org/) (`program_options` and `filesystem`
   components)

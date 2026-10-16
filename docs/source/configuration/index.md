@@ -58,7 +58,7 @@ belong to a whole pipeline run rather than to one tool:
 | Variable | Meaning | Default |
 |---|---|---|
 | `CNETA_OUT` | Working directory. `cnets` writes its simulated data here; `cnetml` and `cnetmcmc` read their input from here and write their results alongside. | `./example` |
-| `CNETA_SEED` | Random seed. Empty means a new random seed for every run; the scripts write the seed they used at the top of their log. Set a number to reproduce a run. | empty |
+| `CNETA_SEED` | Random seed. Empty (or 0) means a new random seed for every run. Set a number to reproduce a run; see [Reproducing a run](#reproducing-a-run). | empty |
 
 It is read by the shell, so use shell syntax: no spaces around `=`. Write
 each setting as `VAR="${VAR:-value}"`, so that a value set in the
@@ -77,6 +77,27 @@ environment, then `config/common.conf`, then the script's own default.
 | `CNETA_BIN` | all scripts | `bin/` in the repository |
 | `CNETA_CONFIG_DIR` | all scripts | `config/` in the repository |
 | `CNETA_CONFIG` | `run-cnetmcmc.sh` | `$CNETA_CONFIG_DIR/cnet_mcmc.cfg` |
+
+### Reproducing a run
+
+Every script passes the seed to the program on every invocation and
+records it twice: as the first line of the log (`seed <number>`), and as a
+line in `seed-history.txt` in the working directory, which is appended to
+and never overwritten, so the record survives re-running with the same
+settings. Bootstrap replicates and MCMC chains use the seed plus 1, 2, ...
+and each is recorded under its own log name.
+
+The programs also print the seed they actually used, as `seed:` followed by
+a tab and the number, including the clock-based seed they pick when called
+directly without `--seed`.
+
+To repeat a run, put that number in front of the script, e.g.
+`CNETA_SEED=<number> bin/run-cnetml.sh`, or pass `--seed <number>` when
+calling a program directly. The same seed and the same input give the
+same result whatever the number of OpenMP threads, and the random choices
+no longer depend on the C++ standard library, so they are the same on a
+Mac and on the HPC. The test suite checks on both Linux and macOS that
+the results agree.
 
 ### Tool config files: `config/*.cfg`
 

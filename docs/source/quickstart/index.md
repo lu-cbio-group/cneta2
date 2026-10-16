@@ -35,7 +35,8 @@ for a one-off change set a variable on the command line instead, e.g.
 - `CNETA_OUT` — the output directory (default `./example`, relative to where
   you run the script)
 - `CNETA_SEED` — the random seed; set it to reproduce a run (default: a new
-  random seed each run, recorded in the log)
+  random seed each run, recorded at the top of the log and in
+  `seed-history.txt` in the output directory)
 - `CNETA_BIN` — where the executables live (default `bin/`)
 - `CNETA_CONFIG_DIR` — where the configuration files live (default `config/`)
 - `CNETA_CONFIG` — `run-cnetmcmc.sh` only: its config file (default

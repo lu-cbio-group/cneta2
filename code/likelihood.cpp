@@ -19,29 +19,7 @@ using timing::elapsed_seconds;
 
 
 
-/**
- * @brief Print the likelihood table at the tips
- * @param rtree Evolutionary tree
- * @param obs Observed copy number states at tips
- * @param L_sk_k Likelihood table
- * @param nstate Number of possible states
- */
-template <typename T>
-void print_lnl_at_tips(const evo_tree& rtree, const vector<T>& obs, const vector<vector<double>>& L_sk_k, int nstate){
-    cout << "\nObserved copy numbers at tips:\n";
-    for(int i = 0; i < rtree.nleaf - 1; ++i){
-        cout<< "\t" << obs[i];
-    }
-    cout << endl;
-
-    cout << "Likelihood for tips:\n";
-    for(int i = 0; i < rtree.nleaf; ++i){
-        for(int j = 0; j < nstate; ++j){
-            cout << "\t" << L_sk_k[i][j];
-        }
-        cout << endl;
-    }
-}
+// print_lnl_at_tips is a template defined in likelihood.hpp (used from state.cpp too).
 
 
 /**

@@ -14,6 +14,13 @@
 # what changed and why. A silent fixture update makes the regression tests
 # worthless.
 #
+# Note: the committed fixtures predate portable_shuffle (they were made on
+# macOS with libc++'s shuffle order), so regenerating with the same seed now
+# gives different data on every platform. That is expected; regenerate the
+# mode-2 reference values with them, as this script prints. The seeded
+# cross-platform pins in expected.json ("seeded") are separate: the tests in
+# e2e/test_cross_platform.py print the new values when they move.
+#
 # Usage:
 #   cd code && ./build.sh local 4     # fixtures come from the built binaries
 #   tests/regenerate_fixtures.sh

@@ -53,6 +53,34 @@ def test_writes_both_trace_files(mcmc_run):
     assert trace_tree.is_file(), "no tree trace written"
 
 
+def test_same_seed_gives_the_same_traces(mcmc_run, tmp_path, data_dir,
+                                         tiny_sim: Simulation, cnetmcmc, run):
+    """A chain is a random walk, so the seed is the only thing that makes it
+    repeatable. Compares the traces byte for byte with the shared run."""
+    _, trace_param, trace_tree = mcmc_run
+    again_param = tmp_path / "again.p"
+    again_tree = tmp_path / "again.t"
+
+    run([
+        cnetmcmc,
+        *cli.cnetmcmc_args(
+            cn_file=tiny_sim.haplotype_cn,
+            times_file=tiny_sim.times,
+            tree_file=tiny_sim.tree,
+            config_file=data_dir / "mcmc-ci.cfg",
+            trace_param=again_param,
+            trace_tree=again_tree,
+        ),
+    ]).assert_ok()
+
+    assert again_param.read_bytes() == trace_param.read_bytes(), (
+        "same seed, different parameter trace"
+    )
+    assert again_tree.read_bytes() == trace_tree.read_bytes(), (
+        "same seed, different tree trace"
+    )
+
+
 def test_parameter_trace_has_the_expected_number_of_samples(mcmc_run):
     _, trace_param, _ = mcmc_run
 

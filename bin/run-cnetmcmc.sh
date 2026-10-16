@@ -30,7 +30,29 @@ if [[ ! -f $config_file ]]; then
   exit 1
 fi
 
-seed="${CNETA_SEED:-$RANDOM}"
+# Seed for the random number generator. Empty or 0 (the default) means draw a
+# fresh 32-bit seed for this run. Each chain's seed is written at the top of
+# its log and appended to seed-history.txt in the output directory, so any run
+# can be repeated with   CNETA_SEED=<that number> bin/run-cnetmcmc.sh
+if [[ -z "${CNETA_SEED:-}" || "$CNETA_SEED" == "0" ]]; then
+  seed=$(od -An -N4 -tu4 /dev/urandom | tr -d ' ')
+  if [[ $seed -eq 0 ]]; then seed=1; fi
+else
+  seed=$CNETA_SEED
+fi
+
+# record_seed <output dir> <seed> <log file>: append one line to
+# <output dir>/seed-history.txt. Re-running with the same settings overwrites
+# the log, so this file is the record that survives.
+record_seed () {
+  printf '%s\t%s\tseed=%s\tlog=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$(basename "$0")" "$2" "$3" >> "$1/seed-history.txt"
+}
+
+# derived_seed <seed> <n>: the seed for chain n + 1, seed + n, kept inside the
+# 32-bit range and never 0 (which would mean "pick one").
+derived_seed () {
+  echo $(( ($1 + $2 - 1) % 4294967295 + 1 ))
+}
 
 ####################### Parameters related to input  ###########################
 Ns=3  # The number of regions
@@ -71,16 +93,20 @@ echo "Start running cnetmcmc"
 # Run multiple chains
 for i in {1..2}
 do
-  # seed=$i
+  # Each chain gets its own seed (seed, seed + 1, ...): with one shared seed
+  # the chains would be identical copies rather than independent runs.
+  chain_seed=$(derived_seed $seed $((i - 1)))
   echo "chain $i"
   # Use the suffix of MrBayes for compatibility with RWTY
   trace_param_file=$odir/mcmc_"$suffix"_${i}.p
   trace_tree_file=$odir/mcmc_"$suffix"_${i}.t
   sum_tree_file=$odir/sum-mcmc_"$suffix"_${i}.txt
 
-  echo "seed $seed" > $odir/std_mcmc_"$suffix"_${i}
+  log=$odir/std_mcmc_"$suffix"_${i}
+  echo "seed $chain_seed" > $log
+  record_seed "$dir" "$chain_seed" "mcmc/$(basename "$log")"
 
-  "$CNETA_BIN/cnetmcmc" -s $Ns --is_total $is_total -c $input -t "$times" --rtree "$rtree" --trace_param_file $trace_param_file --trace_tree_file $trace_tree_file --config_file "$config_file" --init_tree $init_tree --file_itree $file_itree --seed $seed >> $odir/std_mcmc_"$suffix"_${i}
+  "$CNETA_BIN/cnetmcmc" -s $Ns --is_total $is_total -c $input -t "$times" --rtree "$rtree" --trace_param_file $trace_param_file --trace_tree_file $trace_tree_file --config_file "$config_file" --init_tree $init_tree --file_itree $file_itree --seed $chain_seed >> $log
 
   # Summarize the sampled trees into a maximum credibility tree with median heights
   # treeannotator -burnin 10 -heights median $trace_tree_file $sum_tree_file

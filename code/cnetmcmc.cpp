@@ -7,6 +7,7 @@
 
 #include "evo_tree.hpp"
 #include "stats.hpp"
+#include "portable_shuffle.hpp"
 #include "parse_cn.hpp"
 #include "nni.hpp"
 
@@ -327,7 +328,7 @@ evo_tree create_new_coal_tree(int nsample, int epop){
     t_tot += t ;
 
     // choose two random nodes from available list
-    random_shuffle(nodes.begin(), nodes.end(), fp_myrng);
+    portable_shuffle(nodes.begin(), nodes.end(), fp_myrng);
 
     // edge node_count -> node
     edges.push_back(node_count);
@@ -2262,9 +2263,10 @@ int main (int argc, char ** const argv) {
             return 1;
     }
 
-    gsl_rng_env_setup();
-    const gsl_rng_type* T = gsl_rng_default;
-    r = gsl_rng_alloc(T);
+    // Always MT19937 (GSL's default), named here rather than taken from
+    // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
+    // environment silently swap the generator and change every seeded result.
+    r = gsl_rng_alloc(gsl_rng_mt19937);
     setup_rng(r, seed);
 
     fp_myrng = &myrng;
