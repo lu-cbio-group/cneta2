@@ -22,17 +22,12 @@ For installation, usage, and full documentation, see our website: https://lu-cbi
 
 # Overview
 <p align="center">
-  <picture>
-  <img src="assets/briefing/briefing.jpeg" alt="CNETA overview" width="700">
-  </picture>
+  <a href="assets/briefing/briefing.jpeg" target="_blank">
+    <picture>
+    <img src="assets/briefing/briefing.jpeg" alt="CNETA overview (click to view full size)" width="1400">
+    </picture>
+  </a>
 </p>
-
-<details>
-<summary>Click to enlarge</summary>
-<p align="center">
-  <img src="assets/briefing/briefing.jpeg" alt="CNETA overview (enlarged)" width="1400">
-</p>
-</details>
 
 CNETML2 takes longitudinal copy number profiles (total, haplotype-specific, and relative) from multiple samples of the same patient and jointly models segmental, chromosomal, and whole-genome-doubling changes to reconstruct a clonal phylogeny with branch-specific evolutionary rates and event timing.
 
