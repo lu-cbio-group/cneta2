@@ -117,11 +117,17 @@ vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int
 
     if(init_tree){     // read MP trees from files
         assert(dir_itrees != "");
-        string fname;
         boost::filesystem::path p(dir_itrees);
-        // boost::filesystem::directory_iterator order can differ across computers, so “same seed” may still mean different tree order, but the same set of trees should be generated
+        // directory_iterator returns files in file-system order, which differs
+        // between machines. The search perturbs these trees in order, so sort
+        // the names: otherwise the same seed could take a different path on
+        // another computer even though it read the same set of trees.
+        vector<string> tree_files;
         for (auto&& x : boost::filesystem::directory_iterator(p)){
-            fname = x.path().string();
+            tree_files.push_back(x.path().string());
+        }
+        sort(tree_files.begin(), tree_files.end());
+        for (const string& fname : tree_files){
             evo_tree rtree = read_parsimony_tree(fname, Ns, rates, tobs, r, age, cons);
 
             if(cons && !is_tree_valid(rtree, *max_element(tobs.begin(), tobs.end()), age, cons)){
@@ -1820,9 +1826,10 @@ int main(int argc, char** const argv){
         exit(EXIT_FAILURE);
     }
 
-    gsl_rng_env_setup();
-    const gsl_rng_type* T = gsl_rng_default;
-    r = gsl_rng_alloc(T);
+    // Always MT19937 (GSL's default), named here rather than taken from
+    // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
+    // environment silently swap the generator and change every seeded result.
+    r = gsl_rng_alloc(gsl_rng_mt19937);
     setup_rng(r, seed);
 
     fp_myrng = &myrng;
