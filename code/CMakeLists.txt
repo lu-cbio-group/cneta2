@@ -8,14 +8,11 @@ endif()
 
 # 1. Set Global C++ Standards
 # -----------------------------
-# C++14 is the minimum for Catch2 v3 (see tests/unit/). The sources seem to
-# build cleanly at this level; only std::random_shuffle warns as deprecated.
-# TODO: Moving to C++17
-# C++17 additionally requires replacing the two random_shuffle
-# calls in tree_op.cpp and genome.cpp, which changes RNG draw order and so
-# shifts fixed-seed simulation output.
+# C++17. The one thing that blocked it, std::random_shuffle (removed in
+# C++17), was replaced by portable_shuffle.hpp. Catch2 v3 (tests/unit/)
+# needs at least C++14; the legacy code/makefile uses the same standard.
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Forces standard C++ over compiler-specific extensions
 
