@@ -2211,7 +2211,7 @@ void stepwise_search_shift_edges(
     if(debug)
         cout << "[RLC] K=0 baseline: nlnl=" << cur_nlnl
              << " raw_logL=" << cur_ic.raw_logL << " AIC=" << cur_ic.aic << " BIC=" << cur_ic.bic
-             << " score=" << cur_score << endl;
+             << " AICc=" << cur_ic.aicc << " score=" << cur_score << endl;
 
     // ----- start here: original code ----- //
     // // --- forward stepwise ---
@@ -2325,6 +2325,7 @@ void stepwise_search_shift_edges(
         vector<double> candidate_nlnls(ncand, MAX_NLNL);
         vector<double> candidate_aics(ncand, MAX_NLNL);
         vector<double> candidate_bics(ncand, MAX_NLNL);
+        vector<double> candidate_aiccs(ncand, MAX_NLNL);
         vector<evo_tree> candidate_trees(ncand, cur_tree);
         vector<OPT_TYPE> candidate_opts(ncand, cur_opt);
 
@@ -2376,6 +2377,7 @@ void stepwise_search_shift_edges(
             candidate_nlnls[i]  = cand_nlnl;
             candidate_aics[i]   = cand_ic.aic;
             candidate_bics[i]   = cand_ic.bic;
+            candidate_aiccs[i]  = cand_ic.aicc;
             candidate_trees[i]  = std::move(cand_tree);
             candidate_opts[i]   = std::move(cand_opt);
         }
@@ -2394,6 +2396,7 @@ void stepwise_search_shift_edges(
                  << " nlnl=" << candidate_nlnls[i]
                  << " AIC=" << candidate_aics[i]
                  << " BIC=" << candidate_bics[i]
+                 << " AICc=" << candidate_aiccs[i]
                  << " score=" << candidate_scores[i] << endl;
         }
 
@@ -2457,6 +2460,7 @@ void stepwise_search_shift_edges(
             vector<double> remove_nlnls(nshift, MAX_NLNL);
             vector<double> remove_aics(nshift, MAX_NLNL);
             vector<double> remove_bics(nshift, MAX_NLNL);
+            vector<double> remove_aiccs(nshift, MAX_NLNL);
             vector<evo_tree> remove_trees(nshift, cur_tree);
             vector<OPT_TYPE> remove_opts(nshift, cur_opt);
 
@@ -2493,6 +2497,7 @@ void stepwise_search_shift_edges(
             remove_nlnls[k]     = try_nlnl;
             remove_aics[k]      = try_ic.aic;
             remove_bics[k]      = try_ic.bic;
+            remove_aiccs[k]     = try_ic.aicc;
             remove_trees[k]     = std::move(try_tree);
             remove_opts[k]      = std::move(try_opt);
         }
@@ -2510,6 +2515,7 @@ void stepwise_search_shift_edges(
                  << " nlnl=" << remove_nlnls[k]
                  << " AIC=" << remove_aics[k]
                  << " BIC=" << remove_bics[k]
+                 << " AICc=" << remove_aiccs[k]
                  << " score=" << remove_scores[k] << endl;
         }
 
@@ -2589,7 +2595,7 @@ void stepwise_search_shift_edges(
     cout << "[RLC] final: K=" << K << " shift_eids=[ ";
     for(int s : opt_type.rlc_shift_eids) cout << s << " ";
     cout << "] raw_logL=" << raw_logL
-         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic
+         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic << " AICc=" << final_ic.aicc
          << " score=" << penalized_score << endl;
 }
 
@@ -2605,6 +2611,7 @@ struct GaIndividual {
     double score = -MAX_NLNL;
     double aic   = MAX_NLNL;  // [2026-07-21 added] reported alongside score/bic, not used for selection
     double bic   = MAX_NLNL;  // [2026-07-21 added] reported alongside score/aic, not used for selection
+    double aicc  = MAX_NLNL;  // reported alongside aic/bic, not used for selection
 };
 
 // Genetic-algorithm search for shift edges under bsr_mode=3 (ML-RLC). Chromosome =
@@ -2638,7 +2645,7 @@ void genetic_search_shift_edges(
     // (elitism keeps it around, crossover/mutation can regenerate it by chance), and each
     // miss costs a full BFGS run. Guarded by #pragma omp critical since evaluate() below
     // runs inside #pragma omp parallel for.
-    struct GaCacheEntry { double nlnl, score, aic, bic; };
+    struct GaCacheEntry { double nlnl, score, aic, bic, aicc; };
     unordered_map<string, GaCacheEntry> score_cache;  // gene pattern -> cached result
 
     // Fitness of one individual: decode its genes into a shift-edge set, warm-start
@@ -2658,6 +2665,7 @@ void genetic_search_shift_edges(
                 indiv.score = it->second.score;
                 indiv.aic   = it->second.aic;
                 indiv.bic   = it->second.bic;
+                indiv.aicc  = it->second.aicc;
                 cache_hit = true;
             }
         }
@@ -2686,10 +2694,11 @@ void genetic_search_shift_edges(
         indiv.score = cand_ic.score;
         indiv.aic   = cand_ic.aic;
         indiv.bic   = cand_ic.bic;
+        indiv.aicc  = cand_ic.aicc;
 
         #pragma omp critical(ga_score_cache)
         {
-            score_cache[key] = {indiv.nlnl, indiv.score, indiv.aic, indiv.bic};
+            score_cache[key] = {indiv.nlnl, indiv.score, indiv.aic, indiv.bic, indiv.aicc};
         }
     };
 
@@ -2881,7 +2890,7 @@ void genetic_search_shift_edges(
     cout << "[GA] final: K=" << K << " shift_eids=[ ";
     for(int s : opt_type.rlc_shift_eids) cout << s << " ";
     cout << "] raw_logL=" << raw_logL
-         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic
+         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic << " AICc=" << final_ic.aicc
          << " score=" << penalized_score << endl;
 }
 
@@ -2927,6 +2936,7 @@ void exhaustive_search_shift_edges(
     vector<double> subset_nlnls(n_subsets, MAX_NLNL);
     vector<double> subset_aics(n_subsets, MAX_NLNL);
     vector<double> subset_bics(n_subsets, MAX_NLNL);
+    vector<double> subset_aiccs(n_subsets, MAX_NLNL);
     vector<double> subset_scores(n_subsets, -MAX_NLNL);
 
     // [2026-07-22 added] progress counter so a long exhaustive run has some visible heartbeat instead of total silence until the whole parallel loop finishes. Prints roughly every 10% of subsets done (~10 lines total, regardless of n_subsets), guarded by a critical section since cout isn't thread-safe against interleaving from concurrent threads.
@@ -2957,6 +2967,7 @@ void exhaustive_search_shift_edges(
         subset_nlnls[mask]  = cand_nlnl;
         subset_aics[mask]   = ic.aic;
         subset_bics[mask]   = ic.bic;
+        subset_aiccs[mask]  = ic.aicc;
         subset_scores[mask] = ic.score;
 
         long long done;
@@ -2971,16 +2982,19 @@ void exhaustive_search_shift_edges(
     }
 
     // Serial scan: best-by-active-criterion (drives the write-back below), plus
-    // best-by-AIC and best-by-BIC purely for reporting — both already known from the same
-    // pass, unlike stepwise/GA which only explore one criterion-dependent path.
+    // best-by-AIC, best-by-BIC and best-by-AICc purely for reporting — all already known
+    // from the same pass, unlike stepwise/GA which only explore one criterion-dependent
+    // path. AICc comparisons against a NaN candidate (undefined when n_sites <=
+    // k_params+1) are false either way, so NaN subsets are simply never picked as best.
     const double eps = 1e-6;
-    long long best_mask = 0, best_aic_mask = 0, best_bic_mask = 0;
+    long long best_mask = 0, best_aic_mask = 0, best_bic_mask = 0, best_aicc_mask = 0;
     double best_score = subset_scores[0];
-    double best_aic = subset_aics[0], best_bic = subset_bics[0];
+    double best_aic = subset_aics[0], best_bic = subset_bics[0], best_aicc = subset_aiccs[0];
     for(long long mask = 1; mask < n_subsets; ++mask){
         if(subset_scores[mask] > best_score + eps){ best_score = subset_scores[mask]; best_mask = mask; }
         if(subset_aics[mask] < best_aic - eps){ best_aic = subset_aics[mask]; best_aic_mask = mask; }
         if(subset_bics[mask] < best_bic - eps){ best_bic = subset_bics[mask]; best_bic_mask = mask; }
+        if(subset_aiccs[mask] < best_aicc - eps){ best_aicc = subset_aiccs[mask]; best_aicc_mask = mask; }
     }
 
     auto mask_to_shifts = [&](long long mask){
@@ -2994,7 +3008,8 @@ void exhaustive_search_shift_edges(
         cout << "[RLC][exhaustive] " << label << ": K=" << shifts.size() << " shift_eids=[ ";
         for(int s : shifts) cout << s << " ";
         cout << "] nlnl=" << subset_nlnls[mask]
-             << " AIC=" << subset_aics[mask] << " BIC=" << subset_bics[mask] << endl;
+             << " AIC=" << subset_aics[mask] << " BIC=" << subset_bics[mask]
+             << " AICc=" << subset_aiccs[mask] << endl;
     };
 
     // Always-on diagnostic (independent of the general debug flag), same convention as
@@ -3005,6 +3020,7 @@ void exhaustive_search_shift_edges(
     }
     print_combo("AIC-best", best_aic_mask);
     print_combo("BIC-best", best_bic_mask);
+    print_combo("AICc-best", best_aicc_mask);
 
     // --- write back final results using the subset selected by opt_type.rlc_criterion ---
     vector<int> best_shift_eids = mask_to_shifts(best_mask);
@@ -3034,7 +3050,7 @@ void exhaustive_search_shift_edges(
          << "): K=" << K << " shift_eids=[ ";
     for(int s : opt_type.rlc_shift_eids) cout << s << " ";
     cout << "] raw_logL=" << raw_logL
-         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic
+         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic << " AICc=" << final_ic.aicc
          << " score=" << penalized_score
          << " (evaluated " << n_subsets << " subsets)" << endl;
 }
