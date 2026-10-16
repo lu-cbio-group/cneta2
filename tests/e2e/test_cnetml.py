@@ -214,6 +214,55 @@ def test_seg_file_is_written_not_read(tmp_path, tiny_sim: Simulation,
     assert seg_file.stat().st_size > 0
 
 
+def _search_outputs(out_dir, sim: Simulation, cnetml, run, threads: str,
+                    **overrides) -> tuple[bytes, bytes]:
+    """Run one seeded tree search with the given thread count; return the
+    tree file and its summary sidecar as bytes."""
+    out_dir.mkdir()
+    out_file = out_dir / "MaxL.txt"
+    run([
+        cnetml,
+        *cli.cnetml_search_args(sim.cn, sim.times, out_file, **overrides),
+    ], env={"OMP_NUM_THREADS": threads}).assert_ok()
+
+    summary = out_file.with_name(out_file.name + ".summary.txt")
+    return out_file.read_bytes(), summary.read_bytes()
+
+
+def test_same_seed_gives_the_same_tree_whatever_the_thread_count(
+        tmp_path, tiny_sim: Simulation, cnetml, run):
+    """The search is parallelised with OpenMP. Each thread optimises its own
+    copy of a tree and no random number is drawn inside a parallel region,
+    so the thread count must not change the answer -- the seed alone does.
+    """
+    outputs = [_search_outputs(tmp_path / f"threads-{threads}", tiny_sim,
+                               cnetml, run, threads)
+               for threads in ("1", "4")]
+
+    assert outputs[0] == outputs[1], "the thread count changed the result"
+
+
+@pytest.mark.slow
+def test_hill_climbing_is_reproducible_across_thread_counts(tmp_path, cnets,
+                                                            cnetml, run):
+    """Hill climbing draws random numbers between its parallel sections
+    (random start trees, then random perturbations of the best ones), so it
+    is the search most likely to pick up a thread-order dependence. It needs
+    at least 5 samples, hence its own simulation."""
+    samples = 5
+    simdir = tmp_path / "sim"
+    simdir.mkdir()
+    run([cnets, *cli.cnets_args(simdir, **{"-r": samples})]).assert_ok()
+    sim = Simulation.at(simdir)
+
+    outputs = [_search_outputs(tmp_path / f"threads-{threads}", sim, cnetml,
+                               run, threads,
+                               **{"--tree_search": 1, "-s": samples})
+               for threads in ("1", "4")]
+
+    assert outputs[0] == outputs[1], "the thread count changed the result"
+
+
 # --------------------------------------------------------------------------
 # Error handling
 # --------------------------------------------------------------------------

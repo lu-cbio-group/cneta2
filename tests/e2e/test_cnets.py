@@ -121,6 +121,47 @@ def test_different_seeds_produce_different_data(tmp_path, cnets, run):
     assert digests[0] != digests[1], "different seeds produced identical output"
 
 
+def _cn_digest(outdir) -> str:
+    """Digest of the decompressed copy numbers (see the gzip note above)."""
+    payload = gzip.open(Simulation.at(outdir).cn, "rb").read()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _printed_seed(result) -> int:
+    """The seed the program reports on stdout as `seed:<tab><number>`."""
+    lines = [line for line in result.stdout.splitlines()
+             if line.startswith("seed:\t")]
+    assert len(lines) == 1, f"expected exactly one seed line\n{result}"
+    return int(lines[0].split("\t")[1])
+
+
+def test_the_seed_in_use_is_printed(tmp_path, cnets, run):
+    """Every run prints the seed it used, so a log is enough to repeat it."""
+    outdir = tmp_path / "out"
+    outdir.mkdir()
+    result = run([cnets, *cli.cnets_args(outdir, **{"--seed": 4242})]).assert_ok()
+
+    assert _printed_seed(result) == 4242
+
+
+def test_a_clock_seed_is_printed_and_can_be_replayed(tmp_path, cnets, run):
+    """--seed 0, the programs' default, lets cnets pick a seed from the clock.
+    That seed must be printed, and passing it back must reproduce the run."""
+    first = tmp_path / "first"
+    first.mkdir()
+    result = run([cnets, *cli.cnets_args(first, **{"--seed": 0})]).assert_ok()
+    seed = _printed_seed(result)
+    assert seed > 0
+
+    second = tmp_path / "second"
+    second.mkdir()
+    run([cnets, *cli.cnets_args(second, **{"--seed": seed})]).assert_ok()
+
+    assert _cn_digest(first) == _cn_digest(second), (
+        f"replaying the printed seed {seed} gave different data"
+    )
+
+
 def test_help_lists_key_options(cnets, run):
     result = run([cnets, "--help"])
 

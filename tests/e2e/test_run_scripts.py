@@ -10,7 +10,7 @@ normal behaviour when unset:
     CNETA_BIN         where the executables live    (default <repo>/bin)
     CNETA_CONFIG_DIR  where the config files live   (default <repo>/config)
     CNETA_OUT         the working/output directory  (default ./example)
-    CNETA_SEED        the random seed               (default $RANDOM)
+    CNETA_SEED        the random seed               (default: a fresh 32-bit seed)
 
 run-cnetmcmc.sh also takes CNETA_CONFIG for its configuration file.
 
@@ -122,6 +122,11 @@ def test_run_cnetmcmc_after_cnets(repo_root, scripts_dir, script_env, data_dir,
         f"silently\n{result}"
     )
 
+    # The chains must be independent runs, so each needs its own seed.
+    seeds = [log.read_text().splitlines()[0]
+             for log in sorted((outdir / "mcmc").glob("std_mcmc_*"))]
+    assert len(seeds) == 2 and seeds[0] != seeds[1], f"chains share a seed: {seeds}"
+
 
 def test_scripts_respect_the_output_override(repo_root, scripts_dir, script_env,
                                               run):
@@ -224,3 +229,49 @@ def test_run_cnetmcmc_stops_when_its_config_is_missing(scripts_dir, script_env,
     assert result.returncode != 0, str(result)
     assert str(missing) in result.stderr, str(result)
     assert "Start running cnetmcmc" not in result.stdout
+
+
+# --------------------------------------------------------------------------
+# Seeds
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("script", ["run-cnets.sh", "run-cnetml.sh",
+                                    "run-cnetmcmc.sh"])
+def test_every_program_invocation_passes_the_seed(scripts_dir, script):
+    """A run that is not given --seed is seeded from the clock, whatever
+    CNETA_SEED says, and can never be repeated. This reads the script rather
+    than running it: some branches (bootstrapping, mode 3) take minutes and
+    need inputs the other tests do not produce."""
+    invocations = [
+        line for line in (scripts_dir / script).read_text().splitlines()
+        if '"$CNETA_BIN/' in line and not line.lstrip().startswith("#")
+    ]
+    assert invocations, f"{script} does not run any program?"
+
+    missing = [line for line in invocations if "--seed" not in line]
+    assert not missing, (
+        f"{script} runs a program without --seed:\n" + "\n".join(missing)
+    )
+
+
+def test_the_seed_reaches_the_program_and_survives_a_rerun(
+        repo_root, scripts_dir, script_env, run):
+    """Two records of the seed: the first line of the log, which a re-run
+    with the same settings overwrites, and seed-history.txt, which is only
+    ever appended to. The program's own `seed:` line shows the script's
+    seed is the one it actually used."""
+    outdir, env = script_env
+
+    run([scripts_dir / "run-cnets.sh"], cwd=repo_root, env=env).assert_ok()
+    run([scripts_dir / "run-cnets.sh"], cwd=repo_root, env=env).assert_ok()
+
+    assert _seed_in_log(outdir) == f"seed {SEED}"
+    (log,) = outdir.glob("std_cnets_*")
+    assert f"seed:\t{SEED}\n" in log.read_text(), log.read_text()[:500]
+
+    history = (outdir / "seed-history.txt").read_text().splitlines()
+    assert len(history) == 2, history
+    for line in history:
+        assert "run-cnets.sh" in line, line
+        assert f"seed={SEED}" in line, line
+        assert f"log={log.name}" in line, line

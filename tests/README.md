@@ -63,10 +63,10 @@ the repository root, next to the `run-*.sh` scripts. Tests look there; set
 `CNETA_BIN` to point at a different build. The script tests always run the
 scripts from the repository's own `bin/`.
 
-**Determinism.** Everything runs with `OMP_NUM_THREADS=1` and a fixed seed.
-`cnetml`'s tree search is parallelised with OpenMP, and floating-point sums
-over a varying number of threads are not bit-reproducible, so scores would
-otherwise drift between runs.
+**Determinism.** Everything runs with `OMP_NUM_THREADS=1` and a fixed seed,
+so a failure can always be repeated by hand. `cnetml`'s tree search is
+parallelised with OpenMP; `test_cnetml.py` checks that the thread count does
+not change the result, and the one-thread default keeps timings comparable.
 
 **The regression anchor.** `cnetml --mode 2` scores a supplied tree with no
 RNG and no search, so its output is reproducible to the digit.
