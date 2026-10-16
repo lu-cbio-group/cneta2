@@ -4,6 +4,16 @@
 likelihood, jointly inferring tree topology, node ages, and mutation rates
 from (optionally longitudinal) samples of a single patient.
 
+:::{figure} /_static/briefing.jpeg
+:alt: Overview of the cnetml2 workflow, from longitudinal sampling to copy number profiles to evolutionary inference
+:align: center
+
+cnetml2 takes longitudinal copy number profiles (total, haplotype-specific,
+and relative) from multiple samples of the same patient and jointly models
+segmental, chromosomal, and whole-genome-doubling changes to reconstruct a
+clonal phylogeny with branch-specific evolutionary rates and event timing.
+:::
+
 :::{note}
 This page is migrated from the top-level `README.md` and `run-cnetml.sh`.
 Please review for accuracy and completeness.
