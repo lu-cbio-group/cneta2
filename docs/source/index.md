@@ -12,8 +12,9 @@ samples. It comprises three command-line programs:
 `cnetmcmc`
 : Bayesian (MCMC) phylogenetic inference.
 
-This is version 2 of CNETA; the first version is at
-[ucl-cssb/cneta](https://github.com/ucl-cssb/cneta).
+This is version 2 of CNETA
+([lu-cbio-group/cneta2](https://github.com/lu-cbio-group/cneta2)); the
+first version is at [ucl-cssb/cneta](https://github.com/ucl-cssb/cneta).
 
 :::{note}
 This documentation is under active development alongside the software.

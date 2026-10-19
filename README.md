@@ -8,30 +8,34 @@
 Copy Number Evolutionary Tree Analysis (Version 2)
 =============
 
-# Introduction
+## Introduction
 This repository contains a set of programs to simulate and build phylogenetic trees from copy number alterations (CNAs) detected from whole genome sequencing of multiple samples of a patient.
 
 
 There are mainly 3 programs:
-* cnets: simulating CNAs along a phylogenetic (coalescence) tree
-* cnetml: building phylogenetic trees from copy numbers with maximum likelihood approach, capable of jointly inferring the tree topology, node ages, and mutation rates from total copy number of longitudinal samples
-* cnetmcmc (still under development): building phylogenetic trees from copy numbers with Bayesian MCMC approach
+* **cnets**: simulating CNAs along a phylogenetic (coalescence) tree
+* **cnetml**: building phylogenetic trees from copy numbers with maximum likelihood approach, capable of jointly inferring the tree topology, node ages, and mutation rates from total copy number of longitudinal samples
+* **cnetmcmc** (still under development): building phylogenetic trees from copy numbers with Bayesian MCMC approach
 
 For installation, usage, and full documentation, see our website: https://lu-cbio-group.github.io/cneta2/
 
 
-# Overview
+## Overview
 <p align="center">
-  <picture>
-  <img src="assets/briefing/briefing.png" alt="CNETA overview" width="700">
-  </picture>
+  <a href="assets/briefing/briefing.jpeg" target="_blank">
+    <picture>
+    <img src="assets/briefing/briefing.jpeg" alt="CNETA overview (click to view full size)" width="1400">
+    </picture>
+  </a>
 </p>
 
-# Versions and references
-The first version is at https://github.com/ucl-cssb/cneta
+CNETML2 takes longitudinal copy number profiles (total, haplotype-specific, and relative) from multiple samples of the same patient and jointly models segmental, chromosomal, and whole-genome-doubling changes to reconstruct a clonal phylogeny with branch-specific evolutionary rates and event timing.
 
-The first version of the *cnets* and *cnetml* programs is described in the paper:
+## Version and citation
+
+The first version of this repository is at https://github.com/ucl-cssb/cneta.
+
+If you use **cnets** or **cnetml**, please cite:
 - [Lu B, Curtius K, Graham TA, Yang Z, Barnes CP. CNETML: maximum likelihood inference of phylogeny from copy number profiles of multiple samples. Genome Biol 24, 144 (2023).](https://doi.org/10.1186/s13059-023-02983-0)
 
-The CNETML2 paper is currently in preparation; a citation will be added here once it is available.
-
+The cnetml2 paper is currently in preparation; a citation will be added here once it is available.
