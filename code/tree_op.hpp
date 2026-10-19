@@ -103,7 +103,7 @@ string order_tree_string_uniq(const string& tree);
 
 
 // Randomly swap two leaves
-evo_tree perturb_tree(evo_tree& tree, long unsigned (*fp_myrng)(long unsigned));
+evo_tree perturb_tree(evo_tree& tree, const Rng& rng);
 
 
 // test if the tree is correctly built
@@ -113,21 +113,21 @@ void test_evo_tree(const evo_tree& tree);
 // generate neutral coalescent trees
 // here nsample is the number of cancer samples (not including germline node)
 // here we directly calculate the edges in the tree
-void generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), vector<int>& edges, vector<double>& lengths, vector<double>& epoch_times, vector<double>& times, const ITREE_PARAM& itree_param);
+void generate_coal_tree(const int nsample, gsl_rng* r, const Rng& rng, vector<int>& edges, vector<double>& lengths, vector<double>& epoch_times, vector<double>& times, const ITREE_PARAM& itree_param);
 
 
 // Scale the total time by given time
-evo_tree generate_coal_tree(const int nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), const ITREE_PARAM& itree_param);
+evo_tree generate_coal_tree(const int nsample, gsl_rng* r, const Rng& rng, const ITREE_PARAM& itree_param);
 
 
 void assign_tip_times(double delta_t, int Ns, gsl_rng* r, vector<double>& tobs, const vector<int>& edges, vector<double>& lengths);
 
 
 // Simulate a random tree for mutataion generations
-evo_tree generate_random_tree(int Ns, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), int age, const ITREE_PARAM& itree_param, double delta_t, int cons, int debug = 0);
+evo_tree generate_random_tree(int Ns, gsl_rng* r, const Rng& rng, int age, const ITREE_PARAM& itree_param, double delta_t, int cons, int debug = 0);
 
 
-evo_tree generate_time_tree(int nsample, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned), const ITREE_PARAM& itree_param, const vector<int>& time_sampling, int debug = 0);
+evo_tree generate_time_tree(int nsample, gsl_rng* r, const Rng& rng, const ITREE_PARAM& itree_param, const vector<int>& time_sampling, int debug = 0);
 
 
 // Create a new tree with the same topology as input tree but different branch lengths

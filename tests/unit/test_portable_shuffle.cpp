@@ -12,12 +12,15 @@
 #include <numeric>
 #include <vector>
 
+#include <gsl/gsl_rng.h>
+
 #include "portable_shuffle.hpp"
+#include "stats.hpp"   // Rng
 
 namespace {
 
 // The generator the reference sequences were produced with: a 64-bit LCG
-// whose high bits are reduced into [0, n), with the fp_myrng signature.
+// whose high bits are reduced into [0, n), with the same call signature as Rng.
 struct Lcg {
     unsigned long long state;
     int calls = 0;
@@ -88,7 +91,27 @@ TEST_CASE("portable_shuffle is deterministic for a given generator state",
     CHECK(shuffled(50, 7) != shuffled(50, 8));
 }
 
-TEST_CASE("portable_shuffle accepts a plain function pointer like fp_myrng",
+TEST_CASE("portable_shuffle draws through an Rng over a GSL generator",
+          "[portable_shuffle]"){
+    // Rng is what the programs pass: a callable holding a gsl_rng*. The same
+    // seed must give the same permutation, and the result must be one.
+    gsl_rng* r = gsl_rng_alloc(gsl_rng_mt19937);
+    std::vector<int> first, second;
+    for(std::vector<int>* v : {&first, &second}){
+        gsl_rng_set(r, 2026);
+        *v = iota_vector(20);
+        portable_shuffle(v->begin(), v->end(), Rng(r));
+    }
+    gsl_rng_free(r);
+
+    CHECK(first == second);
+    CHECK(first != iota_vector(20));
+    std::vector<int> sorted = first;
+    std::sort(sorted.begin(), sorted.end());
+    CHECK(sorted == iota_vector(20));
+}
+
+TEST_CASE("portable_shuffle accepts a plain function pointer",
           "[portable_shuffle]"){
     unsigned long (*fp)(unsigned long) = &draw_last;
     std::vector<int> v = iota_vector(5);

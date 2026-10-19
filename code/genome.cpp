@@ -856,7 +856,7 @@ double get_total_rates_haplotype_specific(genome& g, vector<double>& site_dup_ra
 }
 
 
-void select_haplotype(genome& g, int& c, long unsigned (*fp_myrng)(long unsigned)){
+void select_haplotype(genome& g, int& c, const Rng& rng){
     // Find the number of possible haplotype of this chromosome
     int ploidy_at_c = get_ploidy_at_chr(g, c);
     assert(ploidy_at_c > 0);
@@ -865,7 +865,7 @@ void select_haplotype(genome& g, int& c, long unsigned (*fp_myrng)(long unsigned
     vector<int> haps(ploidy_at_c);   // possible haplotypes
     iota(haps.begin(), haps.end(), 0);
     // shuffle(haps.begin(), haps.end(), default_random_engine(seed));
-    portable_shuffle(haps.begin(), haps.end(), fp_myrng);
+    portable_shuffle(haps.begin(), haps.end(), rng);
 
     for(int h = 0; h < ploidy_at_c; h++){   // randomly choose a haplotype
         hap_c = c + NUM_CHR * haps[h];
@@ -876,7 +876,7 @@ void select_haplotype(genome& g, int& c, long unsigned (*fp_myrng)(long unsigned
 }
 
 
-void select_haplotype_by_seg(genome& g, int& c, int seg_id, long unsigned (*fp_myrng)(long unsigned)){
+void select_haplotype_by_seg(genome& g, int& c, int seg_id, const Rng& rng){
     // Find the number of possible haplotype of this chromosome
     int ploidy_at_c = get_ploidy_at_chr(g, c);
     assert(ploidy_at_c > 0);
@@ -885,7 +885,7 @@ void select_haplotype_by_seg(genome& g, int& c, int seg_id, long unsigned (*fp_m
     vector<int> haps(ploidy_at_c);   // possible haplotypes
     iota(haps.begin(), haps.end(), 0);
     // shuffle(haps.begin(), haps.end(), default_random_engine(seed));
-    portable_shuffle(haps.begin(), haps.end(), fp_myrng);
+    portable_shuffle(haps.begin(), haps.end(), rng);
 
     for(int h = 0; h < ploidy_at_c; h++){   // randomly choose a haplotype
         hap_c = c + NUM_CHR * haps[h];

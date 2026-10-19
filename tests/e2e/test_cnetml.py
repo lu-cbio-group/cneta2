@@ -158,6 +158,8 @@ def test_tree_search_writes_a_consistent_summary(tmp_path, tiny_sim: Simulation,
 
     assert summary["mode"] == "0"
     assert summary["model"] == "2"
+    # The seed travels with the result, whatever launched the program.
+    assert summary["seed"] == str(cli.SEED)
     assert int(summary["n_leaves"]) == EXPECTED_LEAVES
     assert int(summary["n_edges"]) == 2 * EXPECTED_LEAVES - 2
 

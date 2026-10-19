@@ -162,6 +162,65 @@ def test_a_clock_seed_is_printed_and_can_be_replayed(tmp_path, cnets, run):
     )
 
 
+def _info_text(outdir) -> str:
+    return Simulation.at(outdir).info.read_text()
+
+
+def test_seeds_are_recorded_in_the_info_file(tmp_path, cnets, run):
+    """The record travels with the data: whatever launched cnets, the info
+    file says which seeds produced the data set."""
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    run([cnets, *cli.cnets_args(plain, **{"--seed": 4242})]).assert_ok()
+    assert "SEED: 4242\n" in _info_text(plain)
+    assert "TREE SEED: same stream as SEED\n" in _info_text(plain)
+
+    separate = tmp_path / "separate"
+    separate.mkdir()
+    run([cnets, *cli.cnets_args(separate, **{"--seed": 4242,
+                                             "--tree_seed": 7})]).assert_ok()
+    assert "SEED: 4242\n" in _info_text(separate)
+    assert "TREE SEED: 7\n" in _info_text(separate)
+
+
+def _edge_lists(outdir, replicates: int):
+    """(start, end, length) per edge, per replicate; mutation counts ignored."""
+    return [[(e.start, e.end, e.length)
+             for e in read_tree(outdir / f"sim-data-{i}-tree.txt").edges]
+            for i in range(1, replicates + 1)]
+
+
+def test_tree_seed_gives_the_same_trees_across_rate_modes(tmp_path, cnets, run):
+    """Branch-specific-rate modes draw rate multipliers from the stream, so
+    with one shared stream the second replicate onwards gets different trees
+    from a constant-rate run with the same --seed. A separate --tree_seed
+    makes the trees independent of whatever is drawn after them."""
+    replicates = 3
+
+    def simulate(name, **overrides):
+        outdir = tmp_path / name
+        outdir.mkdir()
+        # --method 0 (waiting times): the only path that applies --bsr_mode.
+        run([cnets, *cli.cnets_args(outdir, **{"-n": replicates, "--method": 0,
+                                               **overrides})]).assert_ok()
+        return _edge_lists(outdir, replicates)
+
+    constant = simulate("constant", **{"--bsr_mode": 0, "--tree_seed": 11})
+    local_clock = simulate("local-clock", **{"--bsr_mode": 3, "--tree_seed": 11})
+    assert constant == local_clock, "same --tree_seed, different trees"
+
+    constant_shared = simulate("constant-shared", **{"--bsr_mode": 0})
+    local_clock_shared = simulate("local-clock-shared", **{"--bsr_mode": 3})
+    assert constant_shared[0] == local_clock_shared[0], (
+        "the first replicate is drawn before any rate multiplier, so it "
+        "should agree even on the shared stream"
+    )
+    assert constant_shared[1:] != local_clock_shared[1:], (
+        "without --tree_seed the later replicates were expected to differ; "
+        "if they agree now, the desync this option exists for has gone away"
+    )
+
+
 def test_help_lists_key_options(cnets, run):
     result = run([cnets, "--help"])
 

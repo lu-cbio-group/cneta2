@@ -51,18 +51,15 @@ bool exhausted_tree_search = false;
 
 gsl_rng* r;
 
+// The seed in use, written into the run summary so that the record travels
+// with the result. Set once in main.
+unsigned seed_in_use = 0;
 
-// unary function and pointer to unary function
-// allows use of gsl rng for standard template algorithms
-inline long unsigned myrng(long unsigned n){
-  return gsl_rng_uniform_int(r, n);
-}
-
-long unsigned (*fp_myrng)(long unsigned);
+// Shuffles and tree generation draw through Rng(r) (see stats.hpp).
 
 
 // Randomly pick a tree to perturb by ordering string representation of the tree
-evo_tree perturb_tree_set(vector<evo_tree>& trees, gsl_rng* r, long unsigned (*fp_myrng)(long unsigned)){
+evo_tree perturb_tree_set(vector<evo_tree>& trees, gsl_rng* r, const Rng& rng){
     int debug = 0;
     if(debug) cout << "\tperturb a set of trees" << endl;
 
@@ -72,7 +69,7 @@ evo_tree perturb_tree_set(vector<evo_tree>& trees, gsl_rng* r, long unsigned (*f
         int ind = gsl_rng_uniform_int(r, trees.size());
 
         // generate a new tree
-        evo_tree ttree = perturb_tree(trees[ind], fp_myrng);
+        evo_tree ttree = perturb_tree(trees[ind], rng);
 
         string tstring = order_tree_string_uniq(create_tree_string_uniq(ttree));
         if(searched_trees.find(tstring) == searched_trees.end()){
@@ -151,7 +148,7 @@ vector<evo_tree> get_initial_trees(int init_tree, string dir_itrees, int Ns, int
 
         int num_tree = 0;
         while(num_tree < n){
-            evo_tree rtree = generate_coal_tree(Ns, r, fp_myrng, itree_param);
+            evo_tree rtree = generate_coal_tree(Ns, r, Rng(r), itree_param);
 
             // tree branch lengths may violate constaints
             bool wrong_blen = false;
@@ -613,7 +610,7 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
 	        new_trees.push_back(trees[i]);
       }
       for(int i = 0; i < Npop; ++i){
-            evo_tree new_tree = perturb_tree_set(trees, r, fp_myrng);
+            evo_tree new_tree = perturb_tree_set(trees, r, Rng(r));
             new_tree.score = get_likelihood_revised(new_tree, vobs, lnl_type);
     	    new_trees.push_back(new_tree);
       }
@@ -647,7 +644,7 @@ void do_evolutionary_algorithm(evo_tree& min_nlnl_tree, int Ns, int Npop, int Ng
 
           // Perturb this subpopulation
           for(int i = 0; i < Npop; ++i){
-            evo_tree new_tree = perturb_tree_set(trees, r, fp_myrng);
+            evo_tree new_tree = perturb_tree_set(trees, r, Rng(r));
             new_tree.score = get_likelihood_revised(new_tree, vobs, lnl_type);
       	    new_trees.push_back(new_tree);
             // new_trees of size 2 Npop
@@ -1026,6 +1023,7 @@ void write_run_summary(ostream& out, const evo_tree& tree, int mode, const LNL_T
     }
 
     out << "mode\t" << mode << "\n";
+    out << "seed\t" << seed_in_use << "\n";
     out << "model\t" << lnl_type.model << "\n";
     out << "bsr_mode\t" << bsr_mode << "\n";
     out << "cn_type\t" << lnl_type.cn_type << "\n";
@@ -1830,9 +1828,8 @@ int main(int argc, char** const argv){
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
-    setup_rng(r, seed);
-
-    fp_myrng = &myrng;
+    seed = setup_rng(r, seed);
+    seed_in_use = seed;
 
     int num_total_bins = 0;
     int Nchar = 0;  // number of sites
