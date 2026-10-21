@@ -67,7 +67,7 @@ struct OPT_TYPE{
   // objective/gradient evaluation by update_variables_transformed/
   // update_edge_rates_rlc_from_x — those used to call get_bsr_rate_slots() themselves
   // every call, which is wasted work since it's invariant for the whole optimization
-  // (the 5 global reference rates are frozen for bsr_mode>0). See docs/flowcharts.md.
+  // (the 5 global reference rates are frozen for bsr_mode>0).
   vector<BsrRateSlot> bsr_slots_cache;
   // [2026-07-14 added] set to true once optimize_tree_by_bsr_mode's auto-calibration
   // sub-optimization has *successfully* estimated the 5 global reference rates (calib_nlnl
@@ -76,14 +76,14 @@ struct OPT_TYPE{
   // calibration sub-optimization from scratch every retry even when calibration itself had
   // already succeeded and only the later shift-edge search failed. Checked (and left false
   // on calibration failure, so a retry still retries calibration too) instead of assuming
-  // "called before" means "succeeded before". See docs/flowcharts.md.
+  // "called before" means "succeeded before".
   bool bsr_calibrated = false;
   // [2026-08-12 added] bsr_mode>0 only. true (default): unchanged behavior -- run an
   // independent bsr_mode=0/estmu=1 calibration sub-optimization first, freeze the 5
   // global reference rates, estimate only per-edge multipliers relative to that
   // reference. false: skip calibration; the trunk edge's own rate (mu0) is
   // estimated jointly with the other edges' multipliers in the same optimization,
-  // and used as the reference those multipliers scale. See worklog_2026-08-11.md.
+  // and used as the reference those multipliers scale.
   bool estimate_bsr0_first = true;
 };
 
@@ -236,7 +236,7 @@ void update_variables_transformed(evo_tree &rtree, double *x, LNL_TYPE &lnl_type
 
 // [2026-07-14] bsr_mode param added so this can assert it's never called for bsr_mode>0
 // (global reference rates must stay frozen there) — see the assert in the definition
-// and docs/flowcharts.md for why this guard exists.
+// for why this guard exists.
 void update_tree_rates(LNL_TYPE &lnl_type, evo_tree &rtree, double *x, int nparams_est, int bsr_mode);
 
 /**
@@ -291,7 +291,7 @@ double L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, cons
 // x[]/variables[]. Previously hand-written identically in three places (the
 // population loop in max_likelihood_BFGS, the bsr_mode==2 read-back in
 // update_variables_transformed, and update_edge_rates_rlc_from_x for bsr_mode==3),
-// risking silent drift if only some were updated. See docs/flowcharts.md.
+// risking silent drift if only some were updated.
 inline int bsr_var_index(int nparams_est, int k, int n_types_per_edge, int t){
     return nparams_est + k * n_types_per_edge + t + 1;
 }
@@ -379,7 +379,7 @@ void max_likelihood_BFGS(evo_tree &rtree, const map<int, vector<vector<int>>> &v
 
 // [2026-07-14] bsr_mode param added so this can assert it's never called for bsr_mode>0
 // (global reference rates must stay frozen there) — see the assert in the definition
-// and docs/flowcharts.md for why this guard exists.
+// for why this guard exists.
 void set_tree_rates(int cn_type, evo_tree &rtree, int nparams_est, double* variables, double* lower_bound, double* upper_bound, int bsr_mode);
 
 /****** bsr_mode=3 ML-RLC functions ******/
@@ -450,7 +450,7 @@ inline RlcIC compute_rlc_ic(double nlnl, int K, int n_types_per_edge, int n_site
 // smaller id). Returns -1 if none qualify. Previously this ~25-line selection logic was
 // hand-copied for stepwise_search_shift_edges's forward candidate selection and backward
 // removal selection; centralized here so both (and the future genetic_search_shift_edges)
-// share one implementation. See docs/flowcharts.md.
+// share one implementation.
 inline int pick_best_improving(int n, const vector<char>& evaluated, const vector<double>& scores,
                                 const vector<int>& ids, double cur_score, double eps){
     int best = -1;

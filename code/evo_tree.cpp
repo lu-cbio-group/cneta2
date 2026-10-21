@@ -480,7 +480,7 @@ void evo_tree::init_edge_rates_rlc(const RateSet& mean_rates, int bsr_dist, doub
   edge_rates.resize(edges.size());
 
   // [2026-07-14 added] two fixes so the simulated ground truth matches what the
-  // inference side (bsr_mode=3) actually assumes. See docs/flowcharts.md.
+  // inference side (bsr_mode=3) actually assumes.
   // 1. rlc_shift_eids was never recorded here, so write_simulation_edge_rate_table's
   //    is_shift_edge/m_shared/etc. columns always reported "no shift" even when a
   //    shift really was drawn below.

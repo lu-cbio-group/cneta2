@@ -1034,7 +1034,7 @@ void write_run_summary(ostream& out, const evo_tree& tree, int mode, const LNL_T
     // estimate_bsr0_first=0 means the "reference"/dup_rate_reference etc fields below
     // are the trunk edge's own rate (mu0), estimated jointly with per-edge multipliers,
     // not an independently-calibrated bsr_mode=0 reference. NA when bsr_mode==0 (no
-    // such distinction applies). See worklog_2026-08-11.md.
+    // such distinction applies).
     out << "estimate_bsr0_first\t" << (bsr_mode > 0 ? (opt_type.estimate_bsr0_first ? "1" : "0") : "NA") << "\n";
 
     out << "rlc_criterion\t" << (bsr_mode == 3 ? (opt_type.rlc_criterion == 0 ? "AIC" : "BIC") : "NA") << "\n";
@@ -1644,7 +1644,7 @@ int main(int argc, char** const argv){
     // [2026-08-12 added] bsr_mode>0 only: 1 (default) = calibrate bsr0 rates first then
     // estimate per-edge multipliers relative to that reference [unchanged behavior];
     // 0 = skip calibration, estimate the trunk edge's (root -> MRCA) own rate (mu0) jointly with the
-    // other edges' multipliers/shifts relative to mu0. See worklog_2026-08-11.md.
+    // other edges' multipliers/shifts relative to mu0.
     int estimate_bsr0_first;
 
     /********* derived from input ***********/

@@ -1123,8 +1123,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
     // update_edge_rates_rlc for bsr3) -- once this write happens, none of that existing
     // code needs to change to pick up mu0 instead of a calibrated reference. n_bsr_edges
     // here must match what the parameter-vector setup code (max_likelihood_BFGS) used to
-    // place mu0's slot, or the index would silently read the wrong x[] entry. See
-    // worklog_2026-08-11.md.
+    // place mu0's slot, or the index would silently read the wrong x[] entry.
     if(opt_type.bsr_mode > 0 && !opt_type.estimate_bsr0_first){
         const vector<BsrRateSlot>& bsr_slots = opt_type.bsr_slots_cache;
         int n_types = (int)bsr_slots.size();
@@ -1170,8 +1169,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
 
         // [2026-07-14 disabled] read-back counterpart of the set_tree_rates removal
         // above: this let each BFGS evaluation overwrite the frozen global reference
-        // rates with whatever was in the per-edge multiplier slots. See
-        // docs/flowcharts.md "Two-step calibration workflow".
+        // rates with whatever was in the per-edge multiplier slots.
         // // update global rate for all active edges
         // update_tree_rates(lnl_type, rtree, x, nparams_est);
 
@@ -1282,7 +1280,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         // [2026-07-14 disabled] this call used to overwrite the frozen global dup_rate/
         // del_rate/... with whatever was in this shift edge's multiplier slots (confirmed
         // 2026-07-14 via the temporary debug print above: dup_rate jumped from 0.00143 to
-        // 1 as soon as K>=1). See docs/flowcharts.md "Two-step calibration workflow".
+        // 1 as soon as K>=1).
         // update_tree_rates(lnl_type, rtree, x, nparams_est);
         // cout << "[DEBUG-CHECK] dup_rate AFTER=" << rtree.dup_rate << endl;
 
@@ -1293,11 +1291,11 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         // idx(k, t) = nparams_est + k * n_types_per_edge + t + 1
         // [2026-07-14 disabled] same bug as bsr_mode==1/3 above: this let the frozen
         // global reference rates be overwritten by the first edge's per-type multiplier
-        // values. See docs/flowcharts.md "Two-step calibration workflow".
+        // values.
         // update_tree_rates(lnl_type, rtree, x, nparams_est);
         // [2026-07-14 disabled] recomputed bsr_slots on every call; it's invariant for the
         // whole optimization, so max_likelihood_BFGS now computes it once into
-        // opt_type.bsr_slots_cache instead. See docs/flowcharts.md.
+        // opt_type.bsr_slots_cache instead.
         // auto bsr_slots = get_bsr_rate_slots(rtree, cn_type);
         const vector<BsrRateSlot>& bsr_slots = opt_type.bsr_slots_cache;
         int n_types = (int)bsr_slots.size();
@@ -1804,8 +1802,7 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
     // space for the 5 global reference rates even when bsr_mode>0 (where estmu is forced
     // 0 and nothing writes/reads those slots anymore) — wasted, always-
     // [0,0]-bounded optimizer dimensions. nrates is only meaningful when estmu=1 (global
-    // rates genuinely being estimated, which only happens for bsr_mode=0). See
-    // docs/flowcharts.md.
+    // rates genuinely being estimated, which only happens for bsr_mode=0).
     // int ndim = get_ndim(estmu, nparams_est, model, cn_type, bsr_slots.size(), n_types_per_edge, n_bsr_edges);
     // [2026-08-12 changed] estimate_bsr0_first=false: reserve nrates=bsr_slots.size()
     // extra dims after the per-edge multiplier block for mu0 (trunk edge's own
@@ -1884,8 +1881,8 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
     // [2026-07-14 disabled] this pushed the fixed global reference rates (dup_rate etc.)
     // into the BFGS optimization variables for any bsr_mode>0, so they got estimated/
     // corrupted instead of staying frozen (they overlap with the per-edge multiplier
-    // slots set up below). See docs/flowcharts.md "Two-step calibration workflow" for
-    // the full writeup. Kept here commented out, not deleted, per team request.
+    // slots set up below).
+    // Kept here commented out, not deleted, per team request.
     // // reinitialise edge_rates if missing or stale (size mismatch after tree changes)
     // if(opt_type.bsr_mode > 0){ //&& (int)rtree.edge_rates.size() != (int)rtree.edges.size()
     //     set_tree_rates(cn_type, rtree, nparams_est, variables, lower_bound, upper_bound);
@@ -2150,7 +2147,7 @@ void update_edge_rates_rlc_from_x(
     // [2026-07-14 disabled] recomputed bsr_slots on every call (fires on every BFGS
     // objective/gradient evaluation for bsr_mode=3); it's invariant for the whole
     // optimization, so the caller now passes max_likelihood_BFGS's cached
-    // opt_type.bsr_slots_cache instead. See docs/flowcharts.md.
+    // opt_type.bsr_slots_cache instead.
     // vector<BsrRateSlot> bsr_slots = get_bsr_rate_slots(rtree, cn_type);
     int n_types_per_edge = (int)bsr_slots.size();
 
@@ -3084,7 +3081,7 @@ void optimize_tree_by_bsr_mode(
     // [2026-08-12 added] estimate_bsr0_first=false skips this calibration sub-optimization
     // entirely, for bsr_mode 1/2/3 alike -- the trunk edge's own rate (mu0) is
     // estimated jointly with the other edges' multipliers in the main optimization
-    // instead. See worklog_2026-08-11.md.
+    // instead.
     if(opt_type.bsr_mode > 0 && !opt_type.bsr_calibrated && opt_type.estimate_bsr0_first){
         OPT_TYPE calib_opt = opt_type;
         calib_opt.bsr_mode = 0;
