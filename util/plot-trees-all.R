@@ -234,7 +234,7 @@ if(plot_type == "all"){
     has_bstrap = F # assume no branch support value in the tree
     if(branch_num == 0){
       tree_ci = get.ci.tree(tree_file_nex, bstrap_dir2, labels, has_bstrap, nex_pattern, excluded_tip = excluded_tip)
-      p = plot.tree.ci.node(tree_ci, time_file, title, lextra, rextra, da, T, T)
+      p = plot.tree.ci.node(tree_ci, time_file, title, lextra, rextra, da, has_bstrap, T)
     }else{
       if(scale_factor == 1){
         ci_prefix = "nmut_0.95_CI"
@@ -242,7 +242,7 @@ if(plot_type == "all"){
         ci_prefix = "mutsize_0.95_CI"
       }
       mytree = get.ci.tree(tree_file_nex, bstrap_dir2, labels, has_bstrap, nex_pattern, ci_prefix, excluded_tip = excluded_tip)
-      p = plot.tree.ci.node.mut(mytree, time_file, title, lextra, rextra, da, T, T, scale_factor)
+      p = plot.tree.ci.node.mut(mytree, title, lextra, rextra, da, has_bstrap, T, scale_factor)
     }
   }
   
@@ -286,6 +286,7 @@ if(plot_type == "all"){
       stop("The value in branch must be time in year!")
     }
     p = plot.tree.bootstrap.age(mytree, time_file, title, lextra, rextra, da)
+    ggsave(out_file, p, width = width, height = height)
   }else if(tree_style == "ci"){
     # write bootstrap tree to a nex file
     fbs = str_replace(tree_file, ".txt", ".bstrap.nex")

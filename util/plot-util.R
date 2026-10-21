@@ -33,7 +33,10 @@ cn_colors1 = c("#6283A9","#bdd7e7","#f0f0f0", '#fdcc8a','#fc8d59','#e34a33','#b3
 cn_colors2 = c('#08519c','#3182bd', '#6baed6', '#9ecae1', "#f0f0f0", '#fdcc8a','#fc8d59','#e34a33','#b30000')
 
 
-# customized font size 
+# customized font size
+# Default for scripts that source this file without defining font_size (e.g. plot-cns.R);
+# plot-trees-all.R sets it from --font_size and rebuilds theme1 itself.
+if(!exists("font_size")) font_size = 6
 theme1 = theme(legend.position = "none",
                #strip.text.x = element_blank(),
                #strip.text.y = element_blank(),
@@ -598,6 +601,8 @@ get.bootstrap.tree <- function(mytree, labels, bstrap_dir, pattern, excluded_tip
   btrees = list()
   cat("Patterns to match bootstrapping trees: ", pattern, "\n")
   files = list.files(path = bstrap_dir, pattern = glob2rx(pattern), recursive = F)
+  # cnetml also writes <tree>.edge_rates.txt and <tree>.summary.txt next to each tree
+  files = files[!grepl("\\.(edge_rates|summary)\\.txt$", files)]
   for(i in 1:length(files)){
     fname = file.path(bstrap_dir, files[i])
     if(endsWith(fname, ".txt")){
@@ -901,7 +906,7 @@ plot.tree.bootstrap <- function(tree, title = "", rextra = 20, da = data.frame()
 
   tree.max = max(node.depth.edgelength(tree)) + rextra
   p <- p + geom_tiplab(align = TRUE, offset = TIP_OFFSET) + geom_treescale() + xlim(NA, tree.max)
-  p <- p + geom_text2(aes(subset=!isTip, label=label), hjust=-.3, color="red")
+  p <- p + geom_text2(aes(subset=!isTip, label=sub("\\[&bootstrap=([0-9]+)\\]", " (\\1)", label)), hjust=-.3, color="red")
 
   # edge = data.frame(tree$edge, edge_num = 1:nrow(tree$edge), edge_len = tree$edge.length)
   # colnames(edge)=c("parent", "node", "edge_num", "edge_len")
@@ -939,7 +944,7 @@ plot.tree.bootstrap.age <- function(tree, time_file, title = "", lextra = 3, rex
   # Shift all nodes by the difference between age util the first sample and node time of the first sample
   p$data$x = p$data$x + res_age$tshift
   p <- p + geom_tiplab(align = TRUE, offset = TIP_OFFSET) + theme_tree2() + xlim(xl, tree_max) + xlab(xlab_cna_age)
-  p <- p + geom_text2(aes(subset=!isTip, label=label), hjust=-.3, color="red")
+  p <- p + geom_text2(aes(subset=!isTip, label=sub("\\[&bootstrap=([0-9]+)\\]", " (\\1)", label)), hjust=-.3, color="red")
 
   # edge = data.frame(tree$edge, edge_num = 1:nrow(tree$edge), edge_len = tree$edge.length)
   # colnames(edge)=c("parent", "node", "edge_num", "edge_len")
