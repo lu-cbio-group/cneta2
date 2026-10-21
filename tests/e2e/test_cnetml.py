@@ -12,6 +12,7 @@ check structure and ranking instead of exact numbers.
 
 from __future__ import annotations
 
+import gzip
 import json
 
 import pytest
@@ -269,16 +270,48 @@ def test_hill_climbing_is_reproducible_across_thread_counts(tmp_path, cnets,
 # Error handling
 # --------------------------------------------------------------------------
 
-def test_missing_input_file_is_rejected(tmp_path, data_dir, cnetml, run):
+def _write_gz(path, text: str):
+    with gzip.open(path, "wt") as handle:
+        handle.write(text)
+    return path
+
+
+def assert_clean_rejection(result, mentions: str):
+    """The program refused the input with a message, rather than crashing.
+
+    A crash also exits non-zero, so `returncode != 0` alone cannot tell the
+    two apart: killed by a signal, subprocess reports a negative code
+    (-11 for a segfault). This test once passed while cnetml segfaulted.
+    """
+    assert result.returncode > 0, (
+        "expected a clean non-zero exit, got "
+        + ("a crash (signal %d)" % -result.returncode if result.returncode < 0
+           else "success")
+        + "\n" + str(result)
+    )
+    assert mentions in result.stdout + result.stderr, (
+        f"the error message does not mention {mentions!r}\n{result}"
+    )
+
+
+@pytest.mark.parametrize("problem", ["missing", "empty", "short-line"])
+def test_unusable_input_file_is_rejected_with_a_message(tmp_path, data_dir,
+                                                        cnetml, run, problem):
+    """A missing file, an empty one, and a line with too few columns all used
+    to reach code that indexes into the data (two of them segfaulted)."""
+    cn_file = tmp_path / f"{problem}-cn.txt.gz"
+    if problem == "empty":
+        _write_gz(cn_file, "")
+    elif problem == "short-line":
+        _write_gz(cn_file, "1\t1\n")
+
     result = run([
         cnetml,
         *cli.cnetml_score_args(
-            cn_file=tmp_path / "no-such-file-cn.txt.gz",
+            cn_file=cn_file,
             times_file=data_dir / "tiny-rel-times.txt",
             tree_file=data_dir / "tiny-tree.txt",
         ),
     ])
 
-    assert result.returncode != 0, (
-        "cnetml accepted a missing copy-number file\n" + str(result)
-    )
+    assert_clean_rejection(result, mentions=str(cn_file))

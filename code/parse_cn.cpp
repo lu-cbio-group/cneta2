@@ -701,6 +701,12 @@ void read_cn(vector<vector<vector<int>>>& s_info, const string& filename, int Ns
     for(int i = 0; i < Ns; ++i) s_info.push_back(vector<vector<int>>());
 
     igzstream infile(filename.c_str());
+    // A missing or unreadable file used to read like an empty one, and the
+    // programs then crashed on the empty data (segfault, no message).
+    if(!infile.rdbuf()->is_open()){
+        cerr << "Error: cannot open copy number file " << filename << endl;
+        exit(EXIT_FAILURE);
+    }
     int counter = 0;
     string line;
     int prev_sample = 1;
@@ -712,6 +718,15 @@ void read_cn(vector<vector<vector<int>>>& s_info, const string& filename, int Ns
       string buf;
       stringstream ss(line);
       while(ss >> buf) split.push_back(buf);
+
+      // Every format has at least sample, chromosome, site and copy number;
+      // check before indexing, since reading past the end is undefined.
+      if(split.size() < 4){
+          cerr << "Error: copy number file " << filename << " has a line with "
+               << split.size() << " columns, expected at least 4 (sample, chromosome, site, copy number): "
+               << line << endl;
+          exit(EXIT_FAILURE);
+      }
 
       const char* sstr = split[0].c_str();
       if(!isdigit(*sstr) || !isdigit(*split[1].c_str()) || !isdigit(*split[2].c_str())){
@@ -788,6 +803,17 @@ void read_cn(vector<vector<vector<int>>>& s_info, const string& filename, int Ns
       counter++;
 
       prev_sample = sample;
+    }
+
+    // An empty file (or one with only blank lines) opens fine but yields no
+    // data, which crashes the programs further on.
+    bool any_data = false;
+    for(const auto& sample_data : s_info){
+        if(!sample_data.empty()){ any_data = true; break; }
+    }
+    if(!any_data){
+        cerr << "Error: no copy numbers read from " << filename << " (is the file empty?)" << endl;
+        exit(EXIT_FAILURE);
     }
 
     if(debug) cout << "\tSuccessfully read input file with " << num_total_bins << " sites" << endl;
