@@ -56,9 +56,11 @@ bsr_mode=0
 rlc_search_method=1
 # Model-selection criterion for bsr_mode=3 shift-edge search. 0: AIC (default), 1: BIC
 rlc_criterion=0
-# bsr_mode>0 only. 1 (default): calibrate bsr0 rates first, then estimate per-edge multipliers relative to that reference.
-# 0: skip calibration, estimate the trunk edge's (root -> MRCA) own rate (mu0) jointly with the other edges' multipliers/shifts.
-estimate_bsr0_first=1
+# bsr_mode>0 only. How the reference rate for the branch multipliers is set.
+# 0 (default): skip calibration; the trunk edge (root -> MRCA) keeps multiplier 1 and is never a shift edge, its own rate (mu0)
+#    is estimated jointly with the other edges' multipliers/shifts, which are relative to it.
+# 1: calibrate bsr0 rates first (constant-rate fit), then estimate per-edge multipliers relative to that reference.
+estimate_bsr0_first=0
 
 ####################### Parameters related to input  ###########################
 idir="${CNETA_OUT:-./example}"   # The input directory

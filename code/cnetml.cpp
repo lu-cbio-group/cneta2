@@ -1641,10 +1641,10 @@ int main(int argc, char** const argv){
     double scale_tobs;  // scaling factor for input times, used in likelihood computation when branch length is constrained by sampling time
     int rlc_search_method;  // outer search for bsr_mode=3 ML-RLC shift edges (0: exhaustive search, 1: stepwise greedy [default], 2: genetic algorithm [not yet implemented])
     int rlc_criterion;  // model-selection criterion for bsr_mode=3 ML-RLC (0: AIC, 1: BIC)
-    // [2026-08-12 added] bsr_mode>0 only: 1 (default) = calibrate bsr0 rates first then
-    // estimate per-edge multipliers relative to that reference [unchanged behavior];
-    // 0 = skip calibration, estimate the trunk edge's (root -> MRCA) own rate (mu0) jointly with the
-    // other edges' multipliers/shifts relative to mu0.
+    // [2026-08-12 added] bsr_mode>0 only: 0 (default) = skip calibration, estimate the
+    // trunk edge's (root -> MRCA) own rate (mu0) jointly with the other edges'
+    // multipliers/shifts relative to mu0; 1 = calibrate bsr0 rates first then
+    // estimate per-edge multipliers relative to that reference.
     int estimate_bsr0_first;
 
     /********* derived from input ***********/
@@ -1768,7 +1768,7 @@ int main(int argc, char** const argv){
     ("wgd_rate", po::value<double>(&wgd_rate)->default_value(0), "WGD (whole genome doubling) rate")
     ("rlc_search_method", po::value<int>(&rlc_search_method)->default_value(1), "outer search for bsr_mode=3 ML-RLC shift edges (0: exhaustive search over all shift-edge subsets [small trees only], 1: stepwise greedy search [default], 2: genetic algorithm [not yet implemented])")
     ("rlc_criterion", po::value<int>(&rlc_criterion)->default_value(0), "model-selection criterion for bsr_mode=3 ML-RLC shift-edge search (0: AIC, 1: BIC)")
-    ("estimate_bsr0_first", po::value<int>(&estimate_bsr0_first)->default_value(1), "for bsr_mode>0: 1=calibrate bsr0 rates first then estimate per-edge multipliers relative to that reference [default, unchanged behavior], 0=skip calibration, estimate the trunk edge's (root -> MRCA) own rate jointly with per-edge multipliers/shifts")
+    ("estimate_bsr0_first", po::value<int>(&estimate_bsr0_first)->default_value(0), "for bsr_mode>0: 0=skip calibration, estimate the trunk edge's (root -> MRCA) own rate jointly with per-edge multipliers/shifts [default], 1=calibrate bsr0 rates first then estimate per-edge multipliers relative to that reference")
 
     ("verbose", po::value<int>(&debug)->default_value(0), "verbose level (0: default, 1: debug)")
     ("seed", po::value<unsigned>(&seed)->default_value(0), "seed used for generating random numbers")

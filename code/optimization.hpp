@@ -78,13 +78,13 @@ struct OPT_TYPE{
   // on calibration failure, so a retry still retries calibration too) instead of assuming
   // "called before" means "succeeded before".
   bool bsr_calibrated = false;
-  // [2026-08-12 added] bsr_mode>0 only. true (default): unchanged behavior -- run an
+  // [2026-08-12 added] bsr_mode>0 only. false (default): skip calibration; the trunk
+  // edge's own rate (mu0) is estimated jointly with the other edges' multipliers in the
+  // same optimization, and used as the reference those multipliers scale. true: run an
   // independent bsr_mode=0/estmu=1 calibration sub-optimization first, freeze the 5
   // global reference rates, estimate only per-edge multipliers relative to that
-  // reference. false: skip calibration; the trunk edge's own rate (mu0) is
-  // estimated jointly with the other edges' multipliers in the same optimization,
-  // and used as the reference those multipliers scale.
-  bool estimate_bsr0_first = true;
+  // reference.
+  bool estimate_bsr0_first = false;
 };
 
 struct GSL_PARAM{
