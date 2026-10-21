@@ -38,6 +38,7 @@
 # R package folder and related files
 *.R
 *.rda
+!util/install_cran_packages.R
 
 # Shell configuration files
 *.bashrc

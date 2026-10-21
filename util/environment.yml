@@ -1,17 +1,22 @@
 # Conda environment for the R and Python scripts in util/.
 #
 #   conda env create -f util/environment.yml
-#   conda activate cnetml-util
+#   conda activate cneta-util
+#   Rscript util/install_cran_packages.R   # only for compare_trees.R / check_convergence.R
 #
-# This covers postprocessing only — not building cnets/cnetml/cnetmcmc
-# themselves. See docs/source/installation/index.md for the C++ build
-# dependencies (CMake, Boost, GSL), which this environment does not
-# provide.
+# The same file works on macOS and Linux (workstations, HPC with conda, Windows
+# via WSL/Ubuntu). This covers postprocessing only, not building cnets/cnetml/cnetmcmc;
+# for that see code/environment-mac.yml or code/environment-linux.yml.
+#
+# Quartet (compare_trees.R) and rwty (check_convergence.R) are on CRAN but not
+# on conda; util/install_cran_packages.R installs them into this environment.
+# Their dependencies that conda provides are listed here, and the compilers
+# are included because Quartet has C++ code.
 #
 # R's `tools` package (listed as a dependency in the top-level README) is
 # part of every R installation via r-base below; it has no separate
 # conda package.
-name: cnetml-util
+name: cneta-util
 
 channels:
   - conda-forge
@@ -26,4 +31,22 @@ dependencies:
   - r-phangorn
   - bioconductor-copynumber
   - bioconductor-ggtree
+  - bioconductor-treeio
+  - r-tidytree
+  - r-ggrepel
+  - r-ggpubr
+  - r-xml2             # compare_trees.R
+  - r-seqinr           # convert4medicc_fasta.R
+  - r-mcmcpack         # create_pseudo_subclone.R
+  - r-rstudioapi       # script path lookup when run inside RStudio
+  # dependencies of the CRAN-only packages (see install_cran_packages.R)
+  - r-rdpack           # Quartet
+  - r-rcpp             # Quartet
+  - r-coda             # rwty
+  - r-viridis          # rwty
+  - r-reshape2         # rwty
+  - r-plyr             # rwty
+  - r-ggdendro         # rwty
+  - r-ggally           # rwty
+  - compilers
   - networkx

@@ -76,7 +76,14 @@ fi
 echo "Configuring cneta..."
 mkdir -p build
 cd build
-cmake ..
+# Inside a conda environment (code/environment-mac.yml or code/environment-linux.yml), look for Boost/GSL/zlib/OpenMP
+# there first, so libraries installed elsewhere (e.g. Homebrew) are not picked up.
+if [ -n "$CONDA_PREFIX" ]; then
+    echo "Using libraries from conda environment $CONDA_PREFIX"
+    cmake -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" ..
+else
+    cmake ..
+fi
 
 echo "Compiling with $CORES core(s)..."
 make -j"$CORES"
