@@ -143,7 +143,7 @@ def test_tree_search_writes_a_usable_tree(tmp_path, tiny_sim: Simulation,
 
 
 def test_tree_search_writes_a_consistent_summary(tmp_path, tiny_sim: Simulation,
-                                                 cnetml, run):
+                                                 cnetml, run, cneta_version):
     """The .summary.txt sidecar is the machine-readable record of a run."""
     out_file = tmp_path / "MaxL.txt"
 
@@ -159,8 +159,10 @@ def test_tree_search_writes_a_consistent_summary(tmp_path, tiny_sim: Simulation,
 
     assert summary["mode"] == "0"
     assert summary["model"] == "2"
-    # The seed travels with the result, whatever launched the program.
+    # The seed and the version travel with the result, whatever launched
+    # the program.
     assert summary["seed"] == str(cli.SEED)
+    assert summary["version"].split()[0] == cneta_version
     assert int(summary["n_leaves"]) == EXPECTED_LEAVES
     assert int(summary["n_edges"]) == 2 * EXPECTED_LEAVES - 2
 

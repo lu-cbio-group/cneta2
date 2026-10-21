@@ -400,6 +400,7 @@ void print_sequences(map<int, copy_number>& cn_matrix, int cn_max, int model, in
     cout << "Writing all the mutational events" << endl;
     sstm << dir << prefix << "-info.txt";
     ofstream out_info(sstm.str());
+    out_info << "VERSION: " << version_string() << endl;
     out_info << "SEED: " << seed_in_use << endl;
     out_info << "TREE SEED: " << (tree_seed_in_use ? to_string(tree_seed_in_use) : string("same stream as SEED")) << endl;
     out_info << endl;
@@ -1357,6 +1358,7 @@ void print_simulations(int mode, int model, int num_seg, int bsr_mode, const vec
     cout << "Writing all the mutational events" << endl;
     sstm << dir << prefix << "-info.txt";
     ofstream out_info(sstm.str());
+    out_info << "VERSION: " << version_string() << endl;
     out_info << "SEED: " << seed_in_use << endl;
     out_info << "TREE SEED: " << (tree_seed_in_use ? to_string(tree_seed_in_use) : string("same stream as SEED")) << endl;
     out_info << endl;
@@ -1737,7 +1739,7 @@ int main (int argc, char** const argv) {
             return 1;
         }
         if(vm.count("version")){
-            cout << "CNETS [version " << VERSION << "], a program to simulate copy number alterations along a phylogenetic tree" << endl;
+            cout << "CNETS [version " << version_string() << "], a program to simulate copy number alterations along a phylogenetic tree" << endl;
             return 1;
         }
         po::notify(vm);
@@ -1758,6 +1760,7 @@ int main (int argc, char** const argv) {
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
+    cout << "version:" << "\t" << version_string() << endl;
     seed = setup_rng(r, seed);
     seed_in_use = seed;
     tree_seed_in_use = tree_seed;

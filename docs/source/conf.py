@@ -21,9 +21,10 @@ project = "CNETA"
 author = "CNETA team"
 copyright = "2026, CNETA contributors"
 
-# Bump on release; also drives the version shown in the sidebar.
-# Kept in sync with the `project(cneta VERSION ...)` call in code/CMakeLists.txt.
-release = "2.0"
+# The version shown in the sidebar, read from the VERSION file at the
+# repository root (the same file the build reads). See releases.md in the
+# developer guide.
+release = (Path(__file__).resolve().parents[2] / "VERSION").read_text().strip()
 version = release
 
 SOURCE_DIR = Path(__file__).parent

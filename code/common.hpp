@@ -69,7 +69,24 @@ const double WGD_WEIGHT = 0.001;   // used to represent very large negative log 
 typedef map<int, map<int, int>> copy_number;
 // typedef vector<vector<double>> lnl_table;
 
-const string VERSION = "2.0";
+// The version comes from the VERSION file at the repository root, passed in
+// by the build (CMakeLists.txt, makefile); see
+// docs/source/developer-guide/releases.md. CNETA_GIT_DESCRIBE says which
+// commit the build came from, e.g. "v2.1.0-5-gabc1234-dirty".
+#ifndef CNETA_VERSION
+#define CNETA_VERSION "unknown"
+#endif
+#ifndef CNETA_GIT_DESCRIBE
+#define CNETA_GIT_DESCRIBE ""
+#endif
+const string VERSION = CNETA_VERSION;
+const string GIT_DESCRIBE = CNETA_GIT_DESCRIBE;
+
+// "2.1.0", or "2.1.0 (git v2.1.0-5-gabc1234)" when the commit is known.
+// This is what --version prints and what the programs record in their outputs.
+inline string version_string(){
+    return GIT_DESCRIBE.empty() ? VERSION : VERSION + " (git " + GIT_DESCRIBE + ")";
+}
 
 
 // read-only, important input properties that will be used in multiple functions, wrapped in a struct for easier access and passing to functions
