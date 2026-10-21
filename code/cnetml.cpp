@@ -1032,7 +1032,7 @@ void write_run_summary(ostream& out, const evo_tree& tree, int mode, const LNL_T
     // [2026-08-12 added] lets R-side analysis tell which reference-parameterization
     // this run used without guessing from directory naming: bsr_mode>0 &&
     // estimate_bsr0_first=0 means the "reference"/dup_rate_reference etc fields below
-    // are root-LUCA edge's own rate (mu0), estimated jointly with per-edge multipliers,
+    // are the trunk edge's own rate (mu0), estimated jointly with per-edge multipliers,
     // not an independently-calibrated bsr_mode=0 reference. NA when bsr_mode==0 (no
     // such distinction applies). See worklog_2026-08-11.md.
     out << "estimate_bsr0_first\t" << (bsr_mode > 0 ? (opt_type.estimate_bsr0_first ? "1" : "0") : "NA") << "\n";
@@ -1643,7 +1643,7 @@ int main(int argc, char** const argv){
     int rlc_criterion;  // model-selection criterion for bsr_mode=3 ML-RLC (0: AIC, 1: BIC)
     // [2026-08-12 added] bsr_mode>0 only: 1 (default) = calibrate bsr0 rates first then
     // estimate per-edge multipliers relative to that reference [unchanged behavior];
-    // 0 = skip calibration, estimate root-LUCA edge's own rate (mu0) jointly with the
+    // 0 = skip calibration, estimate the trunk edge's (root -> MRCA) own rate (mu0) jointly with the
     // other edges' multipliers/shifts relative to mu0. See worklog_2026-08-11.md.
     int estimate_bsr0_first;
 
@@ -1768,7 +1768,7 @@ int main(int argc, char** const argv){
     ("wgd_rate", po::value<double>(&wgd_rate)->default_value(0), "WGD (whole genome doubling) rate")
     ("rlc_search_method", po::value<int>(&rlc_search_method)->default_value(1), "outer search for bsr_mode=3 ML-RLC shift edges (0: exhaustive search over all shift-edge subsets [small trees only], 1: stepwise greedy search [default], 2: genetic algorithm [not yet implemented])")
     ("rlc_criterion", po::value<int>(&rlc_criterion)->default_value(0), "model-selection criterion for bsr_mode=3 ML-RLC shift-edge search (0: AIC, 1: BIC)")
-    ("estimate_bsr0_first", po::value<int>(&estimate_bsr0_first)->default_value(1), "for bsr_mode>0: 1=calibrate bsr0 rates first then estimate per-edge multipliers relative to that reference [default, unchanged behavior], 0=skip calibration, estimate root-LUCA edge's own rate jointly with per-edge multipliers/shifts")
+    ("estimate_bsr0_first", po::value<int>(&estimate_bsr0_first)->default_value(1), "for bsr_mode>0: 1=calibrate bsr0 rates first then estimate per-edge multipliers relative to that reference [default, unchanged behavior], 0=skip calibration, estimate the trunk edge's (root -> MRCA) own rate jointly with per-edge multipliers/shifts")
 
     ("verbose", po::value<int>(&debug)->default_value(0), "verbose level (0: default, 1: debug)")
     ("seed", po::value<unsigned>(&seed)->default_value(0), "seed used for generating random numbers")

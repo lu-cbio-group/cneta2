@@ -1363,7 +1363,7 @@ void evo_tree::update_edge_from_ratio(double ratio, int eid){
 //
 //     // Find the branch length of each edge
 //     for(int i = 0; i <  edges.size(); i++){
-//         // Skip the edge from LUCA to normal genome
+//         // Skip the edge from the root to the normal genome
 //         if(edges[i].start==nleaf && edges[i].end==nleaf-1){
 //             pair<int, double> id_len(i, edges[i].length);
 //             blens_map.insert(id_len);

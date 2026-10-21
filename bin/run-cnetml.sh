@@ -57,7 +57,7 @@ rlc_search_method=1
 # Model-selection criterion for bsr_mode=3 shift-edge search. 0: AIC (default), 1: BIC
 rlc_criterion=0
 # bsr_mode>0 only. 1 (default): calibrate bsr0 rates first, then estimate per-edge multipliers relative to that reference.
-# 0: skip calibration, estimate root-LUCA edge's own rate (mu0) jointly with the other edges' multipliers/shifts.
+# 0: skip calibration, estimate the trunk edge's (root -> MRCA) own rate (mu0) jointly with the other edges' multipliers/shifts.
 estimate_bsr0_first=1
 
 ####################### Parameters related to input  ###########################

@@ -317,7 +317,7 @@ if __name__=="__main__":
     parser.add_argument('-p','--node_prefix', dest='node_prefix', type=str, default="",
                         help='The prefix of the node to be replaced by space so that node name is an integer')
     parser.add_argument('-b','--root_blen', dest='root_blen', type=float, default=0,
-                        help='The additional branch length connecting LUCA to MRCA if normal sample is not in the original tree')
+                        help='The additional branch length connecting the root (tumour initiation) to the MRCA if normal sample is not in the original tree')
     parser.add_argument('-s','--scaling', dest='scaling', type=float, default=1,
                         help='Scaling the branch length')
     parser.add_argument('-n','--incl_normal', action='store_true', help='The normal sample is included in the tree')

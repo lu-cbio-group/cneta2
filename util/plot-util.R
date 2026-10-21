@@ -587,7 +587,7 @@ prepare.tree.age <- function(mytree, time_file){
 
   s1_info = stime[stime$tdiff==0, ][1,]  # samples taken at 1st time point
   age = s1_info$age
-  tshift = age - elens[s1_info$sample]  # time difference from born time, LUCA
+  tshift = age - elens[s1_info$sample]  # time from birth to the root (tumour initiation)
 
   # find maximum time difference
   max_tdiff = max(stime$tdiff)
