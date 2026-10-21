@@ -1,0 +1,558 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 15:31+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/installation/index.md:1
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/installation/index.md:3
+msgid ""
+"`cneta` is written in C++ and built with CMake; a few R and Python scripts "
+"under `util/` support pre/post-processing but are not required to build the "
+"main tools. Everything needed comes from conda environment files in the "
+"repository, so the same commands work on macOS, Linux, HPC clusters with "
+"conda, and Windows via WSL. See the [Developer docs](../developer-"
+"guide/index.md) for the current architecture and what's still planned."
+msgstr ""
+"`cneta` 用 C++ 编写，用 CMake 构建；`util/` 下有一些 R 和 Python "
+"脚本用于前后处理，但构建主程序不需要它们。所需的一切都由仓库中的 conda 环境文件提供，所以同样的命令在 macOS、Linux、有 conda 的"
+" HPC 集群以及通过 WSL 的 Windows 上都适用。当前架构和后续计划见[开发者文档](../developer-"
+"guide/index.md)。"
+
+#: ../../source/installation/index.md:10
+msgid "Environment files"
+msgstr "环境文件"
+
+#: ../../source/installation/index.md
+msgid "File"
+msgstr "文件"
+
+#: ../../source/installation/index.md
+msgid "Environment"
+msgstr "环境"
+
+#: ../../source/installation/index.md
+msgid "What it is for"
+msgstr "用途"
+
+#: ../../source/installation/index.md
+msgid "Who needs it"
+msgstr "谁需要"
+
+#: ../../source/installation/index.md
+msgid "`code/environment-mac.yml`"
+msgstr ""
+
+#: ../../source/installation/index.md
+msgid "`cneta-build`"
+msgstr ""
+
+#: ../../source/installation/index.md
+msgid "Build and run `cnets` / `cnetml` / `cnetmcmc` on macOS"
+msgstr "在 macOS 上构建和运行 `cnets` / `cnetml` / `cnetmcmc`"
+
+#: ../../source/installation/index.md
+msgid "Everyone on macOS"
+msgstr "所有 macOS 用户"
+
+#: ../../source/installation/index.md
+msgid "`code/environment-linux.yml`"
+msgstr ""
+
+#: ../../source/installation/index.md
+msgid ""
+"Build and run `cnets` / `cnetml` / `cnetmcmc` on Linux, HPC with conda, "
+"Windows via WSL (Ubuntu)"
+msgstr ""
+"在 Linux、有 conda 的 HPC、通过 WSL（Ubuntu）的 Windows 上构建和运行 `cnets` / `cnetml` / "
+"`cnetmcmc`"
+
+#: ../../source/installation/index.md
+msgid "Everyone on Linux"
+msgstr "所有 Linux 用户"
+
+#: ../../source/installation/index.md
+msgid "`util/environment.yml`"
+msgstr ""
+
+#: ../../source/installation/index.md
+msgid "`cneta-util`"
+msgstr ""
+
+#: ../../source/installation/index.md
+msgid "Plotting and other R/Python scripts in `util/` (same file on macOS and Linux)"
+msgstr "画图以及 `util/` 中的其他 R/Python 脚本（macOS 和 Linux 用同一个文件）"
+
+#: ../../source/installation/index.md
+msgid "Anyone who plots or post-processes results"
+msgstr "需要画图或对结果做后处理的人"
+
+#: ../../source/installation/index.md
+msgid "`docs/environment.yml`"
+msgstr ""
+
+#: ../../source/installation/index.md
+msgid "`cneta-docs`"
+msgstr ""
+
+#: ../../source/installation/index.md
+msgid "Build the documentation website"
+msgstr "构建文档网站"
+
+#: ../../source/installation/index.md
+msgid "Website maintainers only"
+msgstr "仅网站维护者"
+
+#: ../../source/installation/index.md:19
+msgid ""
+"You need a conda installation, for example [Miniforge](https://github.com"
+"/conda-forge/miniforge)."
+msgstr "需要先安装 conda，例如 [Miniforge](https://github.com/conda-forge/miniforge)。"
+
+#: ../../source/installation/index.md:22
+msgid "Which system are you on?"
+msgstr "你用的是什么系统？"
+
+#: ../../source/installation/index.md
+msgid "System"
+msgstr "系统"
+
+#: ../../source/installation/index.md
+msgid "Steps"
+msgstr "步骤"
+
+#: ../../source/installation/index.md
+msgid "macOS"
+msgstr ""
+
+#: ../../source/installation/index.md
+msgid ""
+"Install the Xcode Command Line Tools (`xcode-select --install`), then use "
+"`code/environment-mac.yml`"
+msgstr ""
+"安装 Xcode Command Line Tools（`xcode-select --install`），然后使用 `code"
+"/environment-mac.yml`"
+
+#: ../../source/installation/index.md
+msgid "Linux workstation"
+msgstr "Linux 工作站"
+
+#: ../../source/installation/index.md
+msgid "Use `code/environment-linux.yml`"
+msgstr "使用 `code/environment-linux.yml`"
+
+#: ../../source/installation/index.md
+msgid "HPC with conda"
+msgstr "有 conda 的 HPC"
+
+#: ../../source/installation/index.md
+msgid "HPC without conda"
+msgstr "没有 conda 的 HPC"
+
+#: ../../source/installation/index.md
+msgid ""
+"`cd code && ./build.sh <cluster> <cores>` with "
+"`code/envs/setup_env_<cluster>.sh` (module loads); see the HPC tab below"
+msgstr ""
+"`cd code && ./build.sh <cluster> <cores>`，配合 "
+"`code/envs/setup_env_<cluster>.sh`（加载模块）；见下方 HPC 标签页"
+
+#: ../../source/installation/index.md
+msgid "Windows"
+msgstr ""
+
+#: ../../source/installation/index.md
+msgid "Install WSL with Ubuntu, then follow the Linux steps inside Ubuntu"
+msgstr "安装带 Ubuntu 的 WSL，然后在 Ubuntu 中按 Linux 的步骤操作"
+
+#: ../../source/installation/index.md:32
+msgid "Building from source"
+msgstr "从源码构建"
+
+#: ../../source/installation/index.md:34
+msgid "Clone the repository:"
+msgstr "克隆仓库："
+
+#: ../../source/installation/index.md:41
+msgid "Create the build environment and compile for your platform:"
+msgstr "按你的平台创建构建环境并编译："
+
+#: ../../source/installation/index.md:54
+msgid "Works on Apple Silicon and Intel."
+msgstr "Apple Silicon 和 Intel 都适用。"
+
+#: ../../source/installation/index.md
+msgid "Linux / HPC with conda"
+msgstr "Linux / 有 conda 的 HPC"
+
+#: ../../source/installation/index.md:65
+msgid ""
+"Why the compiler and `sysroot` versions are pinned is explained at the top "
+"of `code/environment-linux.yml`: in short, so the build works and the "
+"programs also run on older clusters (e.g. CentOS 7, RHEL 8)."
+msgstr ""
+"编译器和 `sysroot` 版本为什么要固定，在 `code/environment-linux.yml` "
+"开头有说明：简单说，是为了能顺利构建，并且编出的程序在较旧的集群（例如 CentOS 7、RHEL 8）上也能运行。"
+
+#: ../../source/installation/index.md
+msgid "Windows (WSL)"
+msgstr ""
+
+#: ../../source/installation/index.md:72
+msgid ""
+"Install WSL with Ubuntu (in PowerShell: `wsl --install -d Ubuntu`), open "
+"Ubuntu, install conda there, and follow the **Linux / HPC with conda** tab "
+"inside Ubuntu."
+msgstr ""
+"安装带 Ubuntu 的 WSL（在 PowerShell 中运行 `wsl --install -d Ubuntu`），打开 Ubuntu，在其中安装"
+" conda，然后在 Ubuntu 里按 **Linux / 有 conda 的 HPC** 标签页操作。"
+
+#: ../../source/installation/index.md:79
+msgid ""
+"On most High Performance Clusters dependencies are provided as environment "
+"modules. The build script, `./build.sh <cluster> <cores>`, sources "
+"`code/envs/setup_env_<cluster>.sh` and loads the modules for you "
+"automatically; no need to source it yourself first."
+msgstr ""
+"大多数高性能计算集群以环境模块的形式提供依赖。构建脚本 `./build.sh <cluster> <cores>` 会自动 source "
+"`code/envs/setup_env_<cluster>.sh` 并加载模块，不需要事先手动 source。"
+
+#: ../../source/installation/index.md:83
+msgid ""
+"Once your `code/envs/setup_env_<cluster>.sh` script exists, you can build "
+"the code like so:"
+msgstr "有了 `code/envs/setup_env_<cluster>.sh` 脚本后，可以这样构建："
+
+#: ../../source/installation/index.md:89
+msgid ""
+"Eureka2, local CPU cluster at Surrey serves as an example here. The script "
+"loads this module set:"
+msgstr "这里以 Surrey 的本地 CPU 集群 Eureka2 为例，脚本加载以下模块："
+
+#: ../../source/installation/index.md:98
+msgid ""
+"To add another cluster, add `code/envs/setup_env_<name>.sh` following the "
+"same pattern and run `./build.sh <name> <cores>`."
+msgstr ""
+"要添加其他集群，按同样的格式新建 `code/envs/setup_env_<name>.sh`，然后运行 `./build.sh <name> "
+"<cores>`。"
+
+#: ../../source/installation/index.md:101
+msgid ""
+"TODO: scheduler-specific notes (queue/partition names, resource-request "
+"conventions for `sbatch`/`srun`) — not yet documented here."
+msgstr "TODO：作业调度系统相关说明（队列/分区名、`sbatch`/`srun` 的资源申请方式），尚未写入本文档。"
+
+#: ../../source/installation/index.md:105
+msgid ""
+"`build.sh` detects the active conda environment and takes Boost, GSL, zlib "
+"and OpenMP from it, so libraries installed elsewhere (e.g. Homebrew) are not"
+" picked up."
+msgstr ""
+"`build.sh` 会检测当前激活的 conda 环境，并从中使用 Boost、GSL、zlib 和 OpenMP，所以装在别处（例如 "
+"Homebrew）的库不会被用到。"
+
+#: ../../source/installation/index.md:109
+msgid ""
+"`build.sh` configures a CMake build in `code/build/`. The three executables "
+"(`cnets`, `cnetml`, `cnetmcmc`) land in `bin/` at the top of the repository,"
+" next to the `run-*.sh` driver scripts, which is where the scripts and the "
+"test suite look for them. The compiled programs are not tracked by git; the "
+"scripts are. Set `CNETA_BIN` if you want the run scripts to use a different "
+"build."
+msgstr ""
+"`build.sh` 在 `code/build/` 中配置 CMake "
+"构建。三个可执行文件（`cnets`、`cnetml`、`cnetmcmc`）生成在仓库顶层的 `bin/` 中，和 `run-*.sh` "
+"运行脚本放在一起，运行脚本和测试都在这里找程序。编译出的程序不纳入 git 管理，脚本纳入。如果想让运行脚本使用另一份构建，设置 "
+"`CNETA_BIN`。"
+
+#: ../../source/installation/index.md:115
+msgid ""
+"With only `cneta-build` active, the run scripts work with `plot=0` (the "
+"default). For plots, see [Running with plots](#running-with-plots)."
+msgstr ""
+"只激活 `cneta-build` 时，运行脚本在 `plot=0`（默认）下可以正常使用。需要画图见[带画图运行](#running-with-"
+"plots)。"
+
+#: ../../source/installation/index.md:118
+msgid "Other `build.sh` usage:"
+msgstr "`build.sh` 的其他用法："
+
+#: ../../source/installation/index.md:125
+msgid "OpenMP"
+msgstr ""
+
+#: ../../source/installation/index.md:127
+msgid ""
+"`cnetml` parallelises its tree search with OpenMP. The configure step "
+"reports whether it was found:"
+msgstr "`cnetml` 用 OpenMP 并行化树搜索。配置阶段会报告是否找到 OpenMP："
+
+#: ../../source/installation/index.md:134
+msgid "or, if it was not:"
+msgstr "没找到时显示："
+
+#: ../../source/installation/index.md:140
+msgid ""
+"Without OpenMP the build still succeeds and runs the same algorithm, just "
+"without the speed-up."
+msgstr "没有 OpenMP 也能构建成功，运行的算法相同，只是没有加速。"
+
+#: ../../source/installation/index.md:143
+msgid ""
+"**conda (`cneta-build`):** both environment files include OpenMP (`llvm-"
+"openmp`), so nothing extra is needed."
+msgstr "**conda（`cneta-build`）：** 两个环境文件都包含 OpenMP（`llvm-openmp`），不需要额外安装。"
+
+#: ../../source/installation/index.md:145
+msgid "**HPC without conda:** GCC includes OpenMP."
+msgstr "**没有 conda 的 HPC：** GCC 自带 OpenMP。"
+
+#: ../../source/installation/index.md:146
+msgid ""
+"**Thread count:** OpenMP uses all available cores by default. Set "
+"`OMP_NUM_THREADS` to limit it, e.g. `OMP_NUM_THREADS=4 bin/run-cnetml.sh`. "
+"Floating-point sums over a varying number of threads are not bit-"
+"reproducible, so pin `OMP_NUM_THREADS=1` when you need exactly repeatable "
+"scores (the test suite does)."
+msgstr ""
+"**线程数：** OpenMP 默认使用所有可用核心，可以用 `OMP_NUM_THREADS` 限制，例如 `OMP_NUM_THREADS=4 "
+"bin/run-cnetml.sh`。线程数不同时，浮点数求和结果不能逐位重现；需要完全可重复的得分时，请设 "
+"`OMP_NUM_THREADS=1`（测试就是这样做的）。"
+
+#: ../../source/installation/index.md:152
+msgid "Plotting and `util/` scripts (optional)"
+msgstr "画图和 `util/` 脚本（可选）"
+
+#: ../../source/installation/index.md:154
+msgid ""
+"The R and Python scripts in `util/` (see [Utility scripts](../user-guide"
+"/utility-scripts.md)) have their own environment, the same file on macOS and"
+" Linux:"
+msgstr ""
+"`util/` 中的 R 和 Python 脚本（见[辅助脚本](../user-guide/utility-"
+"scripts.md)）有单独的环境，macOS 和 Linux 用同一个文件："
+
+#: ../../source/installation/index.md:164
+msgid ""
+"`install_cran_packages.R` installs `Quartet` and `rwty` from CRAN (they are "
+"not on conda); it skips packages that are already installed and prints "
+"`OK`/`FAILED` for each."
+msgstr ""
+"`install_cran_packages.R` 从 CRAN 安装 `Quartet` 和 `rwty`（conda "
+"上没有这两个包）；已安装的包会跳过，每个包打印 `OK`/`FAILED`。"
+
+#: ../../source/installation/index.md:168
+msgid ""
+"None of this is needed to build or run `cnets`, `cnetml`, or `cnetmcmc` "
+"themselves."
+msgstr "构建或运行 `cnets`、`cnetml`、`cnetmcmc` 本身都不需要这些。"
+
+#: ../../source/installation/index.md:171
+msgid "Running with plots"
+msgstr "带画图运行"
+
+#: ../../source/installation/index.md:173
+msgid ""
+"With `plot=1` in `bin/run-*.sh`, the run scripts need the programs (`cneta-"
+"build`) and R (`cneta-util`) at the same time. Activate both, the second one"
+" stacked on the first:"
+msgstr ""
+"`bin/run-*.sh` 中设 `plot=1` 时，运行脚本同时需要程序（`cneta-build`）和 R（`cneta-"
+"util`）。两个环境都要激活，第二个叠加在第一个之上："
+
+#: ../../source/installation/index.md:183
+msgid "Running the tests"
+msgstr "运行测试"
+
+#: ../../source/installation/index.md:185
+msgid ""
+"`cneta-build` also contains pytest. See [Testing](../developer-"
+"guide/testing.md#testing) for the commands."
+msgstr "`cneta-build` 中也包含 pytest。具体命令见[测试](../developer-guide/testing.md#testing)。"
+
+#: ../../source/installation/index.md:188
+msgid "Dependencies"
+msgstr "依赖"
+
+#: ../../source/installation/index.md:190
+msgid ""
+"What the environment files install, for reference — for example when "
+"building on a system without conda."
+msgstr "环境文件安装的内容，供参考，例如在没有 conda 的系统上构建时。"
+
+#: ../../source/installation/index.md:193
+msgid "Build (`cneta-build`):"
+msgstr "构建（`cneta-build`）："
+
+#: ../../source/installation/index.md:195
+msgid "A C++17-capable compiler (GCC >= 7 or Clang >= 5)"
+msgstr "支持 C++17 的编译器（GCC >= 7 或 Clang >= 5）"
+
+#: ../../source/installation/index.md:196
+msgid ""
+"[CMake](https://cmake.org/) >= 3.16 (3.10 is enough for the programs alone; "
+"the tests need 3.16)"
+msgstr "[CMake](https://cmake.org/) >= 3.16（只构建程序 3.10 就够；测试需要 3.16）"
+
+#: ../../source/installation/index.md:198
+msgid ""
+"[Boost](https://www.boost.org/) (`program_options` and `filesystem` "
+"components)"
+msgstr "[Boost](https://www.boost.org/)（`program_options` 和 `filesystem` 组件）"
+
+#: ../../source/installation/index.md:200
+msgid "[GSL](https://www.gnu.org/software/gsl/) (GNU Scientific Library)"
+msgstr "[GSL](https://www.gnu.org/software/gsl/)（GNU 科学计算库）"
+
+#: ../../source/installation/index.md:201
+msgid "zlib (used by the vendored `gzstream` for compressed I/O)"
+msgstr "zlib（内置的 `gzstream` 用它读写压缩文件）"
+
+#: ../../source/installation/index.md:202
+msgid ""
+"OpenMP — optional, accelerates `cnetml`'s tree search; the build still "
+"succeeds without it, but `cnetml` then runs single-threaded. See "
+"[OpenMP](#openmp) above."
+msgstr ""
+"OpenMP：可选，用于加速 `cnetml` 的树搜索；没有它也能构建成功，但 `cnetml` 只能单线程运行。见上文 "
+"[OpenMP](#openmp)。"
+
+#: ../../source/installation/index.md:205
+msgid ""
+"Python 3.9+ with pytest, for the tests. Catch2 is fetched automatically at "
+"configure time if it is not already installed."
+msgstr "Python 3.9+ 和 pytest，用于测试。没有安装 Catch2 时，配置阶段会自动下载。"
+
+#: ../../source/installation/index.md:208
+msgid ""
+"`code/CMakeLists.txt` discovers these via `find_package`; there is nothing "
+"to configure by hand."
+msgstr "`code/CMakeLists.txt` 通过 `find_package` 自动找到这些依赖，不需要手动配置。"
+
+#: ../../source/installation/index.md:211
+msgid "`util/` scripts (`cneta-util`):"
+msgstr "`util/` 脚本（`cneta-util`）："
+
+#: ../../source/installation/index.md:213
+msgid ""
+"R: `optparse`, `copynumber`, `tools`, `tidyverse`, `ggtree`, `treeio`, "
+"`tidytree`, `ggrepel`, `ggpubr`, `ape`, `phangorn`, `xml2`, `seqinr`, "
+"`MCMCpack`, `rstudioapi`, plus `Quartet` and `rwty` from CRAN"
+msgstr ""
+"R：`optparse`、`copynumber`、`tools`、`tidyverse`、`ggtree`、`treeio`、`tidytree`、`ggrepel`、`ggpubr`、`ape`、`phangorn`、`xml2`、`seqinr`、`MCMCpack`、`rstudioapi`，以及从"
+" CRAN 安装的 `Quartet` 和 `rwty`"
+
+#: ../../source/installation/index.md:216
+msgid "Python: `networkx` (used by `newick2elist.py`)"
+msgstr "Python：`networkx`（`newick2elist.py` 使用）"
+
+#: ../../source/installation/index.md:218
+msgid "Containers"
+msgstr "容器"
+
+#: ../../source/installation/index.md:220
+msgid ""
+"Planned, not yet available. In the meantime, the conda environment files "
+"above (see [Environment files](#environment-files)) give a reproducible "
+"installation."
+msgstr "计划中，暂未提供。目前可以用上面的 conda 环境文件（见[环境文件](#environment-files)）进行可重复的安装。"
+
+#~ msgid "[CMake](https://cmake.org/) >= 3.10"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "R: `optparse`, `copynumber`, `tools`, "
+#~ "`tidyverse`, `ggtree`, `treeio`, `tidytree`, "
+#~ "`ggrepel`, `ggpubr`, `ape`, `phangorn`"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Installing R/Bioconductor packages by hand "
+#~ "is easy to get wrong (version "
+#~ "conflicts, `BiocManager` quirks). "
+#~ "`util/environment.yml` installs all of the "
+#~ "above in one step, verified to solve"
+#~ " and import cleanly:"
+#~ msgstr ""
+#~ "手动安装 R/Bioconductor 包容易出错（版本冲突、`BiocManager` "
+#~ "的各种问题）。`util/environment.yml` 可以一步装好以上所有包，已验证能顺利解析依赖并正常导入："
+
+#~ msgid ""
+#~ "To run the test suite as well "
+#~ "you additionally need Python 3.9+ with "
+#~ "pytest, and CMake >= 3.16 (the main"
+#~ " build still works with 3.10). Catch2"
+#~ " is fetched automatically at configure "
+#~ "time if it is not already installed."
+#~ " See [Testing](../developer-guide/testing.md#testing)."
+#~ msgstr ""
+#~ "如果还要运行测试，另外需要 Python 3.9+ 和 pytest，以及 CMake"
+#~ " >= 3.16（主程序用 3.10 仍可构建）。没有安装 Catch2 "
+#~ "时，配置阶段会自动下载。见[测试](../developer-guide/testing.md#testing)。"
+
+#~ msgid "macOS / Apple Silicon"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Builds are confirmed working on Apple "
+#~ "Silicon. `libomp` is what provides OpenMP"
+#~ " on macOS; Apple's own compiler does "
+#~ "not ship it. The build finds the "
+#~ "Homebrew copy automatically, on both Apple"
+#~ " Silicon and Intel."
+#~ msgstr ""
+#~ "已确认可以在 Apple Silicon 上构建。macOS 上的 OpenMP"
+#~ " 由 `libomp` 提供，苹果自带的编译器不包含它。无论 Apple Silicon"
+#~ " 还是 Intel，构建时都会自动找到 Homebrew 安装的版本。"
+
+#~ msgid "Linux (local)"
+#~ msgstr "Linux（本地）"
+
+#~ msgid ""
+#~ "Requires sudo — for shared HPC "
+#~ "clusters where you typically don't have "
+#~ "that, see the HPC tab instead. "
+#~ "Package names below are for Debian/Ubuntu;"
+#~ " adjust for other distributions."
+#~ msgstr ""
+#~ "需要 sudo 权限；共享的 HPC 集群上通常没有这个权限，请看 HPC "
+#~ "标签页。下面的包名适用于 Debian/Ubuntu，其他发行版请相应调整。"
+
+#~ msgid ""
+#~ "Not yet verified against a from-"
+#~ "scratch Linux desktop install, only against"
+#~ " Eureka2's HPC module environment (HPC "
+#~ "tab)."
+#~ msgstr "尚未在全新安装的 Linux 桌面系统上验证过，只在 Eureka2 的 HPC 模块环境中验证过（见 HPC 标签页）。"
+
+#~ msgid "HPC"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "**macOS:** `brew install libomp`. If you"
+#~ " installed it after a first build, "
+#~ "re-run `./build.sh local` (CMake re-"
+#~ "detects it; no need to clean)."
+#~ msgstr ""
+#~ "**macOS：** `brew install libomp`。如果是在第一次构建之后才安装的，重新运行"
+#~ " `./build.sh local` 即可（CMake 会重新检测，不需要清理）。"
+

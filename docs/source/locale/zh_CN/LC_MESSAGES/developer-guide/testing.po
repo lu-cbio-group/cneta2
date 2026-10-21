@@ -1,0 +1,149 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 15:31+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/developer-guide/testing.md:1
+msgid "Testing and CI"
+msgstr "测试与 CI"
+
+#: ../../source/developer-guide/testing.md:3
+msgid "Testing"
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:5
+msgid "The suite lives in `tests/` and has three layers:"
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:7
+msgid "`tests/unit/`"
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:8
+msgid ""
+"Catch2 unit tests for the shared library. They link `cneta_core` directly"
+" and cover the state encoding, the rate and transition matrices, and the "
+"tree helpers. Built only with `-DCNETA_BUILD_TESTING=ON`."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:12
+msgid "`tests/e2e/`"
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:13
+msgid ""
+"pytest tests that run the compiled programs on a small simulated dataset,"
+" checking output files, error handling, and reproducibility. Includes "
+"smoke tests that execute the `run-*.sh` scripts as a user would."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:17
+msgid "`tests/build_system/`"
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:18
+msgid ""
+"pytest tests that configure and compile the project from scratch and "
+"check `build.sh`'s argument handling."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:21
+msgid ""
+"To run everything, from the top of the repository with the `cneta-build` "
+"environment active (it includes pytest; see "
+"[Installation](../installation/index.md)):"
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:34
+msgid ""
+"Without conda, install pytest with `pip install -r "
+"tests/requirements.txt`."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:36
+msgid ""
+"`OMP_NUM_THREADS=1` keeps timings comparable and a failure easy to repeat"
+" by hand. `cnetml` parallelises its tree search with OpenMP, but the "
+"result does not depend on the thread count; `test_cnetml.py` checks that."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:40
+msgid ""
+"The regression anchor is `cnetml --mode 2`, which scores a supplied tree "
+"with no RNG and no search and so is reproducible to the digit. Reference "
+"values live in `tests/data/expected.json`. A change there means the "
+"likelihood calculation changed — which is exactly what needs watching "
+"during the `libcneta` refactor."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:46
+msgid ""
+"[Writing a unit test](writing-tests.md) is the walkthrough for adding one"
+" of your own."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:49
+msgid ""
+"`tests/README.md` has the full detail, including what is *not* covered "
+"yet and a list of known failures the suite records but does not fail on."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:52
+msgid "Continuous integration"
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:54
+msgid "Workflows live in `.github/workflows/`. Currently:"
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:56
+msgid "`docs.yml`"
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:57
+msgid ""
+"builds the documentation on every pull request into `main`, and publishes"
+" to GitHub Pages when a pull request is merged."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:60
+msgid "`ci.yml`"
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:61
+msgid ""
+"builds the project and runs the unit and end-to-end tests on `ubuntu-"
+"latest` and `macos-latest`."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:64
+msgid ""
+"Both run on pull requests into `main` and on pushes to `main` — not on "
+"every pushed commit, so work-in-progress on a branch with no open pull "
+"request costs nothing. Both can also be triggered by hand from the "
+"Actions tab (`workflow_dispatch`)."
+msgstr ""
+
+#: ../../source/developer-guide/testing.md:69
+msgid "TODO: container workflow."
+msgstr ""
+
+#~ msgid "To run everything:"
+#~ msgstr ""
+
