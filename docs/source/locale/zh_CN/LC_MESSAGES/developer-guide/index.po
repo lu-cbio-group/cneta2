@@ -1,0 +1,41 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/developer-guide/index.md:1
+msgid "Developer docs"
+msgstr "开发者文档"
+
+#: ../../source/developer-guide/index.md:3
+msgid ""
+"For anyone building `cneta` from source, understanding how the C++ sources "
+"fit together, contributing code, or working on this documentation site. Just"
+" want to run `cnets`/`cnetml`/`cnetmcmc`? See [User docs](../users/index.md)"
+" instead."
+msgstr ""
+"面向从源码构建 `cneta`、了解 C++ 源码结构、贡献代码或维护本文档网站的人。只想运行 "
+"`cnets`/`cnetml`/`cnetmcmc`？请看[用户文档](../users/index.md)。"
+
+#: ../../source/developer-guide/index.md:8
+msgid ""
+"New here? Start with [Build system](build.md), then "
+"[Architecture](architecture.md)."
+msgstr "刚接触？先看[构建系统](build.md)，再看[架构](architecture.md)。"
+

@@ -56,13 +56,9 @@ remains legible at small sizes.
 
 - **`README.md`** — uses a `<picture>` element to switch between
   `cneta-logo.svg` and `cneta-logo-dark.svg` with the GitHub theme.
-- **Documentation sidebar** — `docs/source/conf.py` uses
-  `cneta-logo-dark.svg`. The sidebar is always dark, so no theme switching is
-  needed.
+- **Documentation sidebar** — `docs/source/conf.py` uses `cneta-logo.svg` in
+  the theme's light mode and `cneta-logo-dark.svg` in dark mode.
 - **Documentation favicon** — `conf.py` uses `favicon.ico`.
-
-The documentation header colour is set to the logo's slate colour because the
-theme's default blue gives insufficient contrast with the blue **loss** blocks.
 
 `conf.py` references the files here directly, so each export has a single
 source location. The documentation workflow also runs when files under

@@ -1,0 +1,366 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/developer-guide/writing-tests.md:1
+msgid "Writing a unit test"
+msgstr "编写单元测试"
+
+#: ../../source/developer-guide/writing-tests.md:3
+msgid ""
+"Unit tests call the C++ functions directly and check what they return. They "
+"are the cheapest tests to write and the fastest to run — the whole suite "
+"finishes in about a second — so they are the right place for anything that "
+"can be checked without running a whole program."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:8
+msgid ""
+"This page is the walkthrough for adding one. See "
+"[Testing](testing.md#testing) for what the three test layers are and how to "
+"run them all."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:12
+msgid "What can be tested this way"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:14
+msgid ""
+"The unit tests link `cneta_core`, the static library built from the shared "
+"sources (`model.cpp`, `tree_op.cpp`, `parse_cn.cpp`, `stats.cpp`, "
+"`likelihood.cpp` and the rest). Any function declared in one of their "
+"headers can be called from a test."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:19
+msgid ""
+"Functions defined in `cnets.cpp`, `cnetml.cpp` or `cnetmcmc.cpp` cannot: "
+"those files are compiled into the three programs, not into the library, so a"
+" test that calls them will fail to link. Behaviour that only exists inside "
+"one of the programs belongs in `tests/e2e/` instead."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:24
+msgid "Adding a test file"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:26
+msgid "There are two steps, and the second is easy to forget."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:28
+msgid ""
+"**Create `tests/unit/test_<area>.cpp`** — or, if one of the existing files "
+"already covers the area, add your `TEST_CASE` there instead. The four files "
+"are `test_model.cpp`, `test_tree_op.cpp`, `test_parse_cn.cpp` and "
+"`test_stats.cpp`."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:33
+msgid ""
+"**List the new file** in the `add_executable` block of "
+"`tests/unit/CMakeLists.txt`:"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:46
+msgid ""
+"A file that is not listed there is never compiled. There is no error message"
+" — your tests simply do not exist. If a test you just wrote does not appear "
+"in the output, check this first."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:51
+msgid "Building and running"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:53
+msgid "From the repository root:"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:61
+msgid ""
+"The first command is only needed once, and again whenever you edit "
+"`CMakeLists.txt`. After that, rebuild and re-run with the last two commands."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:64
+msgid ""
+"Note that configuring alone builds nothing — if you skip the `cmake --build`"
+" step, `ctest` runs the previous executable and your new test will not be "
+"there."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:67
+msgid "To run only your own tests while working on them:"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:80
+msgid ""
+"Running the executable directly also shows anything the code prints to "
+"`stdout`, which `ctest` hides unless a test fails."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:83
+msgid "The shape of a test"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:94
+msgid ""
+"The **name** is what `ctest` prints, so write it as a statement of what must"
+" be true rather than as a label. \"returns the largest node time\" tells a "
+"future reader what broke; \"test1\" does not."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:97
+msgid ""
+"The **tag** in square brackets groups tests so they can be run together. Use"
+" the one already used by the file you are working in: `[model]`, "
+"`[tree_op]`, `[parse_cn]` or `[stats]`."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:100
+msgid ""
+"**`REQUIRE`** stops the test case at the first failure. Use `CHECK` instead "
+"if you want the remaining assertions in that test to run anyway."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:103
+msgid "Comparing numbers"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:105
+msgid ""
+"`REQUIRE(a == b)` is right for integers, states and sizes. For `double` "
+"values it is almost always wrong: arithmetic that is mathematically "
+"equivalent can differ in the last bits, so an exact comparison fails for no "
+"useful reason."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:109
+msgid ""
+"Compare doubles with a tolerance instead, using one of the two matchers from"
+" `<catch2/matchers/catch_matchers_floating_point.hpp>`:"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "Matcher"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "Use it when"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "Example"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "`WithinAbs(expected, tol)`"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "the expected value is zero or close to it"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "a rate-matrix row must sum to `0.0`"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "`WithinRel(expected, tol)`"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "everything else — the tolerance scales with the size of the number"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "a likelihood, a branch length, a rate"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:122
+msgid ""
+"`WithinRel` cannot be used against an expected value of zero: a relative "
+"tolerance around zero is zero, so the comparison becomes exact again."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:125
+msgid "Matrices are stored column-major"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:127
+msgid ""
+"Every rate and transition matrix in the codebase is a flat `double*` in "
+"column-major order, so:"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:134
+msgid ""
+"Writing `m[j + i * n]` by mistake reads the transpose. That is worth being "
+"careful about, because many of these matrices are close to symmetric, so a "
+"transposed test can still pass and hide the error. `test_model.cpp` has a "
+"small `row_sum` helper that shows the indexing in use."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:139
+msgid "Checking the same property for several inputs"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:141
+msgid ""
+"When a property should hold for many values, loop over them and use "
+"`CAPTURE` so that a failure reports which values caused it:"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:154
+msgid ""
+"Without `CAPTURE`, a failure tells you the assertion broke but not which "
+"iteration broke it."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:157
+msgid ""
+"Choose the values deliberately. Inputs that are equal to each other, or "
+"zero, can make a wrong result look identical to a right one — if two rates "
+"are both `0.01`, then code that uses them in the wrong places still produces"
+" the correct matrix and the test cannot detect the mistake. Varying the "
+"values, and the ratios between them, is what gives the test its power."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:163
+msgid "Using a fixture file"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:165
+msgid ""
+"`tests/data/` holds a small committed dataset. Tests reach it through "
+"`CNETA_TEST_DATA_DIR`, a path that `tests/unit/CMakeLists.txt` defines at "
+"compile time so that tests work regardless of the directory `ctest` runs "
+"them from:"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:176
+msgid ""
+"`test_tree_op.cpp` and `test_parse_cn.cpp` both use this. Prefer an existing"
+" fixture over adding a new one; if you do add a file, commit it on its own "
+"with an explanation of what generated it."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:180
+msgid "Recording a bug you cannot fix yet"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:182
+msgid ""
+"If a test documents a genuine bug that is not going to be fixed in the same "
+"change, tag it `[!mayfail]`. It still runs and still reports, but it does "
+"not fail the build:"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:190
+msgid ""
+"Write the assertion the way it *should* pass, add a row to the known-"
+"failures table in `tests/README.md` explaining the underlying problem, and "
+"remove the tag when the bug is fixed. This is much better than deleting the "
+"test or weakening it until it passes."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:195
+msgid "Worked examples in the repository"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:197
+msgid ""
+"Rather than copying a template, read the test that already does what you "
+"need. All of these are compiled on every build, so they cannot fall out of "
+"date:"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "What you want to do"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "Look at"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "The simplest possible test"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "`test_model.cpp` — *\"compute_haplotype_change_dim follows the parity rule\"*"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "Compare doubles; group variations with `SECTION`"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "`test_model.cpp` — *\"get_rate_matrix_bounded is a valid generator\"*"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "Run the same check over several inputs with `CAPTURE`"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid ""
+"`test_model.cpp` — *\"hand-filled site-level haplotype rate matrix matches "
+"the generated one\"*"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "Read a fixture file"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "`test_tree_op.cpp` — *\"read_tree_info loads the fixture tree\"*"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid "Check two implementations agree"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:45
+msgid ""
+"`test_model.cpp` — the two *\"hand-filled ... matches the generated one\"* "
+"cases"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:208
+msgid "Unit test or end-to-end test?"
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:210
+msgid ""
+"A function that can be called directly and returns something checkable "
+"belongs here. Anything that needs a program to run — command-line handling, "
+"output files, the `run-*.sh` scripts, reproducibility of a whole simulation "
+"— belongs in `tests/e2e/` as a pytest test."
+msgstr ""
+
+#: ../../source/developer-guide/writing-tests.md:215
+msgid ""
+"`tests/README.md` covers that side, along with what the suite does not cover"
+" yet and the current list of known failures."
+msgstr ""
+

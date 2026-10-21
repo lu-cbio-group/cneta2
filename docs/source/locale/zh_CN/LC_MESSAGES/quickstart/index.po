@@ -1,0 +1,152 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/quickstart/index.md:1
+msgid "Quick start"
+msgstr "快速上手"
+
+#: ../../source/quickstart/index.md:3
+msgid ""
+"A minimal end-to-end run: simulate data with `cnets`, then infer a tree from"
+" it with `cnetml`."
+msgstr "一个最简的完整示例：先用 `cnets` 模拟数据，再用 `cnetml` 从中推断树。"
+
+#: ../../source/quickstart/index.md:6
+msgid "1. Build"
+msgstr "1. 构建"
+
+#: ../../source/quickstart/index.md:12
+msgid ""
+"The three executables land in `bin/` at the top of the repository, next to "
+"the `run-*.sh` driver scripts. See [Installation](../installation/index.md) "
+"for HPC targets."
+msgstr ""
+"三个可执行文件生成在仓库顶层的 `bin/` 中，和 `run-*.sh` 运行脚本放在一起。HPC "
+"上的构建见[安装](../installation/index.md)。"
+
+#: ../../source/quickstart/index.md:16
+msgid "2. Simulate a small dataset"
+msgstr "2. 模拟一个小数据集"
+
+#: ../../source/quickstart/index.md:18
+msgid "From the top of the repository:"
+msgstr "在仓库顶层目录运行："
+
+#: ../../source/quickstart/index.md:24
+msgid ""
+"Edit the parameter block at the top of the script rather than passing flags "
+"by hand. The defaults simulate `Ns=3` tumour regions plus the normal sample,"
+" using the haplotype-specific model (`model=2`), `cn_max=4`, with only "
+"duplication/deletion events (`r3=r4=r5=0`, i.e. no chromosome gain/loss or "
+"WGD). Output goes to `./example/`."
+msgstr ""
+"修改脚本顶部的参数块，而不是手动传参数。默认设置模拟 `Ns=3` 个肿瘤区域加一个正常样本，使用 haplotype-specific "
+"模型（`model=2`），`cn_max=4`，只有 duplication/deletion 事件（`r3=r4=r5=0`，即没有染色体 "
+"gain/loss 和 WGD）。输出写到 `./example/`。"
+
+#: ../../source/quickstart/index.md:30
+msgid ""
+"Settings shared by all three scripts — the output directory and the random "
+"seed — are in `config/common.conf`. The environment overrides the file, so "
+"for a one-off change set a variable on the command line instead, e.g. "
+"`CNETA_SEED=42 bin/run-cnets.sh`:"
+msgstr ""
+"三个脚本共用的设置（输出目录和随机种子）在 `config/common.conf` "
+"中。环境变量优先于该文件，所以只想临时改一次时，可以在命令行上设变量，例如 `CNETA_SEED=42 bin/run-cnets.sh`："
+
+#: ../../source/quickstart/index.md:35
+msgid ""
+"`CNETA_OUT` — the output directory (default `./example`, relative to where "
+"you run the script)"
+msgstr "`CNETA_OUT`：输出目录（默认 `./example`，相对于运行脚本时所在的目录）"
+
+#: ../../source/quickstart/index.md:37
+msgid ""
+"`CNETA_SEED` — the random seed; set it to reproduce a run (default: a new "
+"random seed each run, recorded at the top of the log and in `seed-"
+"history.txt` in the output directory)"
+msgstr ""
+"`CNETA_SEED`：随机种子，设定后可重现一次运行（默认每次运行使用新的随机种子，记录在日志开头和输出目录的 `seed-history.txt`"
+" 中）"
+
+#: ../../source/quickstart/index.md:40
+msgid "`CNETA_BIN` — where the executables live (default `bin/`)"
+msgstr "`CNETA_BIN`：可执行文件所在目录（默认 `bin/`）"
+
+#: ../../source/quickstart/index.md:41
+msgid "`CNETA_CONFIG_DIR` — where the configuration files live (default `config/`)"
+msgstr "`CNETA_CONFIG_DIR`：配置文件所在目录（默认 `config/`）"
+
+#: ../../source/quickstart/index.md:42
+msgid ""
+"`CNETA_CONFIG` — `run-cnetmcmc.sh` only: its config file (default "
+"`config/cnet_mcmc.cfg`)"
+msgstr "`CNETA_CONFIG`：仅 `run-cnetmcmc.sh` 使用，指定其配置文件（默认 `config/cnet_mcmc.cfg`）"
+
+#: ../../source/quickstart/index.md:45
+msgid "See [Configuration](../configuration/index.md) for more."
+msgstr "更多内容见[配置](../configuration/index.md)。"
+
+#: ../../source/quickstart/index.md:47
+msgid "3. Infer a tree"
+msgstr "3. 推断树"
+
+#: ../../source/quickstart/index.md:53
+msgid ""
+"By default this reads `./example/sim-data-1-cn.txt.gz` — note the matching "
+"`prefix=sim-data-1` at the top of the script. If you changed the prefix (or "
+"left it empty) in `run-cnets.sh`, update `prefix` here to match. `mode=0` "
+"(the default) runs maximum-likelihood tree search."
+msgstr ""
+"默认读取 `./example/sim-data-1-cn.txt.gz`，对应脚本顶部的 `prefix=sim-data-1`。如果在 `run-"
+"cnets.sh` 中改了前缀（或留空），这里的 `prefix` 也要相应修改。`mode=0`（默认）执行最大似然树搜索。"
+
+#: ../../source/quickstart/index.md:58
+msgid "4. Understand the outputs"
+msgstr "4. 理解输出"
+
+#: ../../source/quickstart/index.md:60
+msgid ""
+"`run-cnets.sh` writes `*-cn.txt.gz` (simulated copy numbers), `*-tree.txt` /"
+" `*-tree.nex` (the true tree), and `*-info.txt` / `*-mut.txt` (mutations per"
+" branch) into `./example/`."
+msgstr ""
+"`run-cnets.sh` 在 `./example/` 中写出 `*-cn.txt.gz`（模拟的拷贝数）、`*-tree.txt` / "
+"`*-tree.nex`（真实的树）和 `*-info.txt` / `*-mut.txt`（各分支上的突变）。"
+
+#: ../../source/quickstart/index.md:64
+msgid ""
+"`run-cnetml.sh` writes the reconstructed tree to `MaxL-<suffix>.txt` in the "
+"same directory, plus a `std_cnetml_<suffix>` log file — check it for `cnetml"
+" main run SUCCEEDED` or `FAILED`."
+msgstr ""
+"`run-cnetml.sh` 把重建的树写到同一目录下的 `MaxL-<suffix>.txt`，另有日志文件 "
+"`std_cnetml_<suffix>`，可以在其中查看 `cnetml main run SUCCEEDED` 或 `FAILED`。"
+
+#: ../../source/quickstart/index.md:68
+msgid ""
+"See [File formats](../file-formats/index.md) for the column-level detail of "
+"each file, and the [User guide](../user-guide/index.md) for every option "
+"`cnets` and `cnetml` accept."
+msgstr ""
+"每个文件各列的含义见[文件格式](../file-formats/index.md)；`cnets` 和 `cnetml` 的全部参数见[使用指南"
+"](../user-guide/index.md)。"
+

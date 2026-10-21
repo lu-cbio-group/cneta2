@@ -76,3 +76,6 @@ build/
 __pycache__/
 .pytest_cache/
 .venv/
+
+# Compiled translations; Sphinx regenerates them from the .po files on every build
+*.mo

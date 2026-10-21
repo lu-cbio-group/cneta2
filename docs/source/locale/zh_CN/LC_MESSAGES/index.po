@@ -1,0 +1,115 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/index.md:44
+msgid "Home"
+msgstr "首页"
+
+#: ../../source/index.md:1
+msgid "CNETA"
+msgstr ""
+
+#: ../../source/index.md:3
+msgid ""
+"CNETA is a suite of tools for analysing copy-number evolution in tumour "
+"samples. It comprises three command-line programs:"
+msgstr "CNETA 是一套分析肿瘤样本拷贝数演化的工具，包含三个命令行程序："
+
+#: ../../source/index.md:6
+msgid "`cnets`"
+msgstr ""
+
+#: ../../source/index.md:7
+msgid "simulation of copy-number evolution."
+msgstr "模拟拷贝数演化。"
+
+#: ../../source/index.md:9
+msgid "`cnetml`"
+msgstr ""
+
+#: ../../source/index.md:10
+msgid "maximum-likelihood phylogenetic inference."
+msgstr "最大似然系统发育推断。"
+
+#: ../../source/index.md:12
+msgid "`cnetmcmc`"
+msgstr ""
+
+#: ../../source/index.md:13
+msgid "Bayesian (MCMC) phylogenetic inference."
+msgstr "贝叶斯（MCMC）系统发育推断。"
+
+#: ../../source/index.md:15
+msgid ""
+"This is version 2 of CNETA ([lu-cbio-group/cneta2](https://github.com/lu-"
+"cbio-group/cneta2)); the first version is at [ucl-"
+"cssb/cneta](https://github.com/ucl-cssb/cneta)."
+msgstr ""
+"这是 CNETA 第 2 版（[lu-cbio-group/cneta2](https://github.com/lu-cbio-"
+"group/cneta2)）；第 1 版见 [ucl-cssb/cneta](https://github.com/ucl-cssb/cneta)。"
+
+#: ../../source/index.md:20
+msgid ""
+"This documentation is under active development alongside the software. "
+"Sections marked **TODO** are placeholders awaiting content."
+msgstr "本文档随软件一起持续开发中。标有 **TODO** 的部分是待补充内容的占位。"
+
+#: ../../source/index.md:24
+msgid "Where to start"
+msgstr "从哪里开始"
+
+#: ../../source/index.md:26
+msgid ""
+"New to CNETA? Start with [Installation](installation/index.md), then the "
+"[Quick start](quickstart/index.md)."
+msgstr "第一次使用 CNETA？先看[安装](installation/index.md)，再看[快速上手](quickstart/index.md)。"
+
+#: ../../source/index.md:28
+msgid "Chaining the tools together? See [Workflows](workflows/index.md)."
+msgstr "要把几个工具串起来用？见[工作流程](workflows/index.md)。"
+
+#: ../../source/index.md:29
+msgid "Contributing code? See the [Developer docs](developer-guide/index.md)."
+msgstr "要贡献代码？见[开发者文档](developer-guide/index.md)。"
+
+#: ../../source/index.md:31
+msgid "Project status"
+msgstr "项目状态"
+
+#: ../../source/index.md:33
+msgid ""
+"`cnets` and `cnetml` are the mature, published tools; `cnetmcmc` is under "
+"active development and not yet comprehensively tested. This documentation "
+"tracks CNETA version 2.0."
+msgstr "`cnets` 和 `cnetml` 是成熟、已发表的工具；`cnetmcmc` 仍在开发中，尚未经过全面测试。本文档对应 CNETA 2.0 版。"
+
+#: ../../source/index.md:37
+msgid "If you use CNETA, please cite:"
+msgstr "如果使用 CNETA，请引用："
+
+#: ../../source/index.md:39
+msgid ""
+"Lu B, Curtius K, Graham TA, Yang Z, Barnes CP. CNETML: maximum likelihood "
+"inference of phylogeny from copy number profiles of multiple samples. "
+"*Genome Biol* 24, 144 (2023). "
+"[doi:10.1186/s13059-023-02983-0](https://doi.org/10.1186/s13059-023-02983-0)"
+msgstr ""
+

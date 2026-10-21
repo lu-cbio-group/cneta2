@@ -1,0 +1,35 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/user-guide/index.md:1
+msgid "User guide"
+msgstr "使用指南"
+
+#: ../../source/user-guide/index.md:3
+msgid ""
+"Per-tool reference: modes, options, inputs, outputs, and examples for each "
+"of the three programs, plus the R/Python scripts around them. New to "
+"`cneta`? Start with [Quick start](../quickstart/index.md) first — this page "
+"is for once you're past that and need the details for a specific tool."
+msgstr ""
+"各工具的说明：三个程序各自的运行模式、参数、输入、输出和示例，以及配套的 R/Python 脚本。第一次使用 "
+"`cneta`？请先看[快速上手](../quickstart/index.md)；本部分适合在那之后查某个工具的细节。"
+

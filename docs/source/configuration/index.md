@@ -13,8 +13,15 @@ by purpose rather than as a flat alphabetical list:
 - [`cnetmcmc` options](../user-guide/cnetmcmc.md#options) — reference
   tree/init tree, and everything read from `config/cnet_mcmc.cfg`.
 
-There is no single global options reference; each binary parses its own
-set independently.
+For every `cnets` and `cnetml` option in one table, with short forms,
+defaults and accepted values, see the
+[Command-line options reference](options.md).
+
+```{toctree}
+:hidden:
+
+options
+```
 
 ## Run scripts and config files
 

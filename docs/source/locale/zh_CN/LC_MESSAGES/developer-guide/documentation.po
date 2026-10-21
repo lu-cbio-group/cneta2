@@ -1,0 +1,305 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:43+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/developer-guide/documentation.md:1
+msgid "Working on the documentation"
+msgstr "文档维护"
+
+#: ../../source/developer-guide/documentation.md:3
+msgid "Project structure"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:5
+msgid "**`docs/source/`** — documentation source files (Markdown, MyST flavour)"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:6
+msgid "**`docs/source/index.md`** — homepage and root `toctree`"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:7
+msgid ""
+"**`docs/source/<section>/`** — pages grouped by topic (`installation/`, "
+"`user-guide/`, `developer-guide/`, ...)"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:9
+msgid "**`docs/source/conf.py`** — Sphinx configuration"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:10
+msgid "**`docs/source/_static/`** — static assets"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:11
+msgid ""
+"**`docs/source/_templates/`** — theme template overrides (the language "
+"switcher)"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:13
+msgid ""
+"**`docs/source/locale/`** — translations, one `.po` file per page (see "
+"[Translations](#translations))"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:15
+msgid "**`docs/build/`** — generated HTML/Doxygen XML (gitignored, not committed)"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:16
+msgid "**`docs/Makefile`** — build automation (see [Everyday use](#everyday-use))"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:17
+msgid ""
+"**`docs/environment.yml`**, **`docs/requirements.txt`** — conda/pip "
+"dependencies; `requirements.txt` is the single source of truth, pulled in by"
+" `environment.yml` via pip"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:20
+msgid "**`docs/Doxyfile`** — Doxygen config for the C++ API pages"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:21
+msgid ""
+"**`.github/workflows/docs.yml`** — CI: builds on every pull request, deploys"
+" to GitHub Pages on merge to `main`"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:23
+msgid ""
+"**`assets/logo/`** — logo: TikZ source, build script and exported "
+"SVG/PNG/favicon (see its `README.md`); used by this file and the docs"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:26
+msgid "One-time setup"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:28
+msgid ""
+"Python packages are listed once, in `docs/requirements.txt`. Everything "
+"below installs that same set."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md
+msgid "conda (recommended)"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:40
+msgid ""
+"`environment.yml` pulls in `requirements.txt` via pip, and additionally "
+"provides `doxygen`, `graphviz`, and `make`."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md
+msgid "venv"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:52
+msgid ""
+"Install `doxygen` and `graphviz` separately — `brew install doxygen "
+"graphviz` or `apt install doxygen graphviz`."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md
+msgid "uv"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:63
+msgid "Install `doxygen` and `graphviz` separately, as above."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:66
+msgid "Adding a dependency"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:68
+msgid "Add it to `docs/requirements.txt`."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:69
+msgid "Add it to `extensions` in `docs/source/conf.py` if it is a Sphinx extension."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:71
+msgid "Update your local environment:"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:77
+msgid ""
+"Do not add Python packages to `environment.yml` directly — that would split "
+"the source of truth and quietly break the venv and uv workflows."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:80
+msgid "Everyday use"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:93
+msgid "If `make strict` passes locally, CI will pass."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:95
+msgid ""
+"The published site has one directory per language (`en/`, `zh_CN/`); the "
+"site root redirects to `en/`. `make live` serves a single language, so the "
+"language switch links only work under `make html-all serve`."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:99
+msgid "Writing pages"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:101
+msgid "Pages are Markdown (MyST). Ordinary Markdown works; a few extras are enabled:"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:104
+#, python-brace-format
+msgid "**Admonitions** — `:::{note}` … `:::`"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:105
+msgid "**Definition lists** — a term on one line, `: definition` on the next"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:106
+msgid "**Maths** — `$\\lambda$` inline"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:107
+msgid ""
+"**Cross-references** — relative links such as `[Quick "
+"start](../quickstart/index.md)`"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:110
+msgid "Mermaid diagrams"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:112
+msgid "Write a normal fenced block:"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:121
+msgid ""
+"`myst_fence_as_directive` in `conf.py` turns these into rendered diagrams, "
+"so the same file displays correctly both here and on GitHub. Keep diagrams "
+"in text form rather than exporting images."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:125
+msgid "Adding a page"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:127
+msgid "Create the `.md` file in the appropriate section directory."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:128
+msgid "Add it to the `toctree` in that section's `index.md`."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:130
+msgid ""
+"A page not listed in any `toctree` triggers a warning, which fails the "
+"strict build."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:133
+msgid "Translations"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:135
+msgid ""
+"The English Markdown pages are the only source. Translations are kept as "
+"gettext `.po` files in `docs/source/locale/<language>/LC_MESSAGES/`, one per"
+" page, each pairing an English string (`msgid`) with its translation "
+"(`msgstr`). A string with an empty `msgstr` is shown in English, so a page "
+"can be translated piece by piece."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:141
+msgid "After changing English pages:"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:147
+msgid ""
+"New strings arrive untranslated; strings whose English changed are marked "
+"`#, fuzzy` and shown in English until the translation is updated and the "
+"`fuzzy` line removed. Then fill in `msgstr` and check with `make -C docs "
+"live-zh`."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:152
+msgid ""
+"Keep the Markdown syntax of the English string in the translation: inline "
+"code, links (with the same targets) and emphasis. A link missing from a "
+"translation fails the strict build."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:156
+msgid ""
+"To add a language, add its code to `TRANSLATIONS` in `docs/Makefile`, a "
+"build target like `html-zh`, and an entry in `_templates/sidebar/lang-"
+"switch.html`."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:160
+msgid "C++ API pages"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:162
+msgid ""
+"Doxygen extracts comments from `code/` (excluding the vendored `gzstream/`, "
+"`lbfgsb/`, and `matexp/` directories) into XML, which Breathe renders in "
+"`api/cpp.md`. Configuration lives in `docs/Doxyfile`."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:166
+msgid "To document a function so it appears there:"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:177
+msgid "Conventions"
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:179
+msgid "Prefer Markdown over reStructuredText."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:180
+msgid "Keep examples runnable and repository-local."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:181
+msgid "Update documentation in the same pull request as the code it describes."
+msgstr ""
+
+#: ../../source/developer-guide/documentation.md:182
+msgid ""
+"Scientific content is owned by the research team; infrastructure, build/test"
+" guidance, and API generation by the RSE team."
+msgstr ""
+

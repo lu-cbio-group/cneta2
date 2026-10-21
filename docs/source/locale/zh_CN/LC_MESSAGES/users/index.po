@@ -1,0 +1,43 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/users/index.md:1
+msgid "User docs"
+msgstr "用户文档"
+
+#: ../../source/users/index.md:3
+msgid ""
+"Everything for building `cneta` and running `cnets`, `cnetml`, and "
+"`cnetmcmc`: installing the tools, a minimal end-to-end walkthrough, per-tool"
+" option and I/O reference, how the tools chain together, file formats, and "
+"configuration patterns."
+msgstr ""
+"构建 `cneta` 以及运行 `cnets`、`cnetml`、`cnetmcmc` "
+"所需的全部内容：安装、最简完整示例、各工具的参数和输入输出说明、工具之间如何衔接、文件格式和配置方式。"
+
+#: ../../source/users/index.md:8
+msgid ""
+"New to CNETA? Start with [Installation](../installation/index.md), then the "
+"[Quick start](../quickstart/index.md)."
+msgstr ""
+"第一次使用 "
+"CNETA？先看[安装](../installation/index.md)，再看[快速上手](../quickstart/index.md)。"
+

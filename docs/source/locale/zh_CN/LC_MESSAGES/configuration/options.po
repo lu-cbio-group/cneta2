@@ -1,0 +1,1425 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/configuration/options.md:1
+msgid "Command-line options reference"
+msgstr "命令行参数参考"
+
+#: ../../source/configuration/options.md:3
+msgid ""
+"Every command-line option of `cnets` and `cnetml`, with its short form, "
+"default value, accepted values and meaning. Defaults and accepted values are"
+" taken from the `boost::program_options` definitions in `code/cnets.cpp` and"
+" `code/cnetml.cpp`. For an explanation of *why* you would pick one setting "
+"over another, see each tool's User guide page ([`cnets`](../user-"
+"guide/cnets.md#options), [`cnetml`](../user-guide/cnetml.md#options)). "
+"`cnetmcmc` reads most of its settings from a config file; see its [Options"
+"](../user-guide/cnetmcmc.md#options)."
+msgstr ""
+"`cnets` 和 `cnetml` 的全部命令行参数，包括简写、默认值、可选值和含义。默认值和可选值以 `code/cnets.cpp` 与 "
+"`code/cnetml.cpp` 中的 `boost::program_options` 定义为准。不同设置之间*如何选择*，见各工具的 User "
+"guide 页面（[`cnets`](../user-guide/cnets.md#options)、[`cnetml`](../user-"
+"guide/cnetml.md#options)）。`cnetmcmc` 的大部分设置从配置文件读取，见其 [Options](../user-"
+"guide/cnetmcmc.md#options)。"
+
+#: ../../source/configuration/options.md:13
+msgid ""
+"Usage: `bin/cnets --name value` or `bin/cnets -x value`, for example "
+"`bin/cnets -o sim/ --nregion 5 --bsr_mode 3 --seed 1`. Run any tool with "
+"`--help` to print its full option list."
+msgstr ""
+"用法：`bin/cnets --参数名 值` 或 `bin/cnets -简写 值`，例如 `bin/cnets -o sim/ --nregion 5"
+" --bsr_mode 3 --seed 1`。任一工具加 `--help` 可打印全部参数。"
+
+#: ../../source/configuration/options.md:17
+msgid "On/off switches take an integer: `0` = no, `1` = yes."
+msgstr "开关类参数用整数表示：`0` = 否，`1` = 是。"
+
+#: ../../source/configuration/options.md:19
+msgid "`cnets` (simulation)"
+msgstr "`cnets`（模拟）"
+
+#: ../../source/configuration/options.md:21
+msgid "General and required"
+msgstr "通用 / 必填"
+
+#: ../../source/configuration/options.md
+msgid "Option"
+msgstr "参数"
+
+#: ../../source/configuration/options.md
+msgid "Short"
+msgstr "简写"
+
+#: ../../source/configuration/options.md
+msgid "Default"
+msgstr "默认"
+
+#: ../../source/configuration/options.md
+msgid "Values"
+msgstr "可选值"
+
+#: ../../source/configuration/options.md
+msgid "Description"
+msgstr "含义"
+
+#: ../../source/configuration/options.md
+msgid "`--help`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-h`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "—"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Print all options"
+msgstr "打印全部参数"
+
+#: ../../source/configuration/options.md
+msgid "`--version`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-v`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Print version"
+msgstr "打印版本"
+
+#: ../../source/configuration/options.md
+msgid "`--odir`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-o`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "**required**"
+msgstr "**必填**"
+
+#: ../../source/configuration/options.md
+msgid "directory path"
+msgstr "目录路径"
+
+#: ../../source/configuration/options.md
+msgid "Output directory (trailing `/` optional)"
+msgstr "输出目录（末尾 `/` 可省略）"
+
+#: ../../source/configuration/options.md:29
+msgid "Run mode and model"
+msgstr "运行方式与模型"
+
+#: ../../source/configuration/options.md
+msgid "`--mode`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0 / 1 / 2–4"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"0: simulate the genome in fixed-size bins (4401 bins of 500 Kbp by default);"
+" 1: simulate segments of variable size, each site being a final segment; "
+"2–4: internal tests"
+msgstr ""
+"0：基因组按固定大小的 bin 模拟（默认 4401 个 500 Kbp 的 bin）；1：按可变长度的 segment 模拟，每个 site "
+"即一个最终 segment；2–4：内部测试"
+
+#: ../../source/configuration/options.md
+msgid "`--method`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0 / 1"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"0: simulate waiting times (supports all event types); 1: simulate sequences "
+"directly at branch ends from the substitution model (duplication/deletion "
+"only; forces `mode=1`)"
+msgstr "0：模拟等待时间（支持全部事件类型）；1：按替换模型直接在分支末端模拟序列（只支持 duplication/deletion，且强制 `mode=1`）"
+
+#: ../../source/configuration/options.md
+msgid "`--model`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-d`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "2"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0 / 1 / 2 / 3"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Model of evolution. 0: Mk; 1: one-step bounded (total); 2: one-step bounded "
+"(haplotype-specific); 3: infinite sites (Poisson process)"
+msgstr ""
+"演化模型。0：Mk；1：one-step bounded（total）；2：one-step bounded（haplotype-"
+"specific）；3：infinite sites（Poisson process）"
+
+#: ../../source/configuration/options.md
+msgid "`--nsim`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-n`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "3"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "positive integer"
+msgstr "正整数"
+
+#: ../../source/configuration/options.md
+msgid ""
+"Number of independent multi-region datasets to simulate (output `sim-data-1`"
+" … `sim-data-N`)"
+msgstr "模拟的独立多区域数据集套数（输出 `sim-data-1` … `sim-data-N`）"
+
+#: ../../source/configuration/options.md
+msgid "`--nregion`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-r`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "5"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Number of samples (regions) per dataset, i.e. the number of tips"
+msgstr "每套数据的样本（区域）数，即树的 tip 数"
+
+#: ../../source/configuration/options.md
+msgid "`--tree_file`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "\"\""
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "file path"
+msgstr "文件路径"
+
+#: ../../source/configuration/options.md
+msgid ""
+"Simulate mutations along this tree; if empty, a random coalescent tree is "
+"generated"
+msgstr "沿该树模拟突变；为空则随机生成 coalescent 树"
+
+#: ../../source/configuration/options.md:40
+msgid "Tree generation (random coalescent tree)"
+msgstr "树的生成（随机 coalescent 树）"
+
+#: ../../source/configuration/options.md
+msgid "`--epop`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-e`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Effective population size Ne of cell populations, used to convert coalescent"
+" time to years"
+msgstr "细胞群的有效群体大小 Ne，用于把 coalescent 时间换算成年"
+
+#: ../../source/configuration/options.md
+msgid "`--gtime`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0.002739726"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "> 0"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Generation time in years (default = 1 day)"
+msgstr "一代的时长（年），默认 = 1 天"
+
+#: ../../source/configuration/options.md
+msgid "`--beta`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-b`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0.0"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "≥ 0"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Population growth rate; > 0 simulates exponential growth"
+msgstr "群体增长率；> 0 时模拟指数增长"
+
+#: ../../source/configuration/options.md
+msgid "`--age`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-a`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "100"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Patient age in years"
+msgstr "患者年龄（年）"
+
+#: ../../source/configuration/options.md
+msgid "`--constrained`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "1"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"1: scale initial branch lengths by `--age` so that the tree height is below "
+"the patient age"
+msgstr "1：按 `--age` 缩放初始枝长，使树高小于患者年龄"
+
+#: ../../source/configuration/options.md
+msgid "`--tdiff`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-t`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Baseline sampling-time difference; if > 0, each sample's time = earliest "
+"sample + a random multiple of `tdiff`"
+msgstr "采样时间差基准；> 0 时，各样本采样时间 = 最早样本 + `tdiff` 的随机倍数"
+
+#: ../../source/configuration/options.md
+msgid "`--stime`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "comma-separated numbers"
+msgstr "逗号分隔的数值"
+
+#: ../../source/configuration/options.md
+msgid ""
+"Sampling time of each sample in years, with the most recent sample at 0; "
+"format `t1,t2,…,tN`"
+msgstr "每个样本的采样时间（年，最新样本记为 0），格式 `t1,t2,…,tN`"
+
+#: ../../source/configuration/options.md
+msgid "`--tree_seed`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "non-negative integer"
+msgstr "非负整数"
+
+#: ../../source/configuration/options.md
+msgid ""
+"Seed of a separate generator used only to draw trees. 0: share the `--seed` "
+"stream. Use it to get the same trees in runs that differ only in later "
+"settings such as `--bsr_mode`"
+msgstr "只用于生成树的独立随机数生成器的种子。0：与 `--seed` 共用同一随机数流。用途：只改 `--bsr_mode` 等树生成之后的设置时，得到相同的树"
+
+#: ../../source/configuration/options.md:53
+msgid "Genome and sites"
+msgstr "基因组与 site"
+
+#: ../../source/configuration/options.md
+msgid "`--cn_max`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "4"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Maximum copy number of a site"
+msgstr "单个 site 的最大拷贝数"
+
+#: ../../source/configuration/options.md
+msgid "`--seg_max`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "≥ number of chromosomes"
+msgstr "≥ 染色体数"
+
+#: ../../source/configuration/options.md
+msgid "Maximum number of sites to simulate (used when `mode=1`)"
+msgstr "最多模拟的 site 数（`mode=1` 时使用）"
+
+#: ../../source/configuration/options.md
+msgid "`--fix_nseg`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"1: number of sites fixed at `seg_max`; 0: drawn at random between 0.2 and "
+"0.8 × `seg_max`"
+msgstr "1：site 数固定为 `seg_max`；0：在 0.2–0.8 × `seg_max` 之间随机抽取"
+
+#: ../../source/configuration/options.md:61
+msgid "Mutation rates and sizes"
+msgstr "突变速率与大小"
+
+#: ../../source/configuration/options.md:63
+msgid ""
+"All rates are per year. Set a rate to 0 to leave that event type out of the "
+"simulation (`cnets` has no `--cn_type` option)."
+msgstr "速率单位均为每年。某类事件速率设为 0 即不模拟该事件（`cnets` 没有 `--cn_type` 参数）。"
+
+#: ../../source/configuration/options.md
+msgid "`--dup_rate`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0.001"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Site-level duplication rate (per haplotype per site per year)"
+msgstr "site 级 duplication 速率（每 haplotype 每 site 每年）"
+
+#: ../../source/configuration/options.md
+msgid "`--del_rate`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Site-level deletion rate (per haplotype per site per year)"
+msgstr "site 级 deletion 速率（每 haplotype 每 site 每年）"
+
+#: ../../source/configuration/options.md
+msgid "`--chr_gain`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Chromosome gain rate (per haplotype per chromosome per year)"
+msgstr "染色体 gain 速率（每 haplotype 每染色体每年）"
+
+#: ../../source/configuration/options.md
+msgid "`--chr_loss`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Chromosome loss rate (per haplotype per chromosome per year)"
+msgstr "染色体 loss 速率（每 haplotype 每染色体每年）"
+
+#: ../../source/configuration/options.md
+msgid "`--wgd`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Whole-genome doubling rate (per year)"
+msgstr "全基因组加倍（WGD）速率（每年）"
+
+#: ../../source/configuration/options.md
+msgid "`--dup_size`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Mean duplication size in bins; forced to 1 when `mode=1`"
+msgstr "duplication 平均长度（bin 数）；`mode=1` 时强制为 1"
+
+#: ../../source/configuration/options.md
+msgid "`--del_size`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Mean deletion size in bins; forced to 1 when `mode=1`"
+msgstr "deletion 平均长度（bin 数）；`mode=1` 时强制为 1"
+
+#: ../../source/configuration/options.md
+msgid "`--error_rate`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0–1"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Fraction of sites per sample whose copy number is randomly altered"
+msgstr "每个样本中拷贝数被随机改错的 site 比例"
+
+#: ../../source/configuration/options.md:77
+msgid "Branch-specific rates"
+msgstr "分支特异速率"
+
+#: ../../source/configuration/options.md
+msgid "`--bsr_mode`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"0: one rate on all branches; 1: one shared multiplier per branch (all event "
+"types); 2: independent rate per branch and event type; 3: random local clock"
+" (rates inherited top-down, changing at each node with probability `bsr_p`)"
+msgstr ""
+"0：所有分支同一速率；1：每条分支一个共享 multiplier（所有事件类型共用）；2：每条分支、每种事件类型各自独立速率；3：random "
+"local clock（速率自上而下继承，每个节点以概率 `bsr_p` 改变）"
+
+#: ../../source/configuration/options.md
+msgid "`--bsr_dist`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Distribution of the multipliers. 0: log-normal; 1: gamma"
+msgstr "multiplier 的抽样分布。0：lognormal；1：gamma"
+
+#: ../../source/configuration/options.md
+msgid "`--bsr_variance`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0.25"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Target variance of multiplier m (E[m] = 1). Log-normal: σ = √log(1 + var), ζ"
+" = −σ²/2; gamma: shape = 1/var, scale = var"
+msgstr ""
+"multiplier m 的目标方差（E[m] = 1）。lognormal：σ = √log(1 + var)，ζ = "
+"−σ²/2；gamma：shape = 1/var，scale = var"
+
+#: ../../source/configuration/options.md
+msgid "`--bsr_p`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0.3"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "(0, 1)"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`bsr_mode=3` only: probability of a rate change at each node"
+msgstr "仅 `bsr_mode=3`：每个节点发生速率改变的概率"
+
+#: ../../source/configuration/options.md:86
+msgid "Output"
+msgstr "输出"
+
+#: ../../source/configuration/options.md
+msgid "`--prefix`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-p`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "string"
+msgstr "字符串"
+
+#: ../../source/configuration/options.md
+msgid "Output file prefix; `sim-data-N` if empty"
+msgstr "输出文件前缀；为空则为 `sim-data-N`"
+
+#: ../../source/configuration/options.md
+msgid "`--print_allele`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Write haplotype-specific copy numbers"
+msgstr "输出 haplotype-specific 拷贝数"
+
+#: ../../source/configuration/options.md
+msgid "`--print_mut`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Write the list of mutations"
+msgstr "输出突变列表"
+
+#: ../../source/configuration/options.md
+msgid "`--print_nex`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Write the tree in NEXUS format"
+msgstr "输出 NEXUS 格式的树"
+
+#: ../../source/configuration/options.md
+msgid "`--print_relative`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Write relative total copy numbers, as in CGHcall: −2 double deletion, −1 "
+"single deletion, 0 normal, 1 gain, 2 double gain"
+msgstr "输出相对总拷贝数（类似 CGHcall）：−2 双缺失，−1 单缺失，0 正常，1 gain，2 双 gain"
+
+#: ../../source/configuration/options.md
+msgid "`--use_nwgd`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Normalise by the known number of WGDs when computing relative copy numbers "
+"(with `print_relative=1`)"
+msgstr "换算相对拷贝数时，用已知 WGD 次数做归一化（`print_relative=1` 时有效）"
+
+#: ../../source/configuration/options.md
+msgid "`--random_round`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Use random rounding when computing relative copy numbers (with "
+"`print_relative=1`)"
+msgstr "换算相对拷贝数时使用随机舍入（`print_relative=1` 时有效）"
+
+#: ../../source/configuration/options.md:98
+#: ../../source/configuration/options.md:230
+msgid "Other"
+msgstr "其他"
+
+#: ../../source/configuration/options.md
+msgid "`--seed`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Random seed; 0 = generated automatically"
+msgstr "随机种子；0 = 自动生成"
+
+#: ../../source/configuration/options.md
+msgid "`--verbose`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0 / 1 / 2"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0: default; 1: debug; 2: debug with tree details"
+msgstr "0：默认；1：debug；2：debug 并打印树的细节"
+
+#: ../../source/configuration/options.md:105
+msgid "Notes on `cnets` behaviour"
+msgstr "`cnets` 行为说明"
+
+#: ../../source/configuration/options.md:107
+msgid "With `method=0` (waiting times), `model=1` is changed to `model=2`."
+msgstr "`method=0`（等待时间）下，`model=1` 会被改为 `model=2`。"
+
+#: ../../source/configuration/options.md:108
+msgid ""
+"The number of erroneous sites is round(number of sites × `error_rate`), and "
+"the number of sites is only set when `mode=1`. With `mode=0`, `--error_rate`"
+" therefore has no effect."
+msgstr ""
+"加错的 site 数 = round(site 数 × `error_rate`)，而 site 数只在 `mode=1` 时赋值，所以 "
+"`mode=0` 下 `--error_rate` 不生效。"
+
+#: ../../source/configuration/options.md:111
+msgid "`--stime` values are read as integers; fractional years are truncated."
+msgstr "`--stime` 按整数读取，小数年份会被截断。"
+
+#: ../../source/configuration/options.md:112
+msgid "`cnets` exits if `seg_max` is smaller than the number of chromosomes."
+msgstr "`seg_max` 小于染色体数时，`cnets` 直接退出。"
+
+#: ../../source/configuration/options.md:113
+msgid ""
+"`bin/run-cnets.sh` names the tree-height constraint `cons`; the `cnets` flag"
+" is `--constrained`."
+msgstr "`bin/run-cnets.sh` 中树高约束的变量名是 `cons`，对应的 `cnets` 参数是 `--constrained`。"
+
+#: ../../source/configuration/options.md:116
+msgid "`cnetml` (maximum-likelihood inference)"
+msgstr "`cnetml`（最大似然推断）"
+
+#: ../../source/configuration/options.md:118
+msgid "General, input and output"
+msgstr "通用 / 输入输出"
+
+#: ../../source/configuration/options.md
+msgid "`--cfile`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-c`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Input copy-number file (e.g. `*-cn.txt.gz` / `*-haplotype-cn.txt.gz` from "
+"`cnets`). A missing file can cause a segmentation fault"
+msgstr ""
+"输入拷贝数文件（如 `cnets` 输出的 `*-cn.txt.gz` / `*-haplotype-cn.txt.gz`）。文件不存在可能导致 "
+"segmentation fault"
+
+#: ../../source/configuration/options.md
+msgid "`--tfile`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Sampling-time file (e.g. `*-rel-times.txt`); if empty, all samples have time"
+" 0"
+msgstr "样本采样时间文件（如 `*-rel-times.txt`）；为空则所有样本时间为 0"
+
+#: ../../source/configuration/options.md
+msgid "`--meta_file`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Meta information: known number of WGDs (required if the file is given), "
+"optionally per-chromosome gain/loss and per-site duplication/deletion"
+msgstr "元信息：已知 WGD 次数（提供该文件时必须有），可选各染色体 gain/loss 和各 site duplication/deletion"
+
+#: ../../source/configuration/options.md
+msgid "`--nsample`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-s`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Number of samples; must match the input file"
+msgstr "样本数，须与输入文件一致"
+
+#: ../../source/configuration/options.md
+msgid "Given tree (needed for `mode` 1–4)"
+msgstr "给定的树（`mode` 1–4 需要）"
+
+#: ../../source/configuration/options.md
+msgid "`--ofile`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`maxL-tree.txt`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Output maximum-likelihood tree; other outputs are `<ofile>.nex`, "
+"`.nmut.nex`, `.summary.txt`, `.edge_rates.txt`, etc."
+msgstr "输出的最大似然树；其他输出为 `<ofile>.nex`、`.nmut.nex`、`.summary.txt`、`.edge_rates.txt` 等"
+
+#: ../../source/configuration/options.md
+msgid "`--seg_file`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Write the preprocessed copy-number matrix used for tree building"
+msgstr "输出预处理后用于建树的拷贝数矩阵"
+
+#: ../../source/configuration/options.md:132
+msgid "Run mode"
+msgstr "运行模式"
+
+#: ../../source/configuration/options.md
+msgid "0–5"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"0: infer the ML tree from copy numbers; 1: test on example data; 2: "
+"likelihood of a given tree with branch lengths; 3: given topology, optimise "
+"branch lengths (and rates) for the maximum likelihood; 4: infer ancestral "
+"states of a given tree; 5: write the segment file and exit"
+msgstr ""
+"0：从拷贝数推断 ML "
+"树；1：在示例数据上测试；2：计算给定树（含枝长）的似然；3：给定拓扑，优化枝长（和速率）求最大似然；4：推断给定树的祖先状态；5：只生成 "
+"segment 文件后退出"
+
+#: ../../source/configuration/options.md
+msgid "`--bootstrap`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Bootstrap resampling of sites (for mode 0 / 3)"
+msgstr "对 site 做 bootstrap 重抽样（用于 mode 0 / 3）"
+
+#: ../../source/configuration/options.md:139
+msgid "Model and constraints"
+msgstr "演化模型与约束"
+
+#: ../../source/configuration/options.md
+msgid ""
+"0: Mk (deprecated); 1: one-step bounded, total (deprecated); 2: one-step "
+"bounded, haplotype-specific; 3: independent Markov chains (recommended for "
+"data with chromosome gain/loss and WGD)"
+msgstr ""
+"0：Mk（已弃用）；1：one-step bounded total（已弃用）；2：one-step bounded haplotype-"
+"specific；3：independent Markov chains（数据含染色体 gain/loss 和 WGD 时推荐）"
+
+#: ../../source/configuration/options.md
+msgid ""
+"Branch-length constraint. 0: none; 1: fixed total time (constrained by age "
+"and sampling times)"
+msgstr "枝长约束。0：无；1：总时间固定（受年龄和采样时间约束）"
+
+#: ../../source/configuration/options.md
+msgid "`--estmu`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-u`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"0: rates fixed at the input values; 1: estimate a constant mutation rate. "
+"Reliable only with `constrained=1` and differing sampling times"
+msgstr "0：速率固定为输入值；1：估计（常数）突变速率。需要 `constrained=1` 且样本采样时间不同才可靠"
+
+#: ../../source/configuration/options.md
+msgid ""
+"Branch-specific rate inference. 0: constant; 1: one shared multiplier per "
+"branch; 2: independent rate per branch and event type; 3: random local clock"
+" (ML-RLC)"
+msgstr ""
+"分支特异速率推断。0：常数；1：每条分支一个共享 multiplier；2：每条分支、每种事件类型各自独立速率；3：random local clock"
+"（ML-RLC）"
+
+#: ../../source/configuration/options.md
+msgid "`--optim`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Optimiser. 0: Simplex; 1: L-BFGS-B"
+msgstr "优化方法。0：Simplex；1：L-BFGS-B"
+
+#: ../../source/configuration/options.md
+msgid "`--cn_type`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "**no default**"
+msgstr "**无默认值**"
+
+#: ../../source/configuration/options.md
+msgid "0–4"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Event types whose rates are estimated. 0: segment level only (dup/del); 1: "
+"chromosome gain/loss + WGD; 2: dup/del + WGD; 3: dup/del + chromosome "
+"gain/loss; 4: all. **Uninitialised if omitted — always set it explicitly**"
+msgstr ""
+"估计哪些事件类型的速率。0：仅 segment 级（dup/del）；1：染色体 gain/loss + WGD；2：dup/del + "
+"WGD；3：dup/del + 染色体 gain/loss；4：全部。**未传入时变量未初始化，应始终显式指定**"
+
+#: ../../source/configuration/options.md:150
+msgid "Copy-number limits (rate-matrix dimensions)"
+msgstr "拷贝数上限（速率矩阵维度）"
+
+#: ../../source/configuration/options.md
+msgid "Maximum copy number allowed by the bounded models"
+msgstr "bounded 模型允许的最大拷贝数"
+
+#: ../../source/configuration/options.md
+msgid "`--max_wgd`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Maximum number of WGDs (WGD rate-matrix dimension, model 3)"
+msgstr "允许的最大 WGD 次数（WGD 速率矩阵维度，model 3）"
+
+#: ../../source/configuration/options.md
+msgid "`--max_chr_change_haplotype`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Maximum chromosome gains/losses per haplotype (model 3)"
+msgstr "每个 haplotype 允许的最大染色体 gain/loss 次数（model 3）"
+
+#: ../../source/configuration/options.md
+msgid "`--max_site_change_haplotype`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Maximum site duplications/deletions per haplotype (model 3). Too low gives "
+"an incorrect likelihood; too high slows computation"
+msgstr "每个 haplotype 允许的最大 site duplication/deletion 次数（model 3）。设得太小似然不正确，太大计算慢"
+
+#: ../../source/configuration/options.md
+msgid "`--m_max`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Maximum segment copies before chromosome-level events (currently unused; set"
+" to 0 when `cn_type=2`)"
+msgstr "染色体级事件之前 segment 的最大拷贝数（目前未使用；`cn_type=2` 时被置为 0）"
+
+#: ../../source/configuration/options.md:160
+msgid "Input data type"
+msgstr "输入数据类型"
+
+#: ../../source/configuration/options.md
+msgid "`--is_total`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Input is total copy number (0 = haplotype-specific)"
+msgstr "输入是否为 total 拷贝数（0 = haplotype-specific）"
+
+#: ../../source/configuration/options.md
+msgid "`--is_rcn`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Input is relative copy number; if 1, `cn_type` is forced to 0"
+msgstr "输入是否为相对拷贝数；为 1 时 `cn_type` 被强制改为 0"
+
+#: ../../source/configuration/options.md
+msgid "`--is_bin`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Input is given per bin. 1: merge consecutive identical bins; 0: read as is"
+msgstr "输入是否按 bin 给出。1：合并相邻相同的 bin；0：按原样读取"
+
+#: ../../source/configuration/options.md
+msgid "`--incl_all`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Use all input segments, including invariant sites. With `is_bin=0` and "
+"`incl_all=1`, `correct_bias` is forced to 0"
+msgstr "是否用全部输入 segment（含不变 site）。`is_bin=0` 且 `incl_all=1` 时 `correct_bias` 被强制改为 0"
+
+#: ../../source/configuration/options.md:169
+msgid "Likelihood computation"
+msgstr "似然计算"
+
+#: ../../source/configuration/options.md
+msgid "`--use_repeat`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Merge repeated site patterns to speed up the likelihood"
+msgstr "合并重复的 site pattern 以加速似然计算"
+
+#: ../../source/configuration/options.md
+msgid "`--correct_bias`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Apply acquisition-bias correction when invariant sites are excluded"
+msgstr "排除不变 site 时做 acquisition bias 校正"
+
+#: ../../source/configuration/options.md:176
+msgid "Ancestral states (mode 4)"
+msgstr "祖先状态（mode 4）"
+
+#: ../../source/configuration/options.md
+msgid "`--infer_marginal_state`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Infer the marginal ancestral state of the MRCA"
+msgstr "推断 MRCA 的边际祖先状态"
+
+#: ../../source/configuration/options.md
+msgid "`--infer_joint_state`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Infer the joint ancestral states of all internal nodes"
+msgstr "推断所有内部节点的联合祖先状态"
+
+#: ../../source/configuration/options.md:183
+msgid "Initial trees"
+msgstr "初始树"
+
+#: ../../source/configuration/options.md
+msgid "`--init_tree`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Initial tree method. 0: random coalescent tree; 1: maximum parsimony tree"
+msgstr "初始树构建方法。0：随机 coalescent 树；1：最大简约树"
+
+#: ../../source/configuration/options.md
+msgid "`--dir_itrees`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Directory of user-supplied initial trees (recommended for large trees, to "
+"avoid local optima)"
+msgstr "用户提供的初始树所在目录（大树推荐使用，减少陷入局部最优）"
+
+#: ../../source/configuration/options.md
+msgid "Effective population size for random initial trees"
+msgstr "生成随机初始树用的有效群体大小"
+
+#: ../../source/configuration/options.md
+msgid ""
+"Generation time in years for random initial trees (differs from the `cnets` "
+"default)"
+msgstr "生成随机初始树用的世代时长（年），与 `cnets` 默认值不同"
+
+#: ../../source/configuration/options.md
+msgid "Population growth rate for random initial trees"
+msgstr "生成随机初始树用的群体增长率"
+
+#: ../../source/configuration/options.md:193
+msgid "Tree search and optimisation"
+msgstr "树搜索与优化"
+
+#: ../../source/configuration/options.md
+msgid "`--tree_search`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"0: genetic algorithm (slow, deprecated); 1: random-restart hill climbing (≥ "
+"5 samples); 2: exhaustive search (efficient for ≤ 7 samples)"
+msgstr "0：遗传算法（慢，已弃用）；1：随机重启爬山（≥ 5 个样本）；2：穷举（≤ 7 个样本时高效）"
+
+#: ../../source/configuration/options.md
+msgid "`--speed_nni`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Use reduced NNI during hill climbing"
+msgstr "爬山时使用简化 NNI"
+
+#: ../../source/configuration/options.md
+msgid "`--npop`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Genetic-algorithm population size, or maximum number of initial trees"
+msgstr "遗传算法种群大小，或初始树最大数量"
+
+#: ../../source/configuration/options.md
+msgid "`--ngen`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-g`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "50"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Genetic-algorithm generations, or maximum perturbations/optimisations per "
+"tree"
+msgstr "遗传算法代数，或单棵树最大扰动/优化次数"
+
+#: ../../source/configuration/options.md
+msgid "`--nstop`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "10"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Stop after this many rounds without improvement"
+msgstr "连续这么多次没有改进就停止"
+
+#: ../../source/configuration/options.md
+msgid "`--tolerance`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0.01"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Convergence tolerance of the optimiser"
+msgstr "优化收敛容差"
+
+#: ../../source/configuration/options.md
+msgid "`--miter`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-m`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "2000"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Maximum optimiser iterations"
+msgstr "优化最大迭代次数"
+
+#: ../../source/configuration/options.md
+msgid "`--loglh_epsilon`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Tolerance for treating two log-likelihoods as equal"
+msgstr "判断两个 log likelihood 相同的容差"
+
+#: ../../source/configuration/options.md
+msgid "`--ssize`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-z`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Initial step size for GSL optimisation"
+msgstr "GSL 优化的初始步长"
+
+#: ../../source/configuration/options.md
+msgid "`--scale_tobs`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "1.0"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Scale factor on the maximum sampling-time difference giving the lower bound "
+"of root age in constrained (L-BFGS-B) optimisation"
+msgstr "约束优化（L-BFGS-B）时，按最大采样时间差求根节点年龄下限的缩放因子"
+
+#: ../../source/configuration/options.md:208
+msgid "Mutation rates (initial or fixed values)"
+msgstr "突变速率（初值或固定值）"
+
+#: ../../source/configuration/options.md:210
+msgid ""
+"Fixed values when `estmu=0`; starting values when `estmu=1` or `bsr_mode>0`."
+" Units are not specified in the code."
+msgstr "`estmu=0` 时为固定值，`estmu=1` 或 `bsr_mode>0` 时为初值。代码中未注明单位。"
+
+#: ../../source/configuration/options.md
+msgid "`--mu`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`-x`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "0.02"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Overall mutation rate (overridden by 1 / number of sites under model 0)"
+msgstr "总突变速率（model 0 下被覆盖为 1 / site 数）"
+
+#: ../../source/configuration/options.md
+msgid "Duplication rate"
+msgstr "duplication 速率"
+
+#: ../../source/configuration/options.md
+msgid "Deletion rate"
+msgstr "deletion 速率"
+
+#: ../../source/configuration/options.md
+msgid "`--chr_gain_rate`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Chromosome gain rate"
+msgstr "染色体 gain 速率"
+
+#: ../../source/configuration/options.md
+msgid "`--chr_loss_rate`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Chromosome loss rate"
+msgstr "染色体 loss 速率"
+
+#: ../../source/configuration/options.md
+msgid "`--wgd_rate`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "WGD rate"
+msgstr "WGD 速率"
+
+#: ../../source/configuration/options.md:222
+msgid "Branch-specific rates (`bsr_mode > 0`)"
+msgstr "分支特异速率（`bsr_mode > 0`）"
+
+#: ../../source/configuration/options.md
+msgid "`--estimate_bsr0_first`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"1: calibrate the reference rates with `bsr_mode=0` first, then estimate per-"
+"branch multipliers relative to them; 0: skip calibration and estimate the "
+"root–LUCA branch's own rate jointly with the per-branch multipliers/shifts"
+msgstr ""
+"1：先按 `bsr_mode=0` 校准参考速率，再估计相对它的各分支 multiplier；0：不校准，把 root–LUCA 分支自身速率与各分支 "
+"multiplier/shift 联合估计"
+
+#: ../../source/configuration/options.md
+msgid "`--rlc_search_method`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"`bsr_mode=3` only: outer search over shift edges. 0: exhaustive over all "
+"subsets (small trees only); 1: stepwise greedy; 2: genetic algorithm (not "
+"implemented; exits with an error)"
+msgstr "仅 `bsr_mode=3`：shift edge 的外层搜索。0：穷举所有子集（仅适用于小树）；1：逐步贪心；2：遗传算法（未实现，传入即报错退出）"
+
+#: ../../source/configuration/options.md
+msgid "`--rlc_criterion`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`bsr_mode=3` only: model-selection criterion. 0: AIC; 1: BIC"
+msgstr "仅 `bsr_mode=3`：模型选择准则。0：AIC；1：BIC"
+
+#: ../../source/configuration/options.md
+msgid "0: default; 1: debug; > 1 prints more detail on the input data"
+msgstr "0：默认；1：debug；> 1 时打印更多输入数据细节"
+
+#: ../../source/configuration/options.md:237
+msgid "Option combinations checked by `cnetml`"
+msgstr "`cnetml` 参数组合检查"
+
+#: ../../source/configuration/options.md
+msgid "Condition"
+msgstr "条件"
+
+#: ../../source/configuration/options.md
+msgid "Result"
+msgstr "结果"
+
+#: ../../source/configuration/options.md
+msgid "`bsr_mode>0` and `optim≠1`"
+msgstr "`bsr_mode>0` 且 `optim≠1`"
+
+#: ../../source/configuration/options.md
+msgid "Exits with an error"
+msgstr "报错退出"
+
+#: ../../source/configuration/options.md
+msgid "`bsr_mode>0` and `estmu=1`"
+msgstr "`bsr_mode>0` 且 `estmu=1`"
+
+#: ../../source/configuration/options.md
+msgid "`bsr_mode>0` and `mode≠3`"
+msgstr "`bsr_mode>0` 且 `mode≠3`"
+
+#: ../../source/configuration/options.md
+msgid ""
+"Exits with an error (branch-specific rates are supported only for a given "
+"topology, mode 3)"
+msgstr "报错退出（分支特异速率只支持给定拓扑的 mode 3）"
+
+#: ../../source/configuration/options.md
+msgid "`rlc_search_method=2`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Exits with an error (not implemented)"
+msgstr "报错退出（未实现）"
+
+#: ../../source/configuration/options.md
+msgid "`optim>1` or `model>3`"
+msgstr "`optim>1` 或 `model>3`"
+
+#: ../../source/configuration/options.md
+msgid "Assertion failure"
+msgstr "assert 失败"
+
+#: ../../source/configuration/options.md
+msgid "`is_rcn=1`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`cn_type` set to 0"
+msgstr "`cn_type` 改为 0"
+
+#: ../../source/configuration/options.md
+msgid "`is_bin=0` and `incl_all=1`"
+msgstr "`is_bin=0` 且 `incl_all=1`"
+
+#: ../../source/configuration/options.md
+msgid "`correct_bias` set to 0"
+msgstr "`correct_bias` 改为 0"
+
+#: ../../source/configuration/options.md
+msgid "`model=0`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`mu` set to 1 / number of sites"
+msgstr "`mu` 改为 1 / site 数"
+
+#: ../../source/configuration/options.md
+msgid "`mode=5`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Writes `seg_file`, then exits"
+msgstr "写出 `seg_file` 后退出"
+
+#: ../../source/configuration/options.md:251
+msgid "Same name, different meaning in `cnets` and `cnetml`"
+msgstr "`cnets` 与 `cnetml` 同名或同简写但含义不同的参数"
+
+#: ../../source/configuration/options.md
+msgid "`cnets`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`cnetml`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`--beta`, population growth rate"
+msgstr "`--beta`，群体增长率"
+
+#: ../../source/configuration/options.md
+msgid "`--epop`, effective population size"
+msgstr "`--epop`，有效群体大小"
+
+#: ../../source/configuration/options.md
+msgid "`--nstop`, stopping rule"
+msgstr "`--nstop`，停止条件"
+
+#: ../../source/configuration/options.md
+msgid "`--prefix`, output prefix"
+msgstr "`--prefix`，输出前缀"
+
+#: ../../source/configuration/options.md
+msgid "`--npop`, population size"
+msgstr "`--npop`，种群大小"
+
+#: ../../source/configuration/options.md
+msgid "`--nregion`, number of samples"
+msgstr "`--nregion`，样本数"
+
+#: ../../source/configuration/options.md
+msgid "`--tdiff`, sampling-time difference"
+msgstr "`--tdiff`，采样时间差"
+
+#: ../../source/configuration/options.md
+msgid "`--tfile`, time file"
+msgstr "`--tfile`，时间文件"
+
+#: ../../source/configuration/options.md
+msgid "`--odir`, output directory"
+msgstr "`--odir`，输出目录"
+
+#: ../../source/configuration/options.md
+msgid "`--ofile`, output tree file"
+msgstr "`--ofile`，输出树文件"
+
+#: ../../source/configuration/options.md
+msgid "`--model 3`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "infinite sites"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "independent Markov chains"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`--gtime` default"
+msgstr "`--gtime` 默认值"
+
+#: ../../source/configuration/options.md
+msgid "0.002739726 years (1 day)"
+msgstr "0.002739726 年（1 天）"
+
+#: ../../source/configuration/options.md
+msgid "1 year"
+msgstr "1 年"
+
+#: ../../source/configuration/options.md
+msgid "Chromosome-level rate options"
+msgstr "染色体级速率参数名"
+
+#: ../../source/configuration/options.md
+msgid "`--chr_gain` / `--chr_loss` / `--wgd`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`--chr_gain_rate` / `--chr_loss_rate` / `--wgd_rate`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "Number of samples"
+msgstr "样本数参数"
+
+#: ../../source/configuration/options.md
+msgid "`--nregion` / `-r`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "`--nsample` / `-s`"
+msgstr ""
+

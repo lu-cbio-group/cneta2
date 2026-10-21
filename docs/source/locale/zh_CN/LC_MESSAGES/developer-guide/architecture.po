@@ -1,0 +1,100 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/developer-guide/architecture.md:1
+msgid "Architecture"
+msgstr "架构"
+
+#: ../../source/developer-guide/architecture.md:3
+msgid ""
+"The current structure: independent command-line tools sharing C++ sources "
+"under `code/`, before the planned `libcneta` core exists. See [Repository "
+"layout](build.md#repository-layout) for the directory-level view."
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:8
+msgid "How the main files fit together"
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:25
+msgid "`cnetml` likelihood calculation"
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:27
+msgid ""
+"The current detailed likelihood path is the DECOMP path, where WGD, "
+"chromosome-level changes, and segment-level changes are represented by "
+"separate chains. Constant-rate and branch-specific-rate modes differ mainly "
+"in how transition probability matrices are built."
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:55
+msgid ""
+"For branch-specific-rate modes, the same three biological levels are used, "
+"but transition matrices are built per edge from `tree.edge_rates` using "
+"`build_transition_matrices_variable`. The traversal functions are then "
+"`get_likelihood_wgd_variable`, `get_likelihood_per_chr_variable`, and "
+"`get_likelihood_site_change_variable`, and the final aggregation happens in "
+"`get_likelihood_chr_change_variable`."
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:62
+msgid "Three-level DECOMP likelihood"
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:64
+msgid ""
+"In the DECOMP model, observed copy-number changes are decomposed into three "
+"biological levels. Segment/site changes are evaluated per site, chromosome "
+"changes are evaluated once per chromosome, and WGD is evaluated once per "
+"sample tree because it is shared across all sites."
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:97
+msgid "`cnetml` candidate tree optimization"
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:99
+msgid ""
+"For a fixed topology, `cnetml` optimizes branch lengths or node-time ratios,"
+" and optionally rate parameters. With branch-specific-rate inference, the "
+"optimizer updates `tree.edge_rates` before each likelihood evaluation."
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:135
+msgid "Random local clock shift-edge search"
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:137
+msgid ""
+"When `--bsr_mode 3` is used with `mode 3`, CNETML performs an outer greedy "
+"search over shift edges. The score is `logL - rlc_lambda * K`, where `K` is "
+"the number of selected shift edges."
+msgstr ""
+
+#: ../../source/developer-guide/architecture.md:165
+msgid ""
+"These five diagrams come from the research team and cover `cnets` and "
+"`cnetml`; `cnetmcmc` is intentionally not diagrammed yet. The top-level "
+"`cnets` and `cnetml` workflows live in [Workflows](../workflows/index.md) "
+"since they describe user-facing data flow rather than internals."
+msgstr ""
+

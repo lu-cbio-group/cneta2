@@ -39,7 +39,8 @@ original README.
 
 ## Options
 Grouped by purpose; see `run-cnetml.sh` for the full set with example
-values.
+values, and the [options reference](../configuration/options.md#cnetml-maximum-likelihood-inference)
+for every option with its default and accepted values.
 
 Time constraints
 : - `--constrained`/`cons` — optimize under patient-age/tip-timing

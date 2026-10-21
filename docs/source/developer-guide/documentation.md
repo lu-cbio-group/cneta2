@@ -8,6 +8,10 @@
     `user-guide/`, `developer-guide/`, ...)
   - **`docs/source/conf.py`** — Sphinx configuration
   - **`docs/source/_static/`** — static assets
+  - **`docs/source/_templates/`** — theme template overrides (the language
+    switcher)
+  - **`docs/source/locale/`** — translations, one `.po` file per page (see
+    [Translations](#translations))
 - **`docs/build/`** — generated HTML/Doxygen XML (gitignored, not committed)
 - **`docs/Makefile`** — build automation (see [Everyday use](#everyday-use))
 - **`docs/environment.yml`**, **`docs/requirements.txt`** — conda/pip
@@ -76,14 +80,21 @@ split the source of truth and quietly break the venv and uv workflows.
 ## Everyday use
 
 ```bash
-make -C docs live      # live-reload preview at http://localhost:8080
-make -C docs html      # one-off build into docs/build/html
-make -C docs strict    # warnings-as-errors; this is what CI runs
+make -C docs live      # live-reload preview (English) at http://localhost:8080
+make -C docs live-zh   # the same for the Chinese site
+make -C docs html      # one-off English build into docs/build/html/en
+make -C docs html-all  # every language, into docs/build/html/<language>
+make -C docs serve     # serve docs/build/html, language switch included
+make -C docs strict    # every language, warnings-as-errors; this is what CI runs
 make -C docs api       # regenerate the C++ API XML via Doxygen
 make -C docs clean
 ```
 
 If `make strict` passes locally, CI will pass.
+
+The published site has one directory per language (`en/`, `zh_CN/`); the
+site root redirects to `en/`. `make live` serves a single language, so the
+language switch links only work under `make html-all serve`.
 
 ## Writing pages
 
@@ -118,6 +129,33 @@ in text form rather than exporting images.
 
 A page not listed in any `toctree` triggers a warning, which fails the
 strict build.
+
+## Translations
+
+The English Markdown pages are the only source. Translations are kept as
+gettext `.po` files in `docs/source/locale/<language>/LC_MESSAGES/`, one per
+page, each pairing an English string (`msgid`) with its translation
+(`msgstr`). A string with an empty `msgstr` is shown in English, so a page
+can be translated piece by piece.
+
+After changing English pages:
+
+```bash
+make -C docs intl-update   # add new strings to every .po file
+```
+
+New strings arrive untranslated; strings whose English changed are marked
+`#, fuzzy` and shown in English until the translation is updated and the
+`fuzzy` line removed. Then fill in `msgstr` and check with
+`make -C docs live-zh`.
+
+Keep the Markdown syntax of the English string in the translation:
+inline code, links (with the same targets) and emphasis. A link missing
+from a translation fails the strict build.
+
+To add a language, add its code to `TRANSLATIONS` in `docs/Makefile`, a
+build target like `html-zh`, and an entry in
+`_templates/sidebar/lang-switch.html`.
 
 ## C++ API pages
 

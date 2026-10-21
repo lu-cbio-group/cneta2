@@ -1,0 +1,73 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/developer-guide/build.md:1
+msgid "Build system"
+msgstr "构建系统"
+
+#: ../../source/developer-guide/build.md:3
+msgid "Repository layout"
+msgstr ""
+
+#: ../../source/developer-guide/build.md:21
+msgid ""
+"`bin/` mixes tracked scripts with untracked build output. `.gitignore` "
+"excludes the three programs by name rather than ignoring `bin/` as a whole, "
+"so a new script added there is picked up by git as usual; "
+"`tests/build_system/test_repo_layout.py` checks this."
+msgstr ""
+
+#: ../../source/developer-guide/build.md:26
+msgid "Building"
+msgstr ""
+
+#: ../../source/developer-guide/build.md:28
+msgid ""
+"`code/CMakeLists.txt` is the build of record (CMake >= 3.10, C++17). It "
+"`find_package`s Boost (`program_options`, `filesystem`), GSL, zlib, and "
+"optionally OpenMP; builds `lbfgsb` as a CMake subdirectory and vendored "
+"`gzstream` as a small library; links both into a shared `cneta_core` static "
+"library (all the evolutionary-model, tree, and I/O sources); and links "
+"`cneta_core` into the three executables `cnets`, `cnetml`, `cnetmcmc`."
+msgstr ""
+
+#: ../../source/developer-guide/build.md:36
+msgid "`code/build.sh` wraps that CMake configure/build into one command:"
+msgstr ""
+
+#: ../../source/developer-guide/build.md:45
+msgid ""
+"For a `target` other than `local`, it sources "
+"`code/envs/setup_env_<target>.sh` (module loads for that cluster) before "
+"running `cmake -Wno-dev ..` and `make -j<cores>` in `code/build/`. See "
+"[Installation](../installation/index.md) for the per-platform walkthrough."
+msgstr ""
+
+#: ../../source/developer-guide/build.md:50
+msgid ""
+"`code/makefile` is a legacy, pre-CMake build (hardcoded compiler/library "
+"paths edited by hand at the top of the file, no automatic dependency "
+"discovery). It predates `CMakeLists.txt` and is not the maintained path, but"
+" is still checked in. It also has its own OpenMP switch, separate from the "
+"CMake build's automatic detection: set `omp =` (empty) at the top of the "
+"file to turn OpenMP off."
+msgstr ""
+

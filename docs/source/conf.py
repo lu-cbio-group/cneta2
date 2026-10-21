@@ -12,6 +12,7 @@ See docs/developer-guide/documentation.md for the full authoring guide.
 import os
 import subprocess
 from pathlib import Path
+from urllib.parse import urlparse
 
 # ---------------------------------------------------------------------------
 # Project information
@@ -25,6 +26,15 @@ copyright = "2026, CNETA contributors"
 # Kept in sync with the `project(cneta VERSION ...)` call in code/CMakeLists.txt.
 release = "2.0"
 version = release
+
+# Site language: "en" (default) or "zh_CN". Each language is a separate build
+# into build/html/<language>/ (see `make html-all`). Read from DOCS_LANG
+# rather than `-D language=...` because html_baseurl below depends on it, and
+# conf.py cannot see -D overrides. Translations live in locale/<language>/
+# as .po files; untranslated strings fall back to the English source.
+language = os.environ.get("DOCS_LANG", "en")
+locale_dirs = ["locale/"]
+gettext_compact = False     # one .po file per page, not one per directory
 
 SOURCE_DIR = Path(__file__).parent
 DOCS_DIR = SOURCE_DIR.parent
@@ -46,7 +56,7 @@ extensions = [
     "sphinx_sitemap",           # sitemap.xml; requires html_baseurl to be set
 ]
 
-exclude_patterns = ["build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["build", "locale", "Thumbs.db", ".DS_Store"]
 
 # _templates/layout.html overrides the theme layout to add a "View on
 # GitHub" link pinned to the bottom of the sidebar, for visitors who land
@@ -103,46 +113,63 @@ myst_substitutions = {
     "repo_url": "https://github.com/lu-cbio-group/cneta2",
 }
 
-# Same URL, exposed to Jinja templates (see _templates/layout.html) rather
-# than MyST page content.
-html_context = {
-    "github_repo_url": myst_substitutions["repo_url"],
-}
 
 # ---------------------------------------------------------------------------
 # HTML output
 # ---------------------------------------------------------------------------
 
-html_theme = "sphinx_rtd_theme"
-html_theme_options = {
-    "navigation_depth": 4,
-    "collapse_navigation": False,
-    "titles_only": False,
-    "style_external_links": True,
-    # The logo already contains the wordmark, so don't repeat the project name.
-    "logo_only": True,
-    # The sidebar header is the logo's background. The theme's default blue
-    # swallows the logo's blue "loss" blocks, so use the logo's own dark slate.
-    "style_nav_header_background": "#1D2B36",
-}
-html_static_path = ["_static"]
+html_theme = "furo"
 
 # Logo and favicon live in assets/logo/ at the repo root, shared with
 # README.md; the exports there are committed, so no TeX is needed to build the
-# docs. The sidebar is always dark, hence the white-ink "-dark" variant; see
-# assets/logo/README.md for which variant goes where.
+# docs. Furo has a light and a dark mode, so it takes both logo variants by
+# file name from the static path; see assets/logo/README.md.
 LOGO_DIR = DOCS_DIR.parent / "assets" / "logo"
-html_logo = str(LOGO_DIR / "svg" / "cneta-logo-dark.svg")
+html_static_path = ["_static", str(LOGO_DIR / "svg")]
 html_favicon = str(LOGO_DIR / "favicon.ico")
+
+html_theme_options = {
+    "light_logo": "cneta-logo.svg",
+    "dark_logo": "cneta-logo-dark.svg",
+    # The logo already contains the wordmark, so don't repeat the project name.
+    "sidebar_hide_name": True,
+    # No "view source" / "edit this page" icons; the top-right row holds the
+    # language switch, GitHub link and light/dark toggle (_templates/page.html).
+    "top_of_page_buttons": [],
+    "footer_icons": [
+        {
+            "name": "GitHub",
+            "url": myst_substitutions["repo_url"],
+            "html": (
+                '<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">'
+                '<path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>'
+                "</svg>"
+            ),
+            "class": "",
+        },
+    ],
+}
+
+# Exposed to templates (_templates/header-links.html).
+html_context = {
+    "repo_url": myst_substitutions["repo_url"],
+}
 html_css_files = ["custom.css"]
 html_title = f"{project} {release}"
 
-# Used for canonical links and sitemap generation.
-html_baseurl = os.environ.get("DOCS_BASEURL", "https://lu-cbio-group.github.io/cneta2/")
+# Used for canonical links and sitemap generation. Each language build is
+# served from its own subdirectory, so the base URL includes it.
+SITE_URL = os.environ.get("DOCS_BASEURL", "https://lu-cbio-group.github.io/cneta2/")
+html_baseurl = f"{SITE_URL.rstrip('/')}/{language}/"
+# sphinx-sitemap's default scheme prepends {lang}{version}, which would
+# duplicate the language already in html_baseurl.
+sitemap_url_scheme = "{link}"
 
 # sphinx-not-found-page settings
 # for more, see https://sphinx-notfound-page.readthedocs.io/en/latest/configuration.html
-notfound_urls_prefix=None
+# The 404 page is served for any missing URL, so its links must be absolute
+# from the site root: e.g. /cneta2/en/_static/... on GitHub Pages.
+notfound_urls_prefix = urlparse(html_baseurl).path
 
 
 # ---------------------------------------------------------------------------

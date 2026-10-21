@@ -29,7 +29,8 @@ parameters, mutation-model parameters, and output directory in one place.
 ## Options
 
 Grouped by purpose; see `run-cnets.sh` for the full set with example
-values.
+values, and the [options reference](../configuration/options.md#cnets-simulation)
+for every option with its default and accepted values.
 
 Tree generation
 : `--epop` (effective population size, scales branch lengths to years),
@@ -45,7 +46,7 @@ Tree generation
 
 Mutation model
 : `--model` (1: bounded total copy number, deprecated; 2:
-  haplotype-specific, default; 3: infinite sites), `--cn_max` (maximum
+  haplotype-specific, default; 3: infinite sites (Poisson process)), `--cn_max` (maximum
   copy number — limited by available heap space), `--method` (0:
   simulate waiting times along each branch, the default, supports all
   event types; 1: simulate sequences directly at branch ends, supports

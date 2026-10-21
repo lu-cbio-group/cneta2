@@ -1,0 +1,179 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/user-guide/cnetmcmc.md:1
+msgid "`cnetmcmc`"
+msgstr ""
+
+#: ../../source/user-guide/cnetmcmc.md:3
+msgid ""
+"`cnetmcmc` builds phylogenetic trees from copy-number profiles using a "
+"Bayesian MCMC approach."
+msgstr "`cnetmcmc` 用贝叶斯 MCMC 方法从拷贝数谱构建系统发育树。"
+
+#: ../../source/user-guide/cnetmcmc.md:7
+msgid ""
+"This page is migrated from the top-level `README.md`, `run-cnetmcmc.sh`, and"
+" `mcmc.cfg` (now `config/cnet_mcmc.cfg`). Please review for accuracy and "
+"completeness."
+msgstr ""
+"本页内容迁移自顶层 `README.md`、`run-cnetmcmc.sh` 和 `mcmc.cfg`（现为 "
+"`config/cnet_mcmc.cfg`），请核对其准确性和完整性。"
+
+#: ../../source/user-guide/cnetmcmc.md:12
+msgid "Status"
+msgstr "状态"
+
+#: ../../source/user-guide/cnetmcmc.md:14
+msgid ""
+"Under active development. Only the basic MCMC algorithm is implemented, and "
+"it has not been comprehensively tested (per the original README) — the least"
+" mature of the three tools. No workflow or architecture diagrams exist for "
+"it yet; see [Workflows](../workflows/index.md)."
+msgstr ""
+"仍在开发中。据原 README，目前只实现了基本的 MCMC "
+"算法，且未经全面测试，是三个工具中最不成熟的一个。它还没有工作流程图或架构图，见[工作流程](../workflows/index.md)。"
+
+#: ../../source/user-guide/cnetmcmc.md:19
+msgid "Usage"
+msgstr "用法"
+
+#: ../../source/user-guide/cnetmcmc.md:25
+msgid ""
+"`bin/run-cnetmcmc.sh` runs multiple chains and reads most parameters from "
+"`config/cnet_mcmc.cfg` via `--config_file`. Set `CNETA_CONFIG` to use a "
+"different file; the script stops if the file does not exist."
+msgstr ""
+"`bin/run-cnetmcmc.sh` 运行多条链，大部分参数通过 `--config_file` 从 `config/cnet_mcmc.cfg`"
+" 读取。设置 `CNETA_CONFIG` 可以换用其他文件；文件不存在时脚本会停止。"
+
+#: ../../source/user-guide/cnetmcmc.md:29
+msgid "Modes"
+msgstr "运行模式"
+
+#: ../../source/user-guide/cnetmcmc.md:31
+msgid ""
+"Two starting-tree paths depending on whether a reference tree is supplied "
+"(`--rtreefile`): with one, the starting tree is built from it; without one, "
+"from `--init_tree`. Either way, whether the topology stays fixed during "
+"sampling is controlled separately by `--fix_topology` — see the [MCMC "
+"workflow](../workflows/index.md#mcmc-workflow-cnetmcmc) diagram for the full"
+" picture (draft; traced from source, not yet reviewed)."
+msgstr ""
+"根据是否提供参考树（`--rtreefile`），起始树有两种来源：提供时由参考树构建，不提供时由 `--init_tree` "
+"决定。无论哪种，采样过程中拓扑是否固定都由 `--fix_topology` 单独控制。完整流程见 [MCMC "
+"工作流程](../workflows/index.md#mcmc-workflow-cnetmcmc)图（草稿，根据源码整理，尚未审核）。"
+
+#: ../../source/user-guide/cnetmcmc.md:39
+msgid "Options"
+msgstr "参数"
+
+#: ../../source/user-guide/cnetmcmc.md:41
+msgid "`--rtreefile`"
+msgstr ""
+
+#: ../../source/user-guide/cnetmcmc.md:42
+msgid ""
+"Optional reference tree; used to build the starting tree (see \"Modes\" "
+"above — it does not by itself fix the topology)."
+msgstr "可选的参考树，用于构建起始树（见上文\"运行模式\"，它本身并不固定拓扑）。"
+
+#: ../../source/user-guide/cnetmcmc.md:45
+msgid "`--init_tree`"
+msgstr ""
+
+#: ../../source/user-guide/cnetmcmc.md:46
+msgid ""
+"`0` random tree · `1` a provided tree (`--file_itree`) · `2` a random tree "
+"sharing the real tree's topology."
+msgstr "`0` 随机树 · `1` 提供的树（`--file_itree`） · `2` 与真实树拓扑相同的随机树。"
+
+#: ../../source/user-guide/cnetmcmc.md:49
+msgid "`config/cnet_mcmc.cfg` (via `--config_file`)"
+msgstr "`config/cnet_mcmc.cfg`（通过 `--config_file`）"
+
+#: ../../source/user-guide/cnetmcmc.md:50
+msgid ""
+"MCMC control (`n_draws`, `n_burnin`, `n_gap`, `sample_prior`, "
+"`fix_topology`); proposal/prior parameters for mutation rates (`sigma_l*` "
+"for the log-normal prior, `sigma_*` for the proposal, per event type); tree-"
+"height and branch-length priors (`sigma_height`, `tlen_shape`, `tlen_scale`,"
+" `dirichlet_param`/`dirichlet_alpha`); and proposal step sizes (`lambda`, "
+"`lambda_all`)."
+msgstr ""
+"MCMC 控制参数（`n_draws`、`n_burnin`、`n_gap`、`sample_prior`、`fix_topology`）；突变速率的 "
+"proposal/先验参数（每种事件类型各有 `sigma_l*` 用于 lognormal 先验、`sigma_*` 用于 "
+"proposal）；树高和枝长先验（`sigma_height`、`tlen_shape`、`tlen_scale`、`dirichlet_param`/`dirichlet_alpha`）；以及"
+" proposal 步长（`lambda`、`lambda_all`）。"
+
+#: ../../source/user-guide/cnetmcmc.md:57
+msgid "Inputs"
+msgstr "输入"
+
+#: ../../source/user-guide/cnetmcmc.md:59
+msgid ""
+"The same copy-number and sample-timing files as `cnetml` — see [File formats"
+"](../file-formats/index.md)."
+msgstr "与 `cnetml` 相同的拷贝数文件和样本时间文件，见[文件格式](../file-formats/index.md)。"
+
+#: ../../source/user-guide/cnetmcmc.md:62
+msgid "Outputs"
+msgstr "输出"
+
+#: ../../source/user-guide/cnetmcmc.md:64
+msgid ""
+"MrBayes-compatible trace files, named via `--trace_param_file`/ "
+"`--trace_tree_file` (C++ defaults: `trace-mcmc-params.txt` / `trace-mcmc-"
+"trees.txt`; `run-cnetmcmc.sh` is what names them `*.p`/`*.t`):"
+msgstr ""
+"与 MrBayes 兼容的 trace 文件，文件名由 `--trace_param_file`/ `--trace_tree_file` 指定（C++"
+" 默认值：`trace-mcmc-params.txt` / `trace-mcmc-trees.txt`；`*.p`/`*.t` 这两个名字是 "
+"`run-cnetmcmc.sh` 起的）："
+
+#: ../../source/user-guide/cnetmcmc.md:68
+msgid "`*.p`"
+msgstr ""
+
+#: ../../source/user-guide/cnetmcmc.md:69
+msgid ""
+"Parameter traces. Check convergence with "
+"[Tracer](https://beast.community/tracer) or `util/check_convergence.R` (uses"
+" [RWTY](https://github.com/danlwarren/RWTY))."
+msgstr ""
+"参数 trace。用 [Tracer](https://beast.community/tracer) 或 "
+"`util/check_convergence.R`（基于 "
+"[RWTY](https://github.com/danlwarren/RWTY)）检查收敛。"
+
+#: ../../source/user-guide/cnetmcmc.md:73
+msgid "`*.t`"
+msgstr ""
+
+#: ../../source/user-guide/cnetmcmc.md:74
+msgid ""
+"Sampled trees. Summarise with "
+"[TreeAnnotator](https://beast.community/treeannotator) into a maximum clade "
+"credibility tree."
+msgstr "采样得到的树。用 [TreeAnnotator](https://beast.community/treeannotator) 汇总成最大分支可信度树。"
+
+#: ../../source/user-guide/cnetmcmc.md:78
+msgid "Examples"
+msgstr "示例"
+
