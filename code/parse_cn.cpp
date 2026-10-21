@@ -816,6 +816,24 @@ void read_cn(vector<vector<vector<int>>>& s_info, const string& filename, int Ns
         exit(EXIT_FAILURE);
     }
 
+    // Every requested sample needs rows. A sample count larger than the
+    // file holds (-s 5 for a file with samples 1-4) left entries of s_info
+    // empty, and the programs crashed indexing them further on (segfault,
+    // no message). Sample IDs run from 1 to Ns without gaps (see the format
+    // message above), so the first empty entry is the one to report.
+    for(int i = 0; i < Ns; ++i){
+        if(s_info[i].empty()){
+            int found = 0;
+            for(const auto& sample_data : s_info){
+                if(!sample_data.empty()) found++;
+            }
+            cerr << "Error: copy number file " << filename << " has data for " << found
+                 << " of the " << Ns << " samples requested (-s " << Ns << "): sample "
+                 << i + 1 << " has no rows" << endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
     if(debug) cout << "\tSuccessfully read input file with " << num_total_bins << " sites" << endl;
 
 }

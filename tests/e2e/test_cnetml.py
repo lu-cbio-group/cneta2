@@ -315,3 +315,26 @@ def test_unusable_input_file_is_rejected_with_a_message(tmp_path, data_dir,
     ])
 
     assert_clean_rejection(result, mentions=str(cn_file))
+
+
+def test_sample_count_larger_than_the_file_is_rejected(data_dir, cnetml, run):
+    """`-s` larger than the number of samples in the file (here: the default
+    `-s 5` on the 4-sample fixture) left samples without data, and cnetml
+    segfaulted after "Reading data and group regions by chromosome". It
+    must stop with a message that names the file and the missing sample.
+
+    No sample-times file and no age constraint: the times reader already
+    checks its own entry count against `-s`, which would mask this."""
+    cn_file = data_dir / "tiny-cn.txt.gz"
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=cn_file,
+            times_file=None,
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"-s": cli.NS + 2, "--constrained": 0},
+        ),
+    ])
+
+    assert_clean_rejection(result, mentions=str(cn_file))
+    assert f"sample {cli.NS + 2} has no rows" in result.stdout + result.stderr, str(result)
