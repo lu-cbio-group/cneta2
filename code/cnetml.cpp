@@ -1585,11 +1585,11 @@ void print_desc(int cons, int estmu, int correct_bias, int use_repeat, int optim
             break;
         }
         case BOUNDA:{
-            cout << "\nAssuming One-step bounded model of haplotype-specific copy number (CNTEML)" << endl;
+            cout << "\nAssuming One-step bounded model of haplotype-specific copy number (CNETML)" << endl;
             break;
         }
         case DECOMP:{
-            cout << "\nAssuming independent Markov chains of haplotype-specific copy number changes (CNTEML2)" << endl;
+            cout << "\nAssuming independent Markov chains of haplotype-specific copy number changes (CNETML2)" << endl;
             // if(!is_total){
             //     cout << "This model only supports total copy number for now!" << endl;
             //     exit(EXIT_FAILURE);
