@@ -1024,6 +1024,7 @@ void write_run_summary(ostream& out, const evo_tree& tree, int mode, const LNL_T
 
     out << "mode\t" << mode << "\n";
     out << "seed\t" << seed_in_use << "\n";
+    out << "version\t" << version_string() << "\n";
     out << "model\t" << lnl_type.model << "\n";
     out << "bsr_mode\t" << bsr_mode << "\n";
     out << "cn_type\t" << lnl_type.cn_type << "\n";
@@ -1785,7 +1786,7 @@ int main(int argc, char** const argv){
           return 1;
       }
       if(vm.count("version")){
-          cout << "CNETML [version " << VERSION << "], a program to build a maximum likelihood phylogenetic tree from total or haplotype-specific copy number profiles of multiple (spatio-temporal) samples for a single patient" << endl;
+          cout << "CNETML [version " << version_string() << "], a program to build a maximum likelihood phylogenetic tree from total or haplotype-specific copy number profiles of multiple (spatio-temporal) samples for a single patient" << endl;
           cout << "This program can also be used to compute the likelihood and ancestral states of a given tree, maximum likelihood of a tree with fixed topology (and/or mutation rates), given the copy number profiles." << endl;
           return 1;
       }
@@ -1828,6 +1829,7 @@ int main(int argc, char** const argv){
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
+    cout << "version:" << "\t" << version_string() << endl;
     seed = setup_rng(r, seed);
     seed_in_use = seed;
 

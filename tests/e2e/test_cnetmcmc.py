@@ -218,3 +218,28 @@ def test_rejected_input_exits_non_zero(tmp_path, data_dir, tiny_sim: Simulation,
     ])
 
     assert result.returncode != 0
+
+
+def test_missing_input_file_is_rejected_with_a_message(tmp_path, data_dir,
+                                                       tiny_sim: Simulation,
+                                                       cnetmcmc, run):
+    """A missing copy-number file used to segfault after printing "0 bins".
+    A crash is also non-zero, so require a positive exit code (a signal
+    gives a negative one) and a message naming the file."""
+    missing = tmp_path / "no-such-file-haplotype-cn.txt.gz"
+    result = run([
+        cnetmcmc,
+        *cli.cnetmcmc_args(
+            cn_file=missing,
+            times_file=tiny_sim.times,
+            tree_file=tiny_sim.tree,
+            config_file=data_dir / "mcmc-ci.cfg",
+            trace_param=tmp_path / "chain.p",
+            trace_tree=tmp_path / "chain.t",
+        ),
+    ])
+
+    assert result.returncode > 0, (
+        f"expected a clean non-zero exit, got {result.returncode}\n{result}"
+    )
+    assert str(missing) in result.stdout + result.stderr, str(result)

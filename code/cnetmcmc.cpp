@@ -2241,7 +2241,7 @@ int main (int argc, char ** const argv) {
             }
 
             if(vm.count("version")) {
-                    cout << "CNETMCMC [version " << VERSION << "], a program to build a phylogenetic tree from total or haplotype-specific copy number profiles of multiple (spatio-temporal) samples for a single patient with MCMC approach" << endl;
+                    cout << "CNETMCMC [version " << version_string() << "], a program to build a phylogenetic tree from total or haplotype-specific copy number profiles of multiple (spatio-temporal) samples for a single patient with MCMC approach" << endl;
                     cout << "This program can also be used to estimate parameters given a tree of fixed topology." << endl;
                     return 1;
             }
@@ -2261,6 +2261,7 @@ int main (int argc, char ** const argv) {
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
+    cout << "version:" << "\t" << version_string() << endl;
     seed = setup_rng(r, seed);
 
     ITREE_PARAM itree_param{epop, beta, gtime};

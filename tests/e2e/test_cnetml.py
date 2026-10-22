@@ -12,6 +12,7 @@ check structure and ranking instead of exact numbers.
 
 from __future__ import annotations
 
+import gzip
 import json
 
 import pytest
@@ -142,7 +143,7 @@ def test_tree_search_writes_a_usable_tree(tmp_path, tiny_sim: Simulation,
 
 
 def test_tree_search_writes_a_consistent_summary(tmp_path, tiny_sim: Simulation,
-                                                 cnetml, run):
+                                                 cnetml, run, cneta_version):
     """The .summary.txt sidecar is the machine-readable record of a run."""
     out_file = tmp_path / "MaxL.txt"
 
@@ -158,8 +159,10 @@ def test_tree_search_writes_a_consistent_summary(tmp_path, tiny_sim: Simulation,
 
     assert summary["mode"] == "0"
     assert summary["model"] == "2"
-    # The seed travels with the result, whatever launched the program.
+    # The seed and the version travel with the result, whatever launched
+    # the program.
     assert summary["seed"] == str(cli.SEED)
+    assert summary["version"].split()[0] == cneta_version
     assert int(summary["n_leaves"]) == EXPECTED_LEAVES
     assert int(summary["n_edges"]) == 2 * EXPECTED_LEAVES - 2
 
@@ -269,16 +272,71 @@ def test_hill_climbing_is_reproducible_across_thread_counts(tmp_path, cnets,
 # Error handling
 # --------------------------------------------------------------------------
 
-def test_missing_input_file_is_rejected(tmp_path, data_dir, cnetml, run):
+def _write_gz(path, text: str):
+    with gzip.open(path, "wt") as handle:
+        handle.write(text)
+    return path
+
+
+def assert_clean_rejection(result, mentions: str):
+    """The program refused the input with a message, rather than crashing.
+
+    A crash also exits non-zero, so `returncode != 0` alone cannot tell the
+    two apart: killed by a signal, subprocess reports a negative code
+    (-11 for a segfault). This test once passed while cnetml segfaulted.
+    """
+    assert result.returncode > 0, (
+        "expected a clean non-zero exit, got "
+        + ("a crash (signal %d)" % -result.returncode if result.returncode < 0
+           else "success")
+        + "\n" + str(result)
+    )
+    assert mentions in result.stdout + result.stderr, (
+        f"the error message does not mention {mentions!r}\n{result}"
+    )
+
+
+@pytest.mark.parametrize("problem", ["missing", "empty", "short-line"])
+def test_unusable_input_file_is_rejected_with_a_message(tmp_path, data_dir,
+                                                        cnetml, run, problem):
+    """A missing file, an empty one, and a line with too few columns all used
+    to reach code that indexes into the data (two of them segfaulted)."""
+    cn_file = tmp_path / f"{problem}-cn.txt.gz"
+    if problem == "empty":
+        _write_gz(cn_file, "")
+    elif problem == "short-line":
+        _write_gz(cn_file, "1\t1\n")
+
     result = run([
         cnetml,
         *cli.cnetml_score_args(
-            cn_file=tmp_path / "no-such-file-cn.txt.gz",
+            cn_file=cn_file,
             times_file=data_dir / "tiny-rel-times.txt",
             tree_file=data_dir / "tiny-tree.txt",
         ),
     ])
 
-    assert result.returncode != 0, (
-        "cnetml accepted a missing copy-number file\n" + str(result)
-    )
+    assert_clean_rejection(result, mentions=str(cn_file))
+
+
+def test_sample_count_larger_than_the_file_is_rejected(data_dir, cnetml, run):
+    """`-s` larger than the number of samples in the file (here: the default
+    `-s 5` on the 4-sample fixture) left samples without data, and cnetml
+    segfaulted after "Reading data and group regions by chromosome". It
+    must stop with a message that names the file and the missing sample.
+
+    No sample-times file and no age constraint: the times reader already
+    checks its own entry count against `-s`, which would mask this."""
+    cn_file = data_dir / "tiny-cn.txt.gz"
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=cn_file,
+            times_file=None,
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"-s": cli.NS + 2, "--constrained": 0},
+        ),
+    ])
+
+    assert_clean_rejection(result, mentions=str(cn_file))
+    assert f"sample {cli.NS + 2} has no rows" in result.stdout + result.stderr, str(result)
