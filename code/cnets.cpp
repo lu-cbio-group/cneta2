@@ -1748,6 +1748,15 @@ int main (int argc, char** const argv) {
         return 1;
     }
 
+    // Branch-specific rates (--bsr_mode) are drawn on the waiting-times path
+    // only (--method 0). On the direct-sequence path they were silently
+    // ignored, so a run asked for with varying rates came out constant-rate.
+    if(bsr_mode > 0 && method != SIM_TIME){
+        cerr << "Error: --bsr_mode " << bsr_mode << " has no effect with --method " << method
+             << " (sequences simulated directly). Use --method 0 for branch-specific rates, or --bsr_mode 0." << endl;
+        return 1;
+    }
+
     if(seg_max < NUM_CHR){
         cout << "There must be at least " << NUM_CHR << "sites" << endl;
         exit(EXIT_FAILURE);

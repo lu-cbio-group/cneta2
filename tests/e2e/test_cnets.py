@@ -221,6 +221,21 @@ def test_tree_seed_gives_the_same_trees_across_rate_modes(tmp_path, cnets, run):
     )
 
 
+def test_bsr_mode_is_refused_when_sequences_are_simulated_directly(tmp_path,
+                                                                    cnets, run):
+    """Branch-specific rates are only drawn on the waiting-times path
+    (--method 0). With --method 1, the suite's default, --bsr_mode used to be
+    silently ignored and the run came out constant-rate. It must now stop
+    with a message that names both options."""
+    outdir = tmp_path / "out"
+    outdir.mkdir()
+    result = run([cnets, *cli.cnets_args(outdir, **{"--bsr_mode": 1})])
+
+    assert result.returncode > 0, str(result)
+    combined = result.stdout + result.stderr
+    assert "bsr_mode" in combined and "method" in combined, str(result)
+
+
 def test_help_lists_key_options(cnets, run):
     result = run([cnets, "--help"])
 
