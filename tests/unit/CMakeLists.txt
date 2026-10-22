@@ -6,12 +6,6 @@
 # the shared science. When that target becomes `libcneta`, only the
 # target_link_libraries line below needs to change.
 
-if(CMAKE_VERSION VERSION_LESS 3.16)
-    message(FATAL_ERROR
-        "CNETA_BUILD_TESTING requires CMake >= 3.16 (found ${CMAKE_VERSION}). "
-        "The main build still works with 3.10; only the tests need a newer CMake.")
-endif()
-
 # Prefer a Catch2 that is already installed (Homebrew, apt, an HPC module).
 # Fall back to fetching a pinned release. On an offline machine you can point
 # at a local checkout instead:

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 # The version lives in one place, the VERSION file at the repository root
 # (MAJOR.MINOR.PATCH, see docs/source/developer-guide/releases.md). The
@@ -33,11 +33,12 @@ endif()
 
 # 1. Set Global C++ Standards
 # -----------------------------
-# C++17. The one thing that blocked it, std::random_shuffle (removed in
-# C++17), was replaced by portable_shuffle.hpp. Catch2 v3 (tests/unit/)
+# C++20 (GCC 10, Clang 10 or Apple clang 12 and newer; the HPC's GCC 13 and
+# the conda compilers qualify). std::random_shuffle, which blocked anything
+# past C++14, was replaced by portable_shuffle.hpp. Catch2 v3 (tests/unit/)
 # needs at least C++14; the legacy code/makefile uses the same standard.
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Forces standard C++ over compiler-specific extensions
 

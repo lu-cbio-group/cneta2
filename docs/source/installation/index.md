@@ -10,8 +10,8 @@ for the current architecture and what's still planned.
 
 Required to build `cnets`, `cnetml`, and `cnetmcmc`:
 
-- A C++17-capable compiler (GCC >= 7 or Clang >= 5)
-- [CMake](https://cmake.org/) >= 3.10
+- A C++20-capable compiler (GCC >= 10, Clang >= 10, Apple clang >= 12)
+- [CMake](https://cmake.org/) >= 3.16
 - [Boost](https://www.boost.org/) (`program_options` and `filesystem`
   components)
 - [GSL](https://www.gnu.org/software/gsl/) (GNU Scientific Library)
@@ -45,7 +45,7 @@ conda activate cnetml-util
 ```
 
 To run the test suite as well you additionally need Python 3.9+ with pytest,
-and CMake >= 3.16 (the main build still works with 3.10). Catch2 is fetched
+and CMake >= 3.16. Catch2 is fetched
 automatically at configure time if it is not already installed. See
 [Testing](../developer-guide/testing.md#testing).
 

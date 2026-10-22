@@ -25,7 +25,7 @@ so a new script added there is picked up by git as usual;
 
 ## Building
 
-`code/CMakeLists.txt` is the build of record (CMake >= 3.10, C++17). It
+`code/CMakeLists.txt` is the build of record (CMake >= 3.16, C++20). It
 `find_package`s Boost (`program_options`, `filesystem`), GSL, zlib, and
 optionally OpenMP; builds `lbfgsb` as a CMake subdirectory and vendored
 `gzstream` as a small library; links both into a shared `cneta_core`
