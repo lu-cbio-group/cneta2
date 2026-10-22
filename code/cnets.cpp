@@ -1736,11 +1736,11 @@ int main (int argc, char** const argv) {
         po::store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
         if(vm.count("help")){
             cout << cmdline_options << endl;
-            return 1;
+            return 0;
         }
         if(vm.count("version")){
             cout << "CNETS [version " << version_string() << "], a program to simulate copy number alterations along a phylogenetic tree" << endl;
-            return 1;
+            return 0;
         }
         po::notify(vm);
     }catch(const std::exception& e){

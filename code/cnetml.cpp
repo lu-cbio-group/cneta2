@@ -1783,12 +1783,12 @@ int main(int argc, char** const argv){
       po::store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
       if(vm.count("help")){
           cout << cmdline_options << endl;
-          return 1;
+          return 0;
       }
       if(vm.count("version")){
           cout << "CNETML [version " << version_string() << "], a program to build a maximum likelihood phylogenetic tree from total or haplotype-specific copy number profiles of multiple (spatio-temporal) samples for a single patient" << endl;
           cout << "This program can also be used to compute the likelihood and ancestral states of a given tree, maximum likelihood of a tree with fixed topology (and/or mutation rates), given the copy number profiles." << endl;
-          return 1;
+          return 0;
       }
       po::notify(vm);
     } catch (const std::exception& e) {

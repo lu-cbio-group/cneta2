@@ -229,11 +229,13 @@ def test_help_lists_key_options(cnets, run):
         assert option in combined, f"{option} missing from --help output"
 
 
-@pytest.mark.xfail(
-    reason="cnets and cnetml exit 1 after printing --help; asking for help "
-           "is not an error, and a non-zero status breaks `cmd --help` in "
-           "shell pipelines and Makefiles",
-    strict=False,
-)
-def test_help_exits_successfully(cnets, run):
-    assert run([cnets, "--help"]).returncode == 0
+@pytest.mark.parametrize("program", ["cnets", "cnetml", "cnetmcmc"])
+@pytest.mark.parametrize("flag", ["--help", "--version"])
+def test_help_and_version_exit_successfully(program, flag, request, run):
+    """Asking for help or the version is not an error. The three programs
+    used to exit 1 after printing, which breaks `cmd --help` in shell
+    pipelines, Makefiles and package tests."""
+    result = run([request.getfixturevalue(program), flag])
+
+    assert result.returncode == 0, str(result)
+    assert result.stdout.strip(), f"{program} {flag} printed nothing"

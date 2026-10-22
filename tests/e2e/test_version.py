@@ -28,9 +28,8 @@ def test_version_file_holds_major_minor_patch(cneta_version):
 def test_programs_report_the_version_file(program, request, run,
                                           cneta_version):
     """--version prints the number in VERSION (plus the git commit, when the
-    build knows it). Only the text is checked: --version currently exits 1,
-    a known failure covered in test_cnets.py."""
-    result = run([request.getfixturevalue(program), "--version"])
+    build knows it) and exits 0."""
+    result = run([request.getfixturevalue(program), "--version"]).assert_ok()
 
     assert f"[version {cneta_version}" in result.stdout, str(result)
 
