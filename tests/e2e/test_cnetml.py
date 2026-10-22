@@ -87,6 +87,30 @@ def test_scoring_is_reproducible(data_dir, cnetml, run):
     assert scores[0] == scores[1]
 
 
+def test_cn_type_defaults_to_segment_level(tmp_path, data_dir, cnetml, run):
+    """`--cn_type` had no default: without it the option's variable was never
+    set, and in mode 3 (optimise a given tree) the program stopped with
+    "Unknown CN model type!" after reading the uninitialised value. It now
+    defaults to 0 (segment-level changes only, what the run scripts use), so
+    leaving it out optimises to the same likelihood as giving 0."""
+    logls = []
+    for cn_type in (0, None):
+        out_file = tmp_path / f"fixed-{cn_type}.txt"
+        run([
+            cnetml,
+            *cli.cnetml_score_args(
+                cn_file=data_dir / "tiny-cn.txt.gz",
+                times_file=data_dir / "tiny-rel-times.txt",
+                tree_file=data_dir / "tiny-tree.txt",
+                **{"--cn_type": cn_type, "--mode": 3, "-o": out_file,
+                   "--optim": 1, "--estmu": 0},
+            ),
+        ]).assert_ok()
+        logls.append(read_summary(tmp_path / f"fixed-{cn_type}.txt.summary.txt")["raw_logL"])
+
+    assert logls[0] == logls[1]
+
+
 def test_true_tree_beats_a_wrong_topology(data_dir, cnetml, run):
     """A cheap sanity check on the science, not just the plumbing.
 
