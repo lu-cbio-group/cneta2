@@ -67,6 +67,12 @@ def test_run_cnets(repo_root, scripts_dir, script_env, run):
     assert read_tree(tree_file).n_leaves == EXPECTED_LEAVES
     assert read_copy_numbers(cn_file).samples == set(range(1, EXPECTED_LEAVES + 1))
 
+    # The log must show that the program itself ran (its version line), not
+    # only that the script exited 0: when /usr/bin/time was missing on a
+    # machine, the program never started and the script still reported success.
+    (log,) = outdir.glob("std_cnets_*")
+    assert "version:\t" in log.read_text(), f"cnets did not run\n{result}"
+
 
 def test_run_cnetml_after_cnets(repo_root, scripts_dir, script_env, run):
     """run-cnetml.sh consumes what run-cnets.sh produces, so run both."""
@@ -90,6 +96,10 @@ def test_run_cnetml_after_cnets(repo_root, scripts_dir, script_env, run):
     tree = read_tree(ml_trees[0])
     assert tree.n_leaves == EXPECTED_LEAVES
     assert all(edge.length >= 0 for edge in tree.edges)
+
+    # As above: the program's own version line proves it ran.
+    (log,) = outdir.glob("std_cnetml_*")
+    assert "version:\t" in log.read_text(), f"cnetml did not run\n{result}"
 
 
 @pytest.mark.xfail(
