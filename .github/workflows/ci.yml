@@ -127,3 +127,75 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: pytest-results.xml
           retention-days: 7
+
+  # A second Linux build with two "sanitizers": compiler features, switched
+  # on by a flag, that add checks to the compiled code and report problems
+  # at run time with a stack trace pointing at the line that caused them.
+  #
+  #   AddressSanitizer (ASan) checks every memory access: reading or
+  #   writing past the end of an array, using memory after it was freed,
+  #   overrunning a buffer on the stack. Without it these corrupt memory
+  #   silently and show up later as a segfault somewhere else.
+  #
+  #   UndefinedBehaviorSanitizer (UBSan) checks operations the C++ standard
+  #   leaves undefined: signed integer overflow, shifting by too much,
+  #   dividing by zero, using a null or misaligned pointer, reading a value
+  #   that was never set. Without it the result is whatever the compiler
+  #   happened to produce, and can differ between machines.
+  #
+  # Neither needs a change to the code; both roughly double the run time.
+  # Leak checking is off: the programs free little before they exit, and
+  # leaks are not what this job is for. Built at -O1, which the sanitizers
+  # recommend and which keeps the test suite to about two minutes (at -O0
+  # it takes six).
+  sanitizers:
+    name: ubuntu-latest, sanitizers
+    runs-on: ubuntu-latest
+
+    env:
+      OMP_NUM_THREADS: 1
+      ASAN_OPTIONS: detect_leaks=0
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake libboost-program-options-dev libboost-filesystem-dev \
+            libgsl-dev zlib1g-dev
+
+      # Separate cache key from the main job: Catch2 built with the sanitizers
+      # must not be restored into the normal build, nor the other way round.
+      - name: Cache Catch2
+        uses: actions/cache@v4
+        with:
+          path: code/build/_deps
+          key: catch2-sanitizers-${{ runner.os }}-${{ hashFiles('tests/unit/CMakeLists.txt') }}
+
+      - name: Configure (Debug with -O1, ASan + UBSan)
+        run: >
+          cmake -S code -B code/build -DCNETA_BUILD_TESTING=ON
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_FLAGS="-O1 -fsanitize=address,undefined -fno-omit-frame-pointer"
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+
+      - name: Build
+        run: cmake --build code/build -j 4
+
+      - name: Unit tests (Catch2)
+        run: ctest --test-dir code/build --output-on-failure
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tests/requirements.txt
+
+      - name: Install test dependencies
+        run: python -m pip install -r tests/requirements.txt
+
+      - name: End-to-end tests (pytest)
+        run: pytest tests -v -m "not build"
