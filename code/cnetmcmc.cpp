@@ -2249,6 +2249,12 @@ int main (int argc, char ** const argv) {
             cout << "configuration file: " << config_file << endl;
             if(config_file!=""){
                 ifstream ifs(config_file.c_str());
+                // A file that does not open used to be parsed as empty, so a
+                // wrong path silently ran with the built-in defaults.
+                if(!ifs){
+                    cerr << "Error: cannot open configuration file " << config_file << endl;
+                    return 1;
+                }
                 po::store(po::parse_config_file(ifs, config_file_options), vm);
                 po::notify(vm);
             }
