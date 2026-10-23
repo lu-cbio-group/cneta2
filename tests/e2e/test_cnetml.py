@@ -87,6 +87,25 @@ def test_scoring_is_reproducible(data_dir, cnetml, run):
     assert scores[0] == scores[1]
 
 
+def test_cn_type_is_required(data_dir, cnetml, run):
+    """`--cn_type` decides which event types the model considers, and there is
+    no right default. It used to have none and no check either: without it the
+    variable was never set, and mode 3 stopped with "Unknown CN model type!"
+    after reading the uninitialised value. It is now a required option, so
+    leaving it out gives a clean error that names it."""
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--cn_type": None},
+        ),
+    ])
+
+    assert_clean_rejection(result, mentions="cn_type")
+
+
 def test_true_tree_beats_a_wrong_topology(data_dir, cnetml, run):
     """A cheap sanity check on the science, not just the plumbing.
 

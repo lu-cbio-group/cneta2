@@ -1729,7 +1729,7 @@ int main(int argc, char** const argv){
     ("is_bin", po::value<int>(&is_bin)->default_value(1), "whether or not the input copy number is for each bin. If not, the input copy number is read as it is. Or else, consecutive bins will be merged")
     ("incl_all", po::value<int>(&incl_all)->default_value(1), "whether or not to include all the input copy numbers for phylogeny inference")
 
-    ("cn_type", po::value<int>(&cn_type), "Type of copy number changes to consider (0: only segment-level mutations (ONLY_SEG), 1: only chromosome gain/loss and whole genome doubling (EXCLUDE_SEG), 2: only duplication/deletion and whole genome doubling (EXCLUDE_CHR), 3: only duplication/deletion and chromosome gain/loss (EXCLUDE_WGD), 4: all types of mutations (ALL))")
+    ("cn_type", po::value<int>(&cn_type)->required(), "(required) Type of copy number changes to consider (0: only segment-level mutations (ONLY_SEG), 1: only chromosome gain/loss and whole genome doubling (EXCLUDE_SEG), 2: only duplication/deletion and whole genome doubling (EXCLUDE_CHR), 3: only duplication/deletion and chromosome gain/loss (EXCLUDE_WGD), 4: all types of mutations (ALL))")
 
     ("use_repeat", po::value<int>(&use_repeat)->default_value(1), "whether or not to use repeated site patterns when computing the likelihood")
     ("correct_bias", po::value<int>(&correct_bias)->default_value(1), "correct bias when excluding invariant sites")
@@ -1783,12 +1783,12 @@ int main(int argc, char** const argv){
       po::store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
       if(vm.count("help")){
           cout << cmdline_options << endl;
-          return 1;
+          return 0;
       }
       if(vm.count("version")){
           cout << "CNETML [version " << version_string() << "], a program to build a maximum likelihood phylogenetic tree from total or haplotype-specific copy number profiles of multiple (spatio-temporal) samples for a single patient" << endl;
           cout << "This program can also be used to compute the likelihood and ancestral states of a given tree, maximum likelihood of a tree with fixed topology (and/or mutation rates), given the copy number profiles." << endl;
-          return 1;
+          return 0;
       }
       po::notify(vm);
     } catch (const std::exception& e) {

@@ -1736,15 +1736,24 @@ int main (int argc, char** const argv) {
         po::store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
         if(vm.count("help")){
             cout << cmdline_options << endl;
-            return 1;
+            return 0;
         }
         if(vm.count("version")){
             cout << "CNETS [version " << version_string() << "], a program to simulate copy number alterations along a phylogenetic tree" << endl;
-            return 1;
+            return 0;
         }
         po::notify(vm);
     }catch(const std::exception& e){
         std::cerr << e.what() << std::endl;
+        return 1;
+    }
+
+    // Branch-specific rates (--bsr_mode) are drawn on the waiting-times path
+    // only (--method 0). On the direct-sequence path they were silently
+    // ignored, so a run asked for with varying rates came out constant-rate.
+    if(bsr_mode > 0 && method != SIM_TIME){
+        cerr << "Error: --bsr_mode " << bsr_mode << " has no effect with --method " << method
+             << " (sequences simulated directly). Use --method 0 for branch-specific rates, or --bsr_mode 0." << endl;
         return 1;
     }
 
