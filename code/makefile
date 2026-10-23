@@ -9,7 +9,7 @@ GSL = /usr/local
 # GSL = /opt/homebrew/opt/gsl
 # omp = -fopenmp
 omp =
-FLAG = -O3 -std=gnu++17
+FLAG = -O3 -std=gnu++20
 # FLAG =
 # FLAG = -O3 -lintlc 	#  Add -lintlc when using intel complier
 CXXFLAGS += -DBOOST_ERROR_CODE_HEADER_ONLY -DBOOST_SYSTEM_NO_LIB
