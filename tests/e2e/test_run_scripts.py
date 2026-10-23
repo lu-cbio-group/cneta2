@@ -67,6 +67,12 @@ def test_run_cnets(repo_root, scripts_dir, script_env, run):
     assert read_tree(tree_file).n_leaves == EXPECTED_LEAVES
     assert read_copy_numbers(cn_file).samples == set(range(1, EXPECTED_LEAVES + 1))
 
+    # The log must show that the program itself ran (its version line), not
+    # only that the script exited 0: when /usr/bin/time was missing on a
+    # machine, the program never started and the script still reported success.
+    (log,) = outdir.glob("std_cnets_*")
+    assert "version:\t" in log.read_text(), f"cnets did not run\n{result}"
+
 
 def test_run_cnetml_after_cnets(repo_root, scripts_dir, script_env, run):
     """run-cnetml.sh consumes what run-cnets.sh produces, so run both."""
@@ -91,18 +97,20 @@ def test_run_cnetml_after_cnets(repo_root, scripts_dir, script_env, run):
     assert tree.n_leaves == EXPECTED_LEAVES
     assert all(edge.length >= 0 for edge in tree.edges)
 
+    # As above: the program's own version line proves it ran.
+    (log,) = outdir.glob("std_cnetml_*")
+    assert "version:\t" in log.read_text(), f"cnetml did not run\n{result}"
+
 
 @pytest.mark.xfail(
     reason="run-cnetmcmc.sh ships with an inconsistent configuration: it "
            "passes is_total=1 with <prefix>-cn.txt.gz (4 columns), but "
            "config/cnet_mcmc.cfg sets model=2, which needs the 5-column "
-           "<prefix>-haplotype-cn.txt.gz. cnetmcmc correctly prints 'There "
-           "should be 5 columns...' and exits 1, but the script never checks "
-           "the status inside its chain loop, so it still prints 'Finish "
-           "running cnetmcmc' and exits 0 with no traces written. Two fixes "
-           "needed: point input at the haplotype file with is_total=0 (or set "
-           "model=1 in the config), and check the exit status per chain the way "
-           "run-cnetml.sh already does.",
+           "<prefix>-haplotype-cn.txt.gz. cnetmcmc prints 'There should be "
+           "5 columns...' and exits 1, and the script now reports the failed "
+           "chain and exits non-zero. Which side to change -- the input file "
+           "with is_total=0, or model=1 in the config -- is a question for the "
+           "researchers.",
     strict=False,
 )
 def test_run_cnetmcmc_after_cnets(repo_root, scripts_dir, script_env, data_dir,
@@ -126,6 +134,25 @@ def test_run_cnetmcmc_after_cnets(repo_root, scripts_dir, script_env, data_dir,
     seeds = [log.read_text().splitlines()[0]
              for log in sorted((outdir / "mcmc").glob("std_mcmc_*"))]
     assert len(seeds) == 2 and seeds[0] != seeds[1], f"chains share a seed: {seeds}"
+
+
+def test_run_cnetmcmc_reports_a_failed_chain(repo_root, scripts_dir, script_env,
+                                             data_dir, run):
+    """A chain that fails must fail the script: it used to print 'Finish
+    running cnetmcmc' and exit 0 whatever happened inside the loop. Here the
+    chain fails because run-cnets.sh was not run first, so the input file
+    does not exist."""
+    outdir, env = script_env
+    env = {**env, "CNETA_CONFIG": str(data_dir / "mcmc-ci.cfg")}
+
+    result = run([scripts_dir / "run-cnetmcmc.sh"], cwd=repo_root, env=env)
+
+    assert result.returncode != 0, str(result)
+    assert "FAILED" in result.stdout, str(result)
+    assert "Finish running cnetmcmc" not in result.stdout, str(result)
+    assert not list((outdir / "mcmc").glob("mcmc_*.p")), (
+        "a trace was written although the chain failed"
+    )
 
 
 def test_scripts_respect_the_output_override(repo_root, scripts_dir, script_env,

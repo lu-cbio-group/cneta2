@@ -195,6 +195,34 @@ def test_tree_search_writes_a_consistent_summary(tmp_path, tiny_sim: Simulation,
         assert rate >= 0, f"{key} is negative: {rate}"
 
 
+def test_fixed_tree_with_branch_specific_rates_runs(tmp_path, data_dir, cnetml,
+                                                     run):
+    """Mode 3 with bsr_mode 3 (random local clock) on the tiny fixture: the
+    path the researchers use for rate shifts, and the only test that runs
+    the shift-edge search. Checks that the run completes and that the
+    summary records the settings. About 0.04 s on the fixture."""
+    out_file = tmp_path / "fixed.txt"
+    run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--mode": 3, "-o": out_file, "--optim": 1, "--estmu": 0,
+               "--bsr_mode": 3},
+        ),
+    ]).assert_ok()
+
+    summary = read_summary(tmp_path / "fixed.txt.summary.txt")
+    assert summary["mode"] == "3"
+    assert summary["bsr_mode"] == "3"
+    assert summary["rlc_criterion"] == "AIC"
+    assert float(summary["raw_logL"]) < 0
+    assert (tmp_path / "fixed.txt.edge_rates.txt").is_file(), (
+        "mode 3 with bsr_mode 3 wrote no edge-rate table"
+    )
+
+
 def test_tree_search_writes_edge_rates(tmp_path, tiny_sim: Simulation,
                                        cnetml, run):
     out_file = tmp_path / "MaxL.txt"

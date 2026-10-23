@@ -99,7 +99,7 @@ fixed — the assertion should then pass as written.
 
 | Where | Issue |
 |---|---|
-| `e2e/test_run_scripts.py` (`xfail`) | `bin/run-cnetmcmc.sh` passes total copy numbers (`is_total=1`, 4 columns) while `config/cnet_mcmc.cfg` sets `model=2`, which needs the 5-column haplotype file. `cnetmcmc` correctly exits 1, but the script never checks the status inside its chain loop, so it reports success and exits 0 with no traces written. |
+| `e2e/test_run_scripts.py` (`xfail`) | `bin/run-cnetmcmc.sh` passes total copy numbers (`is_total=1`, 4 columns) while `config/cnet_mcmc.cfg` sets `model=2`, which needs the 5-column haplotype file, so the default run fails. The script now reports the failed chain and exits non-zero; which side to change (the input file or the model) is a question for the researchers. |
 
 ## Adding a test
 
