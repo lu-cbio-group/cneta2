@@ -23,8 +23,8 @@ fi
 # Use MCMC to infer tree
 # With configuration file; override with CNETA_CONFIG to use a different one.
 config_file="${CNETA_CONFIG:-$CNETA_CONFIG_DIR/cnet_mcmc.cfg}"
-# cnetmcmc does not complain about a missing config file -- it silently runs
-# with its built-in defaults instead -- so check here.
+# cnetmcmc stops on a missing config file too; checking here gives the
+# message before anything else runs.
 if [[ ! -f $config_file ]]; then
   echo "Configuration file $config_file does not exist!" >&2
   exit 1
@@ -107,6 +107,12 @@ do
   record_seed "$dir" "$chain_seed" "mcmc/$(basename "$log")"
 
   "$CNETA_BIN/cnetmcmc" -s $Ns --is_total $is_total -c $input -t "$times" --rtree "$rtree" --trace_param_file $trace_param_file --trace_tree_file $trace_tree_file --config_file "$config_file" --init_tree $init_tree --file_itree $file_itree --seed $chain_seed >> $log
+  chain_status=$?
+  if [[ $chain_status -ne 0 ]]; then
+    echo "cnetmcmc chain $i FAILED (exit code ${chain_status}), see $log"
+    exit "$chain_status"
+  fi
+  echo "cnetmcmc chain $i SUCCEEDED (exit code 0)"
 
   # Summarize the sampled trees into a maximum credibility tree with median heights
   # treeannotator -burnin 10 -heights median $trace_tree_file $sum_tree_file

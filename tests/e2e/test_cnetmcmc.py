@@ -243,3 +243,28 @@ def test_missing_input_file_is_rejected_with_a_message(tmp_path, data_dir,
         f"expected a clean non-zero exit, got {result.returncode}\n{result}"
     )
     assert str(missing) in result.stdout + result.stderr, str(result)
+
+
+def test_missing_config_file_is_rejected_with_a_message(tmp_path, data_dir,
+                                                        tiny_sim: Simulation,
+                                                        cnetmcmc, run):
+    """A config file that does not exist used to be parsed as empty, so a
+    wrong path silently ran the chain with the built-in defaults."""
+    missing = tmp_path / "no-such.cfg"
+    result = run([
+        cnetmcmc,
+        *cli.cnetmcmc_args(
+            cn_file=tiny_sim.haplotype_cn,
+            times_file=tiny_sim.times,
+            tree_file=tiny_sim.tree,
+            config_file=missing,
+            trace_param=tmp_path / "chain.p",
+            trace_tree=tmp_path / "chain.t",
+        ),
+    ])
+
+    assert result.returncode > 0, str(result)
+    assert str(missing) in result.stdout + result.stderr, str(result)
+    assert not (tmp_path / "chain.p").exists(), (
+        "cnetmcmc ran a chain despite the missing config file"
+    )
