@@ -78,6 +78,24 @@ site-root:
 		'<a href="en/index.html">CNETA documentation</a>' \
 		> "$(BUILDDIR)/html/index.html"
 	@cp "$(BUILDDIR)/html/en/404.html" "$(BUILDDIR)/html/404.html"
+	@find "$(BUILDDIR)/html/en" -type f -name '*.html' \
+		! -path "$(BUILDDIR)/html/en/index.html" \
+		! -path "$(BUILDDIR)/html/en/404.html" -print0 | \
+		while IFS= read -r -d '' page; do \
+			relative=$${page#$(BUILDDIR)/html/en/}; \
+			target="en/$$relative"; \
+			directory="$$relative"; \
+			while [[ "$$directory" == */* ]]; do \
+				target="../$$target"; \
+				directory=$${directory%/*}; \
+			done; \
+			mkdir -p "$(BUILDDIR)/html/$$(dirname "$$relative")"; \
+			printf '%s\n' '<!DOCTYPE html>' '<meta charset="utf-8">' \
+				'<title>Page moved</title>' \
+				"<script>window.location.replace(\"$$target\" + window.location.search + window.location.hash);</script>" \
+				"<a href=\"$$target\">This page has moved.</a>" \
+				> "$(BUILDDIR)/html/$$relative"; \
+		done
 
 # Live-reload while editing (requires sphinx-autobuild). It serves one
 # language only, so the language switch links lead nowhere here; use
