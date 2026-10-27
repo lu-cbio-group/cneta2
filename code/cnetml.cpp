@@ -1811,6 +1811,13 @@ int main(int argc, char** const argv){
         cerr << "Error: bsr_mode=" << bsr_mode << " is not compatible with mode=" << mode << "." << endl;
         exit(EXIT_FAILURE);
     }
+    // Branch-specific rates only enter the likelihood of model 3 (DECOMP):
+    // targetFunk uses the per-edge rates only for that model, so with any
+    // other model the multipliers stay at 1 and the option changes nothing.
+    if(bsr_mode > 0 && model != 3){
+        cerr << "Error: bsr_mode=" << bsr_mode << " requires model=3 (--model 3, independent Markov chains); with model=" << model << " the branch-specific rates would be ignored." << endl;
+        exit(EXIT_FAILURE);
+    }
     if(rlc_search_method != 0 && rlc_search_method != 1 && rlc_search_method != 2){
         cerr << "Error: unknown rlc_search_method=" << rlc_search_method << " (0: exhaustive search, 1: stepwise greedy search, 2: genetic algorithm)." << endl;
         exit(EXIT_FAILURE);

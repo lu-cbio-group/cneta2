@@ -106,6 +106,26 @@ def test_cn_type_is_required(data_dir, cnetml, run):
     assert_clean_rejection(result, mentions="cn_type")
 
 
+def test_bsr_mode_is_refused_without_model_3(data_dir, cnetml, run):
+    """Branch-specific rates (--bsr_mode > 0) only enter the likelihood of
+    model 3 (independent Markov chains, -d 3). With the default -d 2 the
+    option used to be accepted and ignored: every rate multiplier stayed at
+    1.0, every shift-edge subset scored the same, and the search reported
+    no shift edges. It must now stop with a message naming both options."""
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--mode": 3, "--optim": 1, "--estmu": 0, "--bsr_mode": 3},
+        ),
+    ])
+
+    assert_clean_rejection(result, mentions="bsr_mode")
+    assert "model" in result.stdout + result.stderr, str(result)
+
+
 def test_true_tree_beats_a_wrong_topology(data_dir, cnetml, run):
     """A cheap sanity check on the science, not just the plumbing.
 
