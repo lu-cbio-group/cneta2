@@ -404,14 +404,12 @@ msgid "Build (`cneta-build`):"
 msgstr "构建（`cneta-build`）："
 
 #: ../../source/installation/index.md:195
-msgid "A C++17-capable compiler (GCC >= 7 or Clang >= 5)"
-msgstr "支持 C++17 的编译器（GCC >= 7 或 Clang >= 5）"
+msgid "A C++20-capable compiler (GCC >= 10, Clang >= 10, Apple clang >= 12)"
+msgstr "支持 C++20 的编译器（GCC >= 10、Clang >= 10 或 Apple clang >= 12）"
 
 #: ../../source/installation/index.md:196
-msgid ""
-"[CMake](https://cmake.org/) >= 3.16 (3.10 is enough for the programs alone; "
-"the tests need 3.16)"
-msgstr "[CMake](https://cmake.org/) >= 3.16（只构建程序 3.10 就够；测试需要 3.16）"
+msgid "[CMake](https://cmake.org/) >= 3.16"
+msgstr "[CMake](https://cmake.org/) >= 3.16"
 
 #: ../../source/installation/index.md:198
 msgid ""
