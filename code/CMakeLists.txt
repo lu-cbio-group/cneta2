@@ -1,5 +1,30 @@
-cmake_minimum_required(VERSION 3.10)
-project(cneta VERSION 2.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.16)
+
+# The version lives in one place, the VERSION file at the repository root
+# (MAJOR.MINOR.PATCH, see docs/source/developer-guide/releases.md). The
+# programs print it with --version and write it into their outputs.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION" CNETA_VERSION LIMIT_COUNT 1)
+string(STRIP "${CNETA_VERSION}" CNETA_VERSION)
+if(NOT CNETA_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "The VERSION file must hold MAJOR.MINOR.PATCH, e.g. 2.1.0; found '${CNETA_VERSION}'")
+endif()
+project(cneta VERSION ${CNETA_VERSION} LANGUAGES CXX)
+
+# Which commit the build came from, so results produced between releases can
+# be traced too: "v2.1.0" on a tagged release, "v2.1.0-5-gabc1234" five
+# commits later, "-dirty" with uncommitted changes. Taken when CMake
+# configures (build.sh configures every time); empty outside a git checkout.
+set(CNETA_GIT_DESCRIBE "")
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../.git")
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" describe --tags --always --dirty
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
+        OUTPUT_VARIABLE CNETA_GIT_DESCRIBE
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+endif()
+message(STATUS "cneta version ${CNETA_VERSION} (git: ${CNETA_GIT_DESCRIBE})")
 
 # Tell CMake to use the modern Boost search behavior and silence CMP0167
 if(POLICY CMP0167)
@@ -8,11 +33,12 @@ endif()
 
 # 1. Set Global C++ Standards
 # -----------------------------
-# C++17. The one thing that blocked it, std::random_shuffle (removed in
-# C++17), was replaced by portable_shuffle.hpp. Catch2 v3 (tests/unit/)
+# C++20 (GCC 10, Clang 10 or Apple clang 12 and newer; the HPC's GCC 13 and
+# the conda compilers qualify). std::random_shuffle, which blocked anything
+# past C++14, was replaced by portable_shuffle.hpp. Catch2 v3 (tests/unit/)
 # needs at least C++14; the legacy code/makefile uses the same standard.
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF) # Forces standard C++ over compiler-specific extensions
 
@@ -130,6 +156,12 @@ target_link_libraries(cneta_core
 if(OpenMP_CXX_FOUND)
     target_link_libraries(cneta_core PUBLIC OpenMP::OpenMP_CXX)
 endif()
+
+# The version and commit, for common.hpp (PUBLIC: the programs and the unit
+# tests see the same values).
+target_compile_definitions(cneta_core PUBLIC
+        CNETA_VERSION="${CNETA_VERSION}"
+        CNETA_GIT_DESCRIBE="${CNETA_GIT_DESCRIBE}")
 
 # 5. Build the Executables
 # -------------------------

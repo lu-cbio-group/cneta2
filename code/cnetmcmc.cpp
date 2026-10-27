@@ -2237,18 +2237,24 @@ int main (int argc, char ** const argv) {
             po::store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
             if(vm.count("help")) {
                     cout << cmdline_options << endl;
-                    return 1;
+                    return 0;
             }
 
             if(vm.count("version")) {
-                    cout << "CNETMCMC [version " << VERSION << "], a program to build a phylogenetic tree from total or haplotype-specific copy number profiles of multiple (spatio-temporal) samples for a single patient with MCMC approach" << endl;
+                    cout << "CNETMCMC [version " << version_string() << "], a program to build a phylogenetic tree from total or haplotype-specific copy number profiles of multiple (spatio-temporal) samples for a single patient with MCMC approach" << endl;
                     cout << "This program can also be used to estimate parameters given a tree of fixed topology." << endl;
-                    return 1;
+                    return 0;
             }
             po::notify(vm);
             cout << "configuration file: " << config_file << endl;
             if(config_file!=""){
                 ifstream ifs(config_file.c_str());
+                // A file that does not open used to be parsed as empty, so a
+                // wrong path silently ran with the built-in defaults.
+                if(!ifs){
+                    cerr << "Error: cannot open configuration file " << config_file << endl;
+                    return 1;
+                }
                 po::store(po::parse_config_file(ifs, config_file_options), vm);
                 po::notify(vm);
             }
@@ -2261,6 +2267,7 @@ int main (int argc, char ** const argv) {
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
+    cout << "version:" << "\t" << version_string() << endl;
     seed = setup_rng(r, seed);
 
     ITREE_PARAM itree_param{epop, beta, gtime};

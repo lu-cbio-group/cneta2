@@ -9,10 +9,16 @@ GSL = /usr/local
 # GSL = /opt/homebrew/opt/gsl
 # omp = -fopenmp
 omp =
-FLAG = -O3 -std=gnu++17
+FLAG = -O3 -std=gnu++20
 # FLAG =
 # FLAG = -O3 -lintlc 	#  Add -lintlc when using intel complier
 CXXFLAGS += -DBOOST_ERROR_CODE_HEADER_ONLY -DBOOST_SYSTEM_NO_LIB
+
+# The version, from the VERSION file at the repository root (the same file
+# CMake reads), and the commit the build came from.
+CNETA_VERSION := $(shell cat ../VERSION)
+CNETA_GIT_DESCRIBE := $(shell git describe --tags --always --dirty 2>/dev/null)
+FLAG += -DCNETA_VERSION=\"$(CNETA_VERSION)\" -DCNETA_GIT_DESCRIBE=\"$(CNETA_GIT_DESCRIBE)\"
 
 
 all: cnets cnetml cnetmcmc 

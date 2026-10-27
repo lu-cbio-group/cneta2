@@ -400,6 +400,7 @@ void print_sequences(map<int, copy_number>& cn_matrix, int cn_max, int model, in
     cout << "Writing all the mutational events" << endl;
     sstm << dir << prefix << "-info.txt";
     ofstream out_info(sstm.str());
+    out_info << "VERSION: " << version_string() << endl;
     out_info << "SEED: " << seed_in_use << endl;
     out_info << "TREE SEED: " << (tree_seed_in_use ? to_string(tree_seed_in_use) : string("same stream as SEED")) << endl;
     out_info << endl;
@@ -1357,6 +1358,7 @@ void print_simulations(int mode, int model, int num_seg, int bsr_mode, const vec
     cout << "Writing all the mutational events" << endl;
     sstm << dir << prefix << "-info.txt";
     ofstream out_info(sstm.str());
+    out_info << "VERSION: " << version_string() << endl;
     out_info << "SEED: " << seed_in_use << endl;
     out_info << "TREE SEED: " << (tree_seed_in_use ? to_string(tree_seed_in_use) : string("same stream as SEED")) << endl;
     out_info << endl;
@@ -1734,15 +1736,24 @@ int main (int argc, char** const argv) {
         po::store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
         if(vm.count("help")){
             cout << cmdline_options << endl;
-            return 1;
+            return 0;
         }
         if(vm.count("version")){
-            cout << "CNETS [version " << VERSION << "], a program to simulate copy number alterations along a phylogenetic tree" << endl;
-            return 1;
+            cout << "CNETS [version " << version_string() << "], a program to simulate copy number alterations along a phylogenetic tree" << endl;
+            return 0;
         }
         po::notify(vm);
     }catch(const std::exception& e){
         std::cerr << e.what() << std::endl;
+        return 1;
+    }
+
+    // Branch-specific rates (--bsr_mode) are drawn on the waiting-times path
+    // only (--method 0). On the direct-sequence path they were silently
+    // ignored, so a run asked for with varying rates came out constant-rate.
+    if(bsr_mode > 0 && method != SIM_TIME){
+        cerr << "Error: --bsr_mode " << bsr_mode << " has no effect with --method " << method
+             << " (sequences simulated directly). Use --method 0 for branch-specific rates, or --bsr_mode 0." << endl;
         return 1;
     }
 
@@ -1758,6 +1769,7 @@ int main (int argc, char** const argv) {
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
+    cout << "version:" << "\t" << version_string() << endl;
     seed = setup_rng(r, seed);
     seed_in_use = seed;
     tree_seed_in_use = tree_seed;

@@ -16,6 +16,7 @@ architecture
 testing
 writing-tests
 contributing
+releases
 documentation
 ../api/cpp
 ```

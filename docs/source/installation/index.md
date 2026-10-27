@@ -192,9 +192,8 @@ building on a system without conda.
 
 Build (`cneta-build`):
 
-- A C++17-capable compiler (GCC >= 7 or Clang >= 5)
-- [CMake](https://cmake.org/) >= 3.16 (3.10 is enough for the programs alone;
-  the tests need 3.16)
+- A C++20-capable compiler (GCC >= 10, Clang >= 10, Apple clang >= 12)
+- [CMake](https://cmake.org/) >= 3.16
 - [Boost](https://www.boost.org/) (`program_options` and `filesystem`
   components)
 - [GSL](https://www.gnu.org/software/gsl/) (GNU Scientific Library)
