@@ -1956,14 +1956,16 @@ int main(int argc, char** const argv){
     max_tobs = *max_element(tobs.begin(), tobs.end());
     // a list of nodes to loop over for bottom-up likelihood computation, and the root is last
     vector<int> knodes(Ns, 0);
-    // [2026-07-30 changed] "n" in AIC/BIC for bsr_mode=3 (see compute_rlc_ic in
-    // optimization.hpp) is the number of independently informative sites backing logL:
-    // Nchar. num_invar_bins is excluded even when correct_bias=1 -- those bins contribute
-    // one repeated correction term (num_invar_bins*lnl_invar), not num_invar_bins genuinely
-    // independent observations, so counting them toward n overstated BIC's per-parameter
-    // penalty (log(n) too large, biasing the search toward fewer shift edges than
-    // warranted). Previously n_sites_for_ic = correct_bias ? (num_invar_bins + Nchar) : Nchar.
-    int n_sites_for_ic = Nchar;
+    // "n" for BIC and AICc in the bsr_mode=3 search (compute_rlc_ic, optimization.hpp):
+    // the number of bins that enter the likelihood. Invariant bins enter either as sites
+    // (is_bin=0 with incl_all=1 keeps every bin, so Nchar already counts them) or through
+    // the correct_bias term that adds their likelihood back when the site list leaves
+    // them out; with neither they are dropped and do not count. The likelihood is the
+    // same under both layouts, so n must be too. [2026-10-27 changed] Decided with the
+    // group: normal sites are part of the likelihood by default, so they count; the
+    // previous rule (n = Nchar) counted them with incl_all=1 only.
+    bool invar_bins_are_sites = (!is_bin && incl_all);
+    int n_sites_for_ic = Nchar + ((!invar_bins_are_sites && correct_bias) ? num_invar_bins : 0);
     lnl_type = {model, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, n_sites_for_ic, cn_type, knodes};
     // important variables for independent Markov chains model
     obs_decomp = {m_max, max_wgd_sample, max_chr_change, max_site_change};

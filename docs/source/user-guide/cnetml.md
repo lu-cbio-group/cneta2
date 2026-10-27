@@ -86,7 +86,10 @@ Shift-edge search (`--bsr_mode 3`, with `mode` 3)
   number of rate types; the node ages and reference rates fitted in
   every candidate add the same constant to each and are left out. The
   AICc in the log counts every fitted parameter and is for information
-  only. The search prints these counts at its start.
+  only. BIC's sample size is the number of bins in the likelihood: all
+  bins with `incl_all 1` (the default), or with `incl_all 0` the variable
+  bins plus the invariant ones that the bias correction adds back. The
+  search prints these counts at its start.
 
 Tree search (`tree_search`)
 : - `0` — genetic algorithm. Slow, deprecated.

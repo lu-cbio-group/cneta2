@@ -233,7 +233,7 @@ struct LNL_TYPE{
   int correct_bias; // Whether or not to correct acquisition bias, used in get_likelihood_*
   int num_invar_bins; // used in get_likelihood_*
   
-  // number of independently informative sites backing logL, used as the "n" in AIC/BIC model-selection for bsr_mode=3 (see compute_rlc_ic in optimization.hpp). Computed once in cnetml.cpp as Nchar (num_invar_bins excluded even when correct_bias=1.
+  // number of bins that enter the likelihood, used as the "n" in BIC/AICc model selection for bsr_mode=3 (see compute_rlc_ic in optimization.hpp). Set once in cnetml.cpp: Nchar plus the invariant bins that correct_bias adds back when they are not among the sites.
   int n_sites_for_ic;
 
   int cn_type; // type of copy number changes modeled (0: only segmental CNAs; 1: only chromosomal and WGD CNAs; 2: segmental and WGD CNAs; 3: segmental and chromosomal CNAs; 4: all types of CNAs)

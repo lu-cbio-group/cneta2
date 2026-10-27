@@ -2432,7 +2432,9 @@ int main (int argc, char ** const argv) {
 
     max_tobs = *max_element(tobs.begin(), tobs.end());
 
-    int n_sites_for_ic = Nchar;
+    // bins that enter the likelihood, same rule as in cnetml.cpp (unused by the sampler)
+    bool invar_bins_are_sites = (!is_bin && incl_all);
+    int n_sites_for_ic = Nchar + ((!invar_bins_are_sites && correct_bias) ? num_invar_bins : 0);
     lnl_type = {model, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, n_sites_for_ic, cn_type, knodes};
 
     obs_decomp = {m_max, max_wgd_sample, max_chr_change_haplotype, max_site_change_haplotype};

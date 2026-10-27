@@ -223,13 +223,19 @@ def test_fixed_tree_with_branch_specific_rates_runs(tmp_path, data_dir, cnetml,
     )
 
 
-def test_shift_edge_search_states_its_parameter_count(tmp_path, data_dir, cnetml,
-                                                      run):
+@pytest.mark.parametrize("incl_all", [1, 0])
+def test_shift_edge_search_states_its_parameter_count(incl_all, tmp_path, data_dir,
+                                                      cnetml, run):
     """The shift-edge search prints what its information criteria rest on:
     the number of bins behind BIC's sample size, the shift parameters per
     edge, and the shared parameters that only AICc includes. On the tiny
     fixture (3 regions, age-constrained tree, segment-level rates) that is
-    3 node-age parameters plus 2 reference rates, so 5 shared ones."""
+    3 node-age parameters plus 2 reference rates, so 5 shared ones.
+
+    The sample size is the number of bins in the likelihood, whatever the
+    input layout: all 50 bins as sites with incl_all 1, or the 9 variable
+    bins as sites plus the 41 invariant ones that the bias correction adds
+    back with incl_all 0. Both must report n=50."""
     out_file = tmp_path / "fixed.txt"
     result = run([
         cnetml,
@@ -238,7 +244,7 @@ def test_shift_edge_search_states_its_parameter_count(tmp_path, data_dir, cnetml
             times_file=data_dir / "tiny-rel-times.txt",
             tree_file=data_dir / "tiny-tree.txt",
             **{"--mode": 3, "-o": out_file, "--optim": 1, "--estmu": 0,
-               "--bsr_mode": 3, "-d": 3},
+               "--bsr_mode": 3, "-d": 3, "--incl_all": incl_all},
         ),
     ])
     result.assert_ok()
