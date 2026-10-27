@@ -410,11 +410,28 @@ void update_edge_rates_rlc_from_x(
     const vector<BsrRateSlot>& bsr_slots
 );
 
+// Number of branch-length parameters max_likelihood_BFGS fits for a tree when every
+// branch is optimised: the internal branch lengths without the age constraint, the
+// tree height plus one age ratio per internal node with it. Shared with the
+// information criteria below so that the two counts cannot drift apart.
+inline int n_tree_params_est(const evo_tree& rtree, int cons){
+    return cons ? rtree.nleaf - 1 : 2 * rtree.nleaf - 3;
+}
+
+// [2026-10-27 added] Fitted parameters that every candidate of the bsr_mode=3
+// shift-edge search shares: the branch-length parameters above plus one reference
+// rate per active rate type. The reference rates count whichever way they are
+// obtained: jointly with the multipliers (estimate_bsr0_first=0) or calibrated from
+// the same data in a first pass and then held fixed (estimate_bsr0_first=1).
+inline int rlc_shared_param_count(const evo_tree& rtree, int cons, int n_types_per_edge){
+    return n_tree_params_est(rtree, cons) + n_types_per_edge;
+}
+
 // [2026-07-21 added] AIC/BIC model-selection values for ML-RLC (bsr_mode=3), replacing
 // rlc_penalized_score above. K*n_types_per_edge is the number of free parameters unlocked
 // by the accepted shift edges (see rlc_penalized_score's original comment for why
-// n_types_per_edge must multiply K). n_sites (lnl_type.n_sites_for_ic) is the effective
-// number of independent observations backing logL, used as BIC's sample size. `score` is
+// n_types_per_edge must multiply K). n_sites (lnl_type.n_sites_for_ic) is the number of
+// bins that enter the likelihood, used as BIC's sample size. `score` is
 // "higher is better" (negated IC) for whichever of AIC/BIC opt_type.rlc_criterion selects,
 // so existing comparison code (pick_best_improving, sorting) keeps working unchanged; aic
 // and bic are both always computed so callers can log/report the non-selected criterion
@@ -422,6 +439,10 @@ void update_edge_rates_rlc_from_x(
 // aicc is the small-sample-corrected AIC (AIC + 2k(k+1)/(n-k-1)),
 // reported alongside aic/bic for diagnostics only -- not wired into `score` or
 // rlc_criterion, so it never changes which shift edges get selected.
+// [2026-10-27 changed] AICc counts every fitted parameter, k = k_shared + K*n_types_per_edge
+// (see rlc_shared_param_count). AIC and BIC may leave the shared parameters out because
+// they add the same constant to every candidate; AICc's correction is not linear in k, so
+// there they must be counted, in the AIC term and in the correction alike.
 struct RlcIC {
     double raw_logL;
     double aic;
@@ -430,19 +451,29 @@ struct RlcIC {
     double score;
 };
 
-inline RlcIC compute_rlc_ic(double nlnl, int K, int n_types_per_edge, int n_sites, int criterion){
+inline RlcIC compute_rlc_ic(double nlnl, int K, int n_types_per_edge, int n_sites, int criterion, int k_shared){
     RlcIC ic;
     ic.raw_logL = -nlnl;
     double k_params = (double)K * (double)n_types_per_edge;
     ic.aic = -2.0 * ic.raw_logL + 2.0 * k_params;
     ic.bic = -2.0 * ic.raw_logL + log((double)n_sites) * k_params;
-    // undefined when n_sites <= k_params+1 (denominator non-positive); report as NaN
-    // rather than a nonsensical or misleadingly finite value.
-    double denom = (double)n_sites - k_params - 1.0;
-    ic.aicc = (denom > 0.0) ? ic.aic + (2.0 * k_params * (k_params + 1.0)) / denom
+    // AICc with every fitted parameter. Undefined when n_sites <= k_full+1 (denominator
+    // non-positive); report as NaN rather than a nonsensical or misleadingly finite value.
+    double k_full = (double)k_shared + k_params;
+    double denom = (double)n_sites - k_full - 1.0;
+    ic.aicc = (denom > 0.0) ? -2.0 * ic.raw_logL + 2.0 * k_full + (2.0 * k_full * (k_full + 1.0)) / denom
                             : std::numeric_limits<double>::quiet_NaN();
     ic.score = -(criterion == 0 ? ic.aic : ic.bic);
     return ic;
+}
+
+// One line per search run saying what the criteria count, so that a reader of the log
+// knows which n and k the printed AIC, BIC and AICc values rest on.
+inline void print_rlc_ic_setup(const char* search, int n_sites, int n_types_per_edge, int k_shared){
+    cout << "[RLC][" << search << "] information criteria: n=" << n_sites
+         << " bins in the likelihood; AIC/BIC count K x " << n_types_per_edge
+         << " shift parameters; AICc also counts the " << k_shared
+         << " shared ones (node times, reference rates)" << endl;
 }
 
 // [2026-07-14 added] Scans indices [0, n), skipping any where evaluated[i] is false, and

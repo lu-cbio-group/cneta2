@@ -223,6 +223,31 @@ def test_fixed_tree_with_branch_specific_rates_runs(tmp_path, data_dir, cnetml,
     )
 
 
+def test_shift_edge_search_states_its_parameter_count(tmp_path, data_dir, cnetml,
+                                                      run):
+    """The shift-edge search prints what its information criteria rest on:
+    the number of bins behind BIC's sample size, the shift parameters per
+    edge, and the shared parameters that only AICc includes. On the tiny
+    fixture (3 regions, age-constrained tree, segment-level rates) that is
+    3 node-age parameters plus 2 reference rates, so 5 shared ones."""
+    out_file = tmp_path / "fixed.txt"
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--mode": 3, "-o": out_file, "--optim": 1, "--estmu": 0,
+               "--bsr_mode": 3, "-d": 3},
+        ),
+    ])
+    result.assert_ok()
+
+    assert "information criteria: n=50 bins in the likelihood" in result.stdout
+    assert "AIC/BIC count K x 2 shift parameters" in result.stdout
+    assert "AICc also counts the 5 shared ones" in result.stdout
+
+
 def test_tree_search_writes_edge_rates(tmp_path, tiny_sim: Simulation,
                                        cnetml, run):
     out_file = tmp_path / "MaxL.txt"

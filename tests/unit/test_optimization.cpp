@@ -9,9 +9,11 @@
 // pick_best_improving is the comparison step that actually decides which
 // candidate (trunk edge or otherwise) wins each round of the search.
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -176,5 +178,37 @@ TEST_CASE("pick_best_improving decides whether the trunk edge is picked as a shi
         int best = pick_best_improving(2, evaluated, scores, ids, 5.0, 1e-6);
 
         REQUIRE(best == trunk_index);
+    }
+}
+
+TEST_CASE("compute_rlc_ic counts the shared parameters in AICc only", "[optimization]"){
+    // 1000 bins, two rate types per edge, K=2 shift edges and 7 shared parameters
+    // (5 node ages + 2 reference rates): AIC and BIC see k = 4, AICc sees k = 11.
+    RlcIC ic = compute_rlc_ic(1000.0, 2, 2, 1000, 0, 7);
+
+    REQUIRE(ic.raw_logL == -1000.0);
+    REQUIRE(ic.aic == Catch::Approx(2008.0));
+    REQUIRE(ic.bic == Catch::Approx(2000.0 + 4.0 * std::log(1000.0)));
+    REQUIRE(ic.aicc == Catch::Approx(2022.0 + 2.0 * 11.0 * 12.0 / 988.0));
+    REQUIRE(ic.score == -ic.aic);
+
+    SECTION("BIC drives the score when asked, AICc stays the same"){
+        RlcIC by_bic = compute_rlc_ic(1000.0, 2, 2, 1000, 1, 7);
+
+        REQUIRE(by_bic.score == -by_bic.bic);
+        REQUIRE(by_bic.aicc == Catch::Approx(ic.aicc));
+    }
+
+    SECTION("Without shared parameters AICc is the plain correction of AIC"){
+        RlcIC plain = compute_rlc_ic(1000.0, 2, 2, 1000, 0, 0);
+
+        REQUIRE(plain.aicc == Catch::Approx(2008.0 + 2.0 * 4.0 * 5.0 / 995.0));
+    }
+
+    SECTION("AICc is NaN when the sample is too small for its correction"){
+        RlcIC tiny = compute_rlc_ic(1000.0, 2, 2, 12, 0, 7);  // n - k_full - 1 == 0
+
+        REQUIRE(std::isnan(tiny.aicc));
+        REQUIRE(tiny.aic == Catch::Approx(2008.0));
     }
 }
