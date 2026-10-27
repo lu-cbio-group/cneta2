@@ -352,14 +352,14 @@ msgid "`--stime`"
 msgstr ""
 
 #: ../../source/configuration/options.md
-msgid "comma-separated numbers"
-msgstr "逗号分隔的数值"
+msgid "space-separated integers"
+msgstr "空格分隔的整数"
 
 #: ../../source/configuration/options.md
 msgid ""
-"Sampling time of each sample in years, with the most recent sample at 0; "
-"format `t1,t2,…,tN`"
-msgstr "每个样本的采样时间（年，最新样本记为 0），格式 `t1,t2,…,tN`"
+"Sampling time of each sample in whole years, with the most recent sample at "
+"0; give all values in one quoted string, e.g. `--stime \"0 1 2 3 4\"`"
+msgstr "每个样本的采样时间（整数年，最新样本记为 0）；所有值写在一个带引号的字符串里，例如 `--stime \"0 1 2 3 4\"`"
 
 #: ../../source/configuration/options.md
 msgid "`--tree_seed`"
@@ -506,11 +506,12 @@ msgstr ""
 
 #: ../../source/configuration/options.md
 msgid ""
-"0: one rate on all branches; 1: one shared multiplier per branch (all event "
+"Only with `method=0`; with `method=1`, `cnets` stops with an error. 0: one "
+"rate on all branches; 1: one shared multiplier per branch (all event "
 "types); 2: independent rate per branch and event type; 3: random local clock"
 " (rates inherited top-down, changing at each node with probability `bsr_p`)"
 msgstr ""
-"0：所有分支同一速率；1：每条分支一个共享 multiplier（所有事件类型共用）；2：每条分支、每种事件类型各自独立速率；3：random "
+"只用于 `method=0`；`method=1` 时 `cnets` 报错退出。0：所有分支同一速率；1：每条分支一个共享 multiplier（所有事件类型共用）；2：每条分支、每种事件类型各自独立速率；3：random "
 "local clock（速率自上而下继承，每个节点以概率 `bsr_p` 改变）"
 
 #: ../../source/configuration/options.md
@@ -670,8 +671,11 @@ msgstr ""
 "`mode=0` 下 `--error_rate` 不生效。"
 
 #: ../../source/configuration/options.md:111
-msgid "`--stime` values are read as integers; fractional years are truncated."
-msgstr "`--stime` 按整数读取，小数年份会被截断。"
+msgid ""
+"`--stime` takes whole years only, separated by spaces. A comma or a decimal "
+"point stops the reading there, and the remaining samples get wrong times "
+"without a warning."
+msgstr "`--stime` 只接受整数年，用空格分隔。遇到逗号或小数点时读取在那里中断，其余样本的采样时间会出错，而且没有提示。"
 
 #: ../../source/configuration/options.md:112
 msgid "`cnets` exits if `seg_max` is smaller than the number of chromosomes."

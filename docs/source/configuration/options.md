@@ -47,7 +47,7 @@ On/off switches take an integer: `0` = no, `1` = yes.
 | `--age` | `-a` | 100 | positive integer | Patient age in years |
 | `--constrained` | | 1 | 0 / 1 | 1: scale initial branch lengths by `--age` so that the tree height is below the patient age |
 | `--tdiff` | `-t` | 0 | ≥ 0 | Baseline sampling-time difference; if > 0, each sample's time = earliest sample + a random multiple of `tdiff` |
-| `--stime` | | "" | comma-separated numbers | Sampling time of each sample in years, with the most recent sample at 0; format `t1,t2,…,tN` |
+| `--stime` | | "" | space-separated integers | Sampling time of each sample in whole years, with the most recent sample at 0; give all values in one quoted string, e.g. `--stime "0 1 2 3 4"` |
 | `--tree_seed` | | 0 | non-negative integer | Seed of a separate generator used only to draw trees. 0: share the `--seed` stream. Use it to get the same trees in runs that differ only in later settings such as `--bsr_mode` |
 
 ### Genome and sites
@@ -78,7 +78,7 @@ the simulation (`cnets` has no `--cn_type` option).
 
 | Option | Short | Default | Values | Description |
 |---|---|---|---|---|
-| `--bsr_mode` | | 0 | 0 / 1 / 2 / 3 | 0: one rate on all branches; 1: one shared multiplier per branch (all event types); 2: independent rate per branch and event type; 3: random local clock (rates inherited top-down, changing at each node with probability `bsr_p`) |
+| `--bsr_mode` | | 0 | 0 / 1 / 2 / 3 | Only with `method=0`; with `method=1`, `cnets` stops with an error. 0: one rate on all branches; 1: one shared multiplier per branch (all event types); 2: independent rate per branch and event type; 3: random local clock (rates inherited top-down, changing at each node with probability `bsr_p`) |
 | `--bsr_dist` | | 0 | 0 / 1 | Distribution of the multipliers. 0: log-normal; 1: gamma |
 | `--bsr_variance` | | 0.25 | > 0 | Target variance of multiplier m (E[m] = 1). Log-normal: σ = √log(1 + var), ζ = −σ²/2; gamma: shape = 1/var, scale = var |
 | `--bsr_p` | | 0.3 | (0, 1) | `bsr_mode=3` only: probability of a rate change at each node |
@@ -108,7 +108,9 @@ the simulation (`cnets` has no `--cn_type` option).
 - The number of erroneous sites is round(number of sites × `error_rate`),
   and the number of sites is only set when `mode=1`. With `mode=0`,
   `--error_rate` therefore has no effect.
-- `--stime` values are read as integers; fractional years are truncated.
+- `--stime` takes whole years only, separated by spaces. A comma or a
+  decimal point stops the reading there, and the remaining samples get
+  wrong times without a warning.
 - `cnets` exits if `seg_max` is smaller than the number of chromosomes.
 - `bin/run-cnets.sh` names the tree-height constraint `cons`; the
   `cnets` flag is `--constrained`.

@@ -93,8 +93,9 @@ Mutation types (`cn_type`)
 ## Inputs
 Required
 : A copy-number file (`*-cn.txt.gz` or `*-haplotype-cn.txt.gz`), space
-  separated, **no header row**: `sample_ID chr_ID site_ID CN` for total
-  copy number, or with an extra `cnA cnB` for haplotype-specific.
+  separated, **no header row**: `sample_ID chr_ID site_ID CN` (4 columns)
+  for total copy number, or `sample_ID chr_ID site_ID cnA cnB` (5 columns)
+  for haplotype-specific.
   `sample_ID` must be ordered from 1 to the number of patient samples.
 
 Optional
