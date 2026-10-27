@@ -60,7 +60,7 @@ stime="" # Sampling times (in years) of the tumor regions. If not given, they wi
 
 
 ####################### Parameters related to mutation generation ##############
-model=2 # Model of evolution. 0: Mk, 1: one-step bounded (total), 2: one-step bounded (haplotype-specific), 3: Poisson
+model=2 # Model of evolution. 0: Mk, 1: one-step bounded (total), 2: one-step bounded (haplotype-specific), 3: infinite sites (Poisson process)
 mode=1  # 0: Simulating genome in fix-sized bins, 1: Simulating genome in segments of random size
 seg_max=1000  # Maximum number of segments on the genome
 fix_nseg=1  # Whether or not to fix the number of segments to be seg_max
@@ -76,6 +76,23 @@ r5=0
 # mean of exponential distributions of duplication and deletion size in bins
 s1=5
 s2=5
+
+# Branch-specific rate (BSR) options
+bsr_mode=0 # 0: constant rate, 1: shared multiplier per branch, 2: independent per-event rates, 3: random local clock
+bsr_dist=0 # distribution for the multiplier (0: lognormal, 1: gamma)
+# bsr_variance: variance of the mean-1 multiplier applied to each rate.
+#   mode 1 - one multiplier per branch applied to all event types (preserves relative proportions)
+#   mode 2 - one independent multiplier per event type per branch (proportions also vary)
+#   mode 3 - same as mode 2, triggered with probability bsr_p; otherwise inherits parent rates
+#   larger values = stronger rate heterogeneity; SD of multiplier ~ sqrt(bsr_variance)
+#   e.g. bsr_variance=0.01 (mild, SD~0.10), 0.25 (moderate, SD~0.50), 1.0 (strong, SD~1.00)
+bsr_variance=0.25
+bsr_p=0.3 # probability of rate change at each node, only used for random local clock (bsr_mode=3)
+
+if [[ $bsr_mode -lt 0 || $bsr_mode -gt 3 ]]; then
+  echo "Error: unknown bsr_mode=${bsr_mode}" >&2
+  exit 1
+fi
 ################################################################################
 
 
@@ -98,10 +115,15 @@ echo "seed $seed" > $log
 if [[ $tree_seed -ne 0 ]]; then echo "tree_seed $tree_seed" >> $log; fi
 record_seed "$dir" "$seed" "$(basename "$log")"
 # valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes -v
-/usr/bin/time "$CNETA_BIN/cnets" --tree_file "${tree_file}" -p "${prefix}" -o $dir -r $Ns -n $Nsim --mode $mode --method $method --fix_nseg $fix_nseg --seg_max $seg_max --cn_max $cn_max --dup_rate $r1 --del_rate $r2 --chr_gain $r3 --chr_loss $r4 --wgd $r5 --dup_size $s1 --del_size $s2 -e $Ne -b $beta --gtime $gtime -t $dt --verbose $verbose --constrained $cons --model $model --age $age --stime "$stime" --seed $seed --tree_seed $tree_seed --print_relative $print_relative  >> $log
+time "$CNETA_BIN/cnets" --tree_file "${tree_file}" -p "${prefix}" -o $dir -r $Ns -n $Nsim --mode $mode --method $method --fix_nseg $fix_nseg --seg_max $seg_max --cn_max $cn_max --dup_rate $r1 --del_rate $r2 --chr_gain $r3 --chr_loss $r4 --wgd $r5 --dup_size $s1 --del_size $s2 -e $Ne -b $beta --gtime $gtime -t $dt --verbose $verbose --constrained $cons --model $model --age $age --stime "$stime" --seed $seed --tree_seed $tree_seed --print_relative $print_relative --bsr_mode $bsr_mode --bsr_dist $bsr_dist --bsr_variance $bsr_variance --bsr_p $bsr_p >> $log
+cnets_status=$?
 
 wait
 
+if [[ $cnets_status -ne 0 ]]; then
+  echo "cnets FAILED (exit code ${cnets_status}), see $log"
+  exit "$cnets_status"
+fi
 echo "Finish running cnets"
 ################################################################################
 

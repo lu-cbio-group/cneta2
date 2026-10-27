@@ -107,7 +107,7 @@ double get_prior_pop_size(int pop_size)
 }
 
 /*
- exponential prior for one branch length (branch connecting MRCA and LUCA)
+ exponential prior for one branch length (branch connecting the MRCA and the root (tumour initiation))
 */
 double get_prior_indivual_blen(double blen, double lambda)
 {

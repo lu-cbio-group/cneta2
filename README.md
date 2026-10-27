@@ -19,6 +19,24 @@ There are mainly 3 programs:
 
 For installation, usage, and full documentation, see our website: https://lu-cbio-group.github.io/cneta2/
 
+## Installation
+
+Everything is installed with conda:
+
+| File | Environment | What it is for |
+|---|---|---|
+| `code/environment-mac.yml` | `cneta-build` | Build and run the programs on macOS |
+| `code/environment-linux.yml` | `cneta-build` | Build and run the programs on Linux, HPC with conda, Windows via WSL |
+| `util/environment.yml` | `cneta-util` | Optional: plotting and other scripts in `util/` |
+
+```bash
+conda env create -f code/environment-mac.yml     # or code/environment-linux.yml
+conda activate cneta-build
+cd code && ./build.sh local 4                     # programs are written to bin/
+```
+
+HPC without conda, Windows, plotting and tests: see the [installation guide](https://lu-cbio-group.github.io/cneta2/en/installation/index.html).
+
 
 ## Overview
 <p align="center">

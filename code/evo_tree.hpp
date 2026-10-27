@@ -335,7 +335,7 @@ public:
   // identically in optimization.hpp's get_active_bsr_eids and in init_edge_rates_rlc
   // below (evo_tree.cpp can't include optimization.hpp, so this couldn't be shared the
   // other way around). Centralized here so both call this instead of duplicating the
-  // condition. See docs/flowcharts.md.
+  // condition.
   bool is_normal_sample_edge(int eid) const;
   // BSR mode 1: one shared branch multiplier.
   // bsr_dist controls whether the multiplier is lognormal or gamma; bsr_variance is its target variance (mean=1).

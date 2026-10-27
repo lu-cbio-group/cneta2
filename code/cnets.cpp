@@ -1673,7 +1673,7 @@ int main (int argc, char** const argv) {
 
       ("mode", po::value<int>(&mode)->default_value(0), "running mode of the program (0: simulating genome in fix-sized bins (4401 bins of size 500 Kbp by default), 1: simulating genome in segments of variable size, 2 to 4: test)")
       ("method", po::value<int>(&method)->default_value(0), "method of simulation (0: simulating waiting times, 1: simulating sequences directly)")
-      ("model,d", po::value<int>(&model)->default_value(0), "model of evolution (0: Mk, 1: one-step bounded (total), 2: one-step bounded (), 3: infinite sites)")
+      ("model,d", po::value<int>(&model)->default_value(2), "model of evolution (0: Mk, 1: one-step bounded (total), 2: one-step bounded (haplotype-specific), 3: infinite sites (Poisson process))")
 
       // for generating random coalescence tree
       ("epop,e", po::value<int>(&Ne)->default_value(2), "effective population size of cell populations")

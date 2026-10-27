@@ -1,0 +1,39 @@
+# Conda environment for building and running cnets, cnetml and cnetmcmc on Linux
+# (x86_64): workstations, HPC clusters with conda, and Windows via WSL/Ubuntu.
+#
+#   conda env create -f code/environment-linux.yml
+#   conda activate cneta-build
+#   cd code && ./build.sh local 4
+#
+# On macOS use code/environment-mac.yml instead. On an HPC without conda, use
+# code/envs/setup_env_<cluster>.sh (./build.sh <cluster> <cores>).
+#
+# Plotting and other scripts in util/ need a separate environment:
+# util/environment.yml (the same file on macOS and Linux).
+#
+# Why the versions below are pinned:
+#   c-compiler/cxx-compiler <2  version 2 no longer sets CC/CXX/AR on activation,
+#                               so CMake cannot find the archiver and the build fails.
+#   sysroot_linux-64=2.17       the default (2.39) builds programs that need glibc 2.39
+#                               and an x86-64-v3 CPU (AVX2) to run; 2.17 keeps them
+#                               runnable on older clusters (e.g. CentOS 7, RHEL 8).
+name: cneta-build
+
+channels:
+  - conda-forge
+
+dependencies:
+  # build
+  - cmake>=3.16
+  - make
+  - c-compiler<2          # lbfgsb is C
+  - cxx-compiler<2
+  - sysroot_linux-64=2.17
+  - libboost-devel
+  - gsl
+  - zlib
+  - llvm-openmp
+  - git                   # fetches Catch2 for the C++ unit tests
+  # tests (pytest tests/; C++ unit tests need -DCNETA_BUILD_TESTING=ON)
+  - python>=3.9
+  - pytest>=8.0
