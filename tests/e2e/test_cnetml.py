@@ -220,7 +220,11 @@ def test_fixed_tree_with_branch_specific_rates_runs(tmp_path, data_dir, cnetml,
     """Mode 3 with bsr_mode 3 (random local clock) on the tiny fixture: the
     path the researchers use for rate shifts, and the only test that runs
     the shift-edge search. Checks that the run completes and that the
-    summary records the settings. About 0.04 s on the fixture."""
+    summary records the settings. About 0.08 s on the fixture.
+
+    Model 3 (-d 3) is required: only its likelihood reads the per-branch
+    rates. With the suite's default -d 2 the multipliers never moved, and
+    cnetml now refuses that combination."""
     out_file = tmp_path / "fixed.txt"
     run([
         cnetml,
@@ -229,12 +233,13 @@ def test_fixed_tree_with_branch_specific_rates_runs(tmp_path, data_dir, cnetml,
             times_file=data_dir / "tiny-rel-times.txt",
             tree_file=data_dir / "tiny-tree.txt",
             **{"--mode": 3, "-o": out_file, "--optim": 1, "--estmu": 0,
-               "--bsr_mode": 3},
+               "--bsr_mode": 3, "-d": 3},
         ),
     ]).assert_ok()
 
     summary = read_summary(tmp_path / "fixed.txt.summary.txt")
     assert summary["mode"] == "3"
+    assert summary["model"] == "3"
     assert summary["bsr_mode"] == "3"
     assert summary["rlc_criterion"] == "AIC"
     assert float(summary["raw_logL"]) < 0
