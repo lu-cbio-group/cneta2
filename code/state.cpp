@@ -987,6 +987,11 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
     map<vector<CN_CHANGE>, vector<vector<double>>> sites_lnl_map;    // Use a map to store computed log likelihood
     map<vector<int>, vector<vector<double>>> chr_lnl_map;    // Use a map to store computed log likelihood
 
+    // MRCA posterior of each chain's states, combined into copy numbers at the end
+    map<int, map<int, vector<double>>> mrca_post_site;   // chr, site
+    map<int, vector<double>> mrca_post_chr;              // chr
+    vector<double> mrca_post_wgd;
+
     // vector<vector<int>> mrca_cn_site_changes;  // record mrca states for each site on each chromosome
     // vector<int> mrca_cn_chr_changes;  // record mrca states for each site on each chromosome
     // int wgd_state = 0;
@@ -1017,6 +1022,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
                 vector<vector<double>> post_seg = get_mrca_posterior_table(lnl_table_seg, rtree, nid, pmat_decomp.pmats_seg, dim_decomp.dim_seg, NO_CHANGE_HAPLOTYPE);
                 int site_state = get_node_change_state(post_seg, nid, lnl_type.is_total, lnl_type.max_site_change_haplotype);
                 cn_mrca[nchr][nc].cn_change_site = site_state;
+                mrca_post_site[nchr][nc] = post_seg[nid];
 
                 // Print the state of MRCA at this site: sample, chromosome, segment, CN, probability of each change state (index for haplotype-specific CNs)
                 int cn_max = get_tcn_max_from_haplotype_change(lnl_type.max_site_change_haplotype);  // maximum total CN change given the maximum haplotype-specific change
@@ -1043,6 +1049,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
 
             vector<vector<double>> post_chr = get_mrca_posterior_table(lnl_table_chr, rtree, nid, pmat_decomp.pmats_chr, dim_decomp.dim_chr, NO_CHANGE_HAPLOTYPE);
             int chr_state = get_node_change_state(post_chr, nid, lnl_type.is_total, lnl_type.max_chr_change_haplotype);
+            mrca_post_chr[nchr] = post_chr[nid];
             // reuse nc for consistency of indexing
             for(size_t nc = 0; nc < vobs_change.at(nchr).size(); nc++){ 
                 cn_mrca[nchr][nc].cn_change_chr = chr_state;
@@ -1078,6 +1085,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
         // the index is the same as the number of WGDs
         vector<vector<double>> post_wgd = get_mrca_posterior_table(lnl_table_wgd, rtree, nid, pmat_decomp.pmats_wgd, dim_decomp.dim_wgd, 0);
         int wgd_state = (int)distance(post_wgd[nid].begin(), max_element(post_wgd[nid].begin(), post_wgd[nid].end()));
+        mrca_post_wgd = post_wgd[nid];
         for(auto vcn : vobs_change){
             // reuse nchr, nc for consistency of indexing
             int nchr = vcn.first;
@@ -1093,6 +1101,18 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
         if(debug){
             cout << "\nWGD observed, computed WGD likelihood for all samples  " << wgd_logL << endl;
         }   
+    }
+
+    // Most likely copy number of the MRCA at each site, over all combinations of chain states
+    for(const auto& vcn : vobs_change){
+        int nchr = vcn.first;
+        const vector<double> no_post;
+        const vector<double>& post_chr = mrca_post_chr.count(nchr) ? mrca_post_chr.at(nchr) : no_post;
+        for(size_t nc = 0; nc < vcn.second.size(); nc++){
+            const vector<double>& post_site = (mrca_post_site.count(nchr) && mrca_post_site.at(nchr).count(nc)) ? mrca_post_site.at(nchr).at(nc) : no_post;
+            map<pair<int, int>, double> post_cn = get_allele_cn_posterior_decomp(mrca_post_wgd, post_chr, post_site, lnl_type);
+            cn_mrca[nchr][nc].cn_state = get_most_likely_cn_decomp(post_cn, lnl_type.is_total).first;
+        }
     }
 
     print_node_cnp_decomp(fout_cn, cn_mrca, nid, lnl_type, dim_decomp);
@@ -1398,28 +1418,83 @@ static pair<int, int> decomp_state_to_change_pair(int state, int max_change_hapl
 
 
 
+// Haplotype-specific copy numbers (cnA, cnB) after the WGDs, then the
+// chromosome-level change, then the site-level change
+static pair<int, int> allele_cn_from_changes(int num_wgd, pair<int, int> chr_change, pair<int, int> site_change) {
+    int baseline_hap = 1;
+    for (int i = 0; i < num_wgd; ++i) {
+        baseline_hap *= NORM_PLOIDY;
+    }
+
+    int cnA = max(0, baseline_hap + chr_change.first + site_change.first);
+    int cnB = max(0, baseline_hap + chr_change.second + site_change.second);
+    return {cnA, cnB};
+}
+
+
 int get_cn_from_state_decomp(int state_wgd,
                              int state_chr,
                              int state_site,
                              const LNL_TYPE& lnl_type) {
-    int baseline_hap = 1;
-    for (int i = 0; i < state_wgd; ++i) {
-        baseline_hap *= NORM_PLOIDY;
-    }
-
     pair<int, int> chr_change =
         decomp_state_to_change_pair(state_chr, lnl_type.max_chr_change_haplotype);
     pair<int, int> site_change =
         decomp_state_to_change_pair(state_site, lnl_type.max_site_change_haplotype);
 
-    int cnA = max(0, baseline_hap + chr_change.first + site_change.first);
-    int cnB = max(0, baseline_hap + chr_change.second + site_change.second);
+    pair<int, int> cn = allele_cn_from_changes(state_wgd, chr_change, site_change);
 
     if (lnl_type.is_total) {
-        return cnA + cnB;
+        return cn.first + cn.second;
     }
 
-    return allele_cn_to_state(cnA, cnB);
+    return allele_cn_to_state(cn.first, cn.second);
+}
+
+
+map<pair<int, int>, double> get_allele_cn_posterior_decomp(const vector<double>& post_wgd, const vector<double>& post_chr, const vector<double>& post_site, const LNL_TYPE& lnl_type) {
+    // (change pair, normalised probability) of each state of one chain
+    auto chain_changes = [](const vector<double>& post, int max_change_haplotype) {
+        vector<pair<pair<int, int>, double>> changes;
+        if (post.empty()) {
+            changes.push_back({{0, 0}, 1.0});
+            return changes;
+        }
+        double total = 0.0;
+        for (double p : post) total += p;
+        for (size_t s = 0; s < post.size(); ++s) {
+            if (post[s] <= 0) continue;
+            pair<int, int> change = max_change_haplotype < 0 ? pair<int, int>{(int)s, 0} : decomp_state_to_change_pair(s, max_change_haplotype);
+            changes.push_back({change, post[s] / total});
+        }
+        return changes;
+    };
+
+    // a WGD state is the number of WGDs, kept in the first element
+    auto wgd = chain_changes(post_wgd, -1);
+    auto chr = chain_changes(post_chr, lnl_type.max_chr_change_haplotype);
+    auto site = chain_changes(post_site, lnl_type.max_site_change_haplotype);
+
+    map<pair<int, int>, double> post_cn;
+    for (const auto& [w, pw] : wgd) {
+        for (const auto& [c, pc] : chr) {
+            for (const auto& [s, ps] : site) {
+                post_cn[allele_cn_from_changes(w.first, c, s)] += pw * pc * ps;
+            }
+        }
+    }
+    return post_cn;
+}
+
+
+pair<int, double> get_most_likely_cn_decomp(const map<pair<int, int>, double>& post_cn, int is_total) {
+    map<int, double> post_state;
+    for (const auto& [cn, p] : post_cn) {
+        int state = is_total ? cn.first + cn.second : allele_cn_to_state(cn.first, cn.second);
+        post_state[state] += p;
+    }
+    auto best = max_element(post_state.begin(), post_state.end(),
+                            [](const auto& a, const auto& b) { return a.second < b.second; });
+    return *best;
 }
 
 

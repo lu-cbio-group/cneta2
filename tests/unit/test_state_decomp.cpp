@@ -149,6 +149,7 @@ TEST_CASE("marginal MRCA probabilities are the exact posterior", "[state]"){
     REQUIRE(std::getline(fin, line));    // header
 
     int nsite = 0;
+    vector<int> best_cn;
     for(const auto& [chr, sites] : in.vobs_change){
         for(size_t nc = 0; nc < sites.size(); nc++){
             const auto& obs = sites[nc];
@@ -178,6 +179,7 @@ TEST_CASE("marginal MRCA probabilities are the exact posterior", "[state]"){
             }
             double total = 0.0;
             for(double v : post) total += v;
+            best_cn.push_back(distance(post.begin(), max_element(post.begin(), post.end())));
 
             REQUIRE(std::getline(fin, line));
             std::istringstream ss(line);
@@ -195,6 +197,61 @@ TEST_CASE("marginal MRCA probabilities are the exact posterior", "[state]"){
         }
     }
     REQUIRE(nsite > 0);
+
+    // .mrca.cn reports the most likely copy number at each site
+    std::ifstream fcn(prefix + ".mrca.cn");
+    for(int i = 0; i < nsite; i++){
+        REQUIRE(std::getline(fcn, line));
+        INFO("line " << line);
+        auto pos = line.find("cn_state=");
+        REQUIRE(pos != std::string::npos);
+        REQUIRE(std::stoi(line.substr(pos + 9)) == best_cn[i]);
+    }
+}
+
+TEST_CASE("MRCA copy number posterior combines the independent chains", "[state]"){
+    // Chromosome and site chains each: no change 0.4, +1 (1|0) 0.3, +2 (1|1) 0.3.
+    // The most likely state of each chain is no change (copy number 2, 0.16),
+    // but the most likely copy number is 4: 0.3 * 0.3 + 2 * 0.4 * 0.3 = 0.33.
+    LNL_TYPE t = lnl_type_for(1, 1, /*is_total*/ 1);
+    const int dim = build_pair_states(1).size();
+    vector<double> chain(dim, 0.0);
+    chain[NO_CHANGE_HAPLOTYPE] = 0.4;
+    chain[encode_change_pair(1, 0, 1)] = 0.3;
+    chain[encode_change_pair(1, 1, 1)] = 0.3;
+
+    auto post_cn = get_allele_cn_posterior_decomp({}, chain, chain, t);
+    std::map<int, double> by_total;
+    for(const auto& [cn, p] : post_cn) by_total[cn.first + cn.second] += p;
+    const std::map<int, double> expected{{2, 0.16}, {3, 0.24}, {4, 0.33}, {5, 0.18}, {6, 0.09}};
+    REQUIRE(by_total.size() == expected.size());
+    for(const auto& [cn, p] : expected){
+        INFO("copy number " << cn);
+        REQUIRE_THAT(by_total[cn], Catch::Matchers::WithinAbs(p, 1e-12));
+    }
+
+    auto best = get_most_likely_cn_decomp(post_cn, 1);
+    REQUIRE(best.first == 4);
+    REQUIRE_THAT(best.second, Catch::Matchers::WithinAbs(0.33, 1e-12));
+
+    // unnormalised chain posteriors give the same result
+    vector<double> scaled = chain;
+    for(double& p : scaled) p *= 7.0;
+    REQUIRE_THAT(get_most_likely_cn_decomp(get_allele_cn_posterior_decomp({}, scaled, chain, t), 1).second,
+                 Catch::Matchers::WithinAbs(0.33, 1e-12));
+
+    // haplotype-specific: (2,2) arises from chr 1|1 + site 0|0 or chr 0|0 + site 1|1
+    REQUIRE_THAT(post_cn.at({2, 2}), Catch::Matchers::WithinAbs(0.24, 1e-12));
+    REQUIRE_THAT(post_cn.at({3, 2}), Catch::Matchers::WithinAbs(0.18, 1e-12));
+}
+
+TEST_CASE("a WGD in the MRCA posterior doubles the baseline copy number", "[state]"){
+    LNL_TYPE t = lnl_type_for(1, 1, /*is_total*/ 1);
+    auto post_cn = get_allele_cn_posterior_decomp({0.25, 0.75}, {}, {}, t);
+    REQUIRE(post_cn.size() == 2);
+    REQUIRE_THAT(post_cn.at({1, 1}), Catch::Matchers::WithinAbs(0.25, 1e-12));
+    REQUIRE_THAT(post_cn.at({2, 2}), Catch::Matchers::WithinAbs(0.75, 1e-12));
+    REQUIRE(get_most_likely_cn_decomp(post_cn, 1).first == 4);
 }
 
 TEST_CASE("haplotype tip states are the one observed state, also when marked as possibly before a WGD", "[state]"){

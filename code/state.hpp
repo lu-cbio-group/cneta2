@@ -118,6 +118,16 @@ void initialize_lnl_state_table(LNL_TABLE& lnl_table, STATE_TABLE& state_table, 
 // total copy number if lnl_type.is_total, else the haplotype-specific state index
 int get_cn_from_state_decomp(int state_wgd, int state_chr, int state_site, const LNL_TYPE& lnl_type);
 
+// Posterior of each (cnA, cnB) at one site, from the posterior of each chain's
+// states at the node. The chains are independent, so a combination of chain
+// states has the product of their probabilities. An empty vector means the
+// chain is not modelled and stays unchanged.
+map<pair<int, int>, double> get_allele_cn_posterior_decomp(const vector<double>& post_wgd, const vector<double>& post_chr, const vector<double>& post_site, const LNL_TYPE& lnl_type);
+
+// Most likely copy number (total, or haplotype-specific state index) and its
+// probability, summing over all (cnA, cnB) with that copy number
+pair<int, double> get_most_likely_cn_decomp(const map<pair<int, int>, double>& post_cn, int is_total);
+
 void set_change_wgd_chr(const vector<CN_CHANGE>& obs, const evo_tree& rtree, vector<int>& sample_num_wgd, vector<int>& change_chr);
 
 void print_cn_mrca(copy_number_change& cn_mrca);
