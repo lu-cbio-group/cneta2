@@ -145,6 +145,14 @@ void state_to_allele_cn(int state, int cn_max, int& cnA, int& cnB){
     }
     // cout << endl;
 
+    if(state < 0 || state >= sums.back()){
+        cerr << "Haplotype-specific copy number state " << state << " is outside 0-" << sums.back() - 1 << " for cn_max " << cn_max << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    // state 0 is 0/0; callers do not initialise cnA and cnB
+    cnA = 0;
+    cnB = 0;
     if(state < sums[0]) return;
 
     int i = 1;

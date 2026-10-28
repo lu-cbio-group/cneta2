@@ -66,16 +66,45 @@ TEST_CASE("state and haplotype-specific copy number round-trip", "[parse_cn]"){
 }
 
 TEST_CASE("state 0 decodes to a homozygous deletion", "[parse_cn]"){
-    // state_to_allele_cn returns early for state 0 without writing to its
-    // out-parameters, so callers must initialise them. Both conventions agree
-    // that the answer is 0/0.
-    int cnA = 0;
-    int cnB = 0;
+    // Callers do not initialise the out-parameters, so state_to_allele_cn must
+    // write them for state 0 too. Start from values it would never return.
+    int cnA = -99;
+    int cnB = -99;
     state_to_allele_cn(0, 4, cnA, cnB);
 
     REQUIRE(cnA == 0);
     REQUIRE(cnB == 0);
     REQUIRE(state_to_total_cn(0, 4) == 0);
+}
+
+TEST_CASE("every state decodes without relying on initialised outputs", "[parse_cn]"){
+    for(int cn_max = 1; cn_max <= 8; ++cn_max){
+        const int nstate = (cn_max + 1) * (cn_max + 2) / 2;
+        for(int state = 0; state < nstate; ++state){
+            INFO("cn_max=" << cn_max << " state=" << state);
+            int cnA = -99;
+            int cnB = -99;
+            state_to_allele_cn(state, cn_max, cnA, cnB);
+            REQUIRE(cnA >= 0);
+            REQUIRE(cnB >= 0);
+            REQUIRE(cnA + cnB <= cn_max);
+            REQUIRE(allele_cn_to_state(cnA, cnB) == state);
+            REQUIRE(state_to_total_cn(state, cn_max) == cnA + cnB);
+        }
+    }
+}
+
+TEST_CASE("haplotype ploidy counts 0/0 sites as zero copies", "[parse_cn]"){
+    // rows are chr, site, state; 0/0, 1/1 and 2/0
+    const std::vector<std::vector<int>> s_cn{{1, 1, allele_cn_to_state(0, 0)},
+                                             {1, 2, allele_cn_to_state(1, 1)},
+                                             {1, 3, allele_cn_to_state(2, 0)}};
+    map<int, vector<int>> chr_cnA, chr_cnB;
+    auto avg = compute_sample_avg_cn_haplotype(s_cn, chr_cnA, chr_cnB, 4);
+    REQUIRE_THAT(avg.first, Catch::Matchers::WithinAbs(1.0, 1e-12));
+    REQUIRE_THAT(avg.second, Catch::Matchers::WithinAbs(1.0 / 3, 1e-12));
+    REQUIRE(chr_cnA.at(1) == std::vector<int>{0, 1, 2});
+    REQUIRE(chr_cnB.at(1) == std::vector<int>{0, 1, 0});
 }
 
 TEST_CASE("states are contiguous and unique up to cn_max", "[parse_cn]"){
