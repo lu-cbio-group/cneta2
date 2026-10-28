@@ -35,8 +35,7 @@
 # Mac
 .DS_Store
 
-# R package folder and related files
-*.R
+# R data files
 *.rda
 
 # Shell configuration files

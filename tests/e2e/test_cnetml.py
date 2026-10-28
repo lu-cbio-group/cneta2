@@ -12,6 +12,7 @@ check structure and ranking instead of exact numbers.
 
 from __future__ import annotations
 
+import gzip
 import json
 
 import pytest
@@ -86,6 +87,45 @@ def test_scoring_is_reproducible(data_dir, cnetml, run):
     assert scores[0] == scores[1]
 
 
+def test_cn_type_is_required(data_dir, cnetml, run):
+    """`--cn_type` decides which event types the model considers, and there is
+    no right default. It used to have none and no check either: without it the
+    variable was never set, and mode 3 stopped with "Unknown CN model type!"
+    after reading the uninitialised value. It is now a required option, so
+    leaving it out gives a clean error that names it."""
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--cn_type": None},
+        ),
+    ])
+
+    assert_clean_rejection(result, mentions="cn_type")
+
+
+def test_bsr_mode_is_refused_without_model_3(data_dir, cnetml, run):
+    """Branch-specific rates (--bsr_mode > 0) only enter the likelihood of
+    model 3 (independent Markov chains, -d 3). With the default -d 2 the
+    option used to be accepted and ignored: every rate multiplier stayed at
+    1.0, every shift-edge subset scored the same, and the search reported
+    no shift edges. It must now stop with a message naming both options."""
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--mode": 3, "--optim": 1, "--estmu": 0, "--bsr_mode": 3},
+        ),
+    ])
+
+    assert_clean_rejection(result, mentions="bsr_mode")
+    assert "model" in result.stdout + result.stderr, str(result)
+
+
 def test_true_tree_beats_a_wrong_topology(data_dir, cnetml, run):
     """A cheap sanity check on the science, not just the plumbing.
 
@@ -142,7 +182,7 @@ def test_tree_search_writes_a_usable_tree(tmp_path, tiny_sim: Simulation,
 
 
 def test_tree_search_writes_a_consistent_summary(tmp_path, tiny_sim: Simulation,
-                                                 cnetml, run):
+                                                 cnetml, run, cneta_version):
     """The .summary.txt sidecar is the machine-readable record of a run."""
     out_file = tmp_path / "MaxL.txt"
 
@@ -158,8 +198,10 @@ def test_tree_search_writes_a_consistent_summary(tmp_path, tiny_sim: Simulation,
 
     assert summary["mode"] == "0"
     assert summary["model"] == "2"
-    # The seed travels with the result, whatever launched the program.
+    # The seed and the version travel with the result, whatever launched
+    # the program.
     assert summary["seed"] == str(cli.SEED)
+    assert summary["version"].split()[0] == cneta_version
     assert int(summary["n_leaves"]) == EXPECTED_LEAVES
     assert int(summary["n_edges"]) == 2 * EXPECTED_LEAVES - 2
 
@@ -171,6 +213,39 @@ def test_tree_search_writes_a_consistent_summary(tmp_path, tiny_sim: Simulation,
         rate = float(summary[key])
         assert rate == rate, f"{key} is NaN"
         assert rate >= 0, f"{key} is negative: {rate}"
+
+
+def test_fixed_tree_with_branch_specific_rates_runs(tmp_path, data_dir, cnetml,
+                                                     run):
+    """Mode 3 with bsr_mode 3 (random local clock) on the tiny fixture: the
+    path the researchers use for rate shifts, and the only test that runs
+    the shift-edge search. Checks that the run completes and that the
+    summary records the settings. About 0.08 s on the fixture.
+
+    Model 3 (-d 3) is required: only its likelihood reads the per-branch
+    rates. With the suite's default -d 2 the multipliers never moved, and
+    cnetml now refuses that combination."""
+    out_file = tmp_path / "fixed.txt"
+    run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--mode": 3, "-o": out_file, "--optim": 1, "--estmu": 0,
+               "--bsr_mode": 3, "-d": 3},
+        ),
+    ]).assert_ok()
+
+    summary = read_summary(tmp_path / "fixed.txt.summary.txt")
+    assert summary["mode"] == "3"
+    assert summary["model"] == "3"
+    assert summary["bsr_mode"] == "3"
+    assert summary["rlc_criterion"] == "AIC"
+    assert float(summary["raw_logL"]) < 0
+    assert (tmp_path / "fixed.txt.edge_rates.txt").is_file(), (
+        "mode 3 with bsr_mode 3 wrote no edge-rate table"
+    )
 
 
 def test_tree_search_writes_edge_rates(tmp_path, tiny_sim: Simulation,
@@ -269,16 +344,71 @@ def test_hill_climbing_is_reproducible_across_thread_counts(tmp_path, cnets,
 # Error handling
 # --------------------------------------------------------------------------
 
-def test_missing_input_file_is_rejected(tmp_path, data_dir, cnetml, run):
+def _write_gz(path, text: str):
+    with gzip.open(path, "wt") as handle:
+        handle.write(text)
+    return path
+
+
+def assert_clean_rejection(result, mentions: str):
+    """The program refused the input with a message, rather than crashing.
+
+    A crash also exits non-zero, so `returncode != 0` alone cannot tell the
+    two apart: killed by a signal, subprocess reports a negative code
+    (-11 for a segfault). This test once passed while cnetml segfaulted.
+    """
+    assert result.returncode > 0, (
+        "expected a clean non-zero exit, got "
+        + ("a crash (signal %d)" % -result.returncode if result.returncode < 0
+           else "success")
+        + "\n" + str(result)
+    )
+    assert mentions in result.stdout + result.stderr, (
+        f"the error message does not mention {mentions!r}\n{result}"
+    )
+
+
+@pytest.mark.parametrize("problem", ["missing", "empty", "short-line"])
+def test_unusable_input_file_is_rejected_with_a_message(tmp_path, data_dir,
+                                                        cnetml, run, problem):
+    """A missing file, an empty one, and a line with too few columns all used
+    to reach code that indexes into the data (two of them segfaulted)."""
+    cn_file = tmp_path / f"{problem}-cn.txt.gz"
+    if problem == "empty":
+        _write_gz(cn_file, "")
+    elif problem == "short-line":
+        _write_gz(cn_file, "1\t1\n")
+
     result = run([
         cnetml,
         *cli.cnetml_score_args(
-            cn_file=tmp_path / "no-such-file-cn.txt.gz",
+            cn_file=cn_file,
             times_file=data_dir / "tiny-rel-times.txt",
             tree_file=data_dir / "tiny-tree.txt",
         ),
     ])
 
-    assert result.returncode != 0, (
-        "cnetml accepted a missing copy-number file\n" + str(result)
-    )
+    assert_clean_rejection(result, mentions=str(cn_file))
+
+
+def test_sample_count_larger_than_the_file_is_rejected(data_dir, cnetml, run):
+    """`-s` larger than the number of samples in the file (here: the default
+    `-s 5` on the 4-sample fixture) left samples without data, and cnetml
+    segfaulted after "Reading data and group regions by chromosome". It
+    must stop with a message that names the file and the missing sample.
+
+    No sample-times file and no age constraint: the times reader already
+    checks its own entry count against `-s`, which would mask this."""
+    cn_file = data_dir / "tiny-cn.txt.gz"
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=cn_file,
+            times_file=None,
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"-s": cli.NS + 2, "--constrained": 0},
+        ),
+    ])
+
+    assert_clean_rejection(result, mentions=str(cn_file))
+    assert f"sample {cli.NS + 2} has no rows" in result.stdout + result.stderr, str(result)

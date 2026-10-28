@@ -6,8 +6,25 @@ For a docs change, `make -C docs strict` locally is the same check CI
 runs, so a local pass means CI will pass too — see
 [Working on the documentation](documentation.md).
 
-**Branch naming**: short and descriptive, e.g. `fix-cnetml-options-page`
-or `add-slurm-tutorial`.
+**Branches**: one branch per pull request, made from an up-to-date `main`
+and deleted after the merge. Name it `<type>/<topic>`, lower case with
+hyphens, two to four words:
+
+| Type | For | Example |
+|---|---|---|
+| `fix/` | a bug, a crash, a wrong message | `fix/cnetml-sample-count` |
+| `feat/` | a new option, model or output | `feat/version-file` |
+| `docs/` | documentation only | `docs/conda-environments` |
+| `ci/` | workflows and tests | `ci/plot-validation` |
+| `refactor/` | code moved or reshaped, results unchanged | `refactor/search-into-library` |
+| `chore/` | housekeeping: `.gitignore`, dependencies | `chore/drop-r-gitignore-rule` |
+
+Exploratory work that is not yet meant for `main` uses your initials
+instead of a type, e.g. `rw/rlc-aicc`.
+
+**Pull request titles**: in the imperative and under about 70 characters,
+e.g. `Reject invalid copy-number files with clear error messages`. The
+titles become the release notes (see [Versions and releases](releases.md)).
 
 ```bash
 git checkout -b <branch-name>

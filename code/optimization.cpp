@@ -1115,7 +1115,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
     }
 
     // no need to consider opt_one_branch for bsr mode for simplicity, as it is used for NNI (topology search) and tree topology is fixed for variable rate optimization
-    // [2026-08-12 added] estimate_bsr0_first=false: read mu0 (root-LUCA edge's own rate,
+    // [2026-08-12 added] estimate_bsr0_first=false: read mu0 (trunk edge's own rate,
     // one value per active cn_type rate type) from its dedicated slot in x[] and write it
     // directly into rtree.dup_rate/del_rate/chr_gain_rate/chr_loss_rate/wgd_rate. Every
     // bsr_mode>0 branch below already reads these fields as "the reference to multiply
@@ -1123,16 +1123,15 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
     // update_edge_rates_rlc for bsr3) -- once this write happens, none of that existing
     // code needs to change to pick up mu0 instead of a calibrated reference. n_bsr_edges
     // here must match what the parameter-vector setup code (max_likelihood_BFGS) used to
-    // place mu0's slot, or the index would silently read the wrong x[] entry. See
-    // worklog_2026-08-11.md.
+    // place mu0's slot, or the index would silently read the wrong x[] entry.
     if(opt_type.bsr_mode > 0 && !opt_type.estimate_bsr0_first){
         const vector<BsrRateSlot>& bsr_slots = opt_type.bsr_slots_cache;
         int n_types = (int)bsr_slots.size();
-        int luca_eid = find_luca_eid(rtree);
+        int trunk_eid = find_trunk_eid(rtree);
         int n_types_per_edge_for_offset = (opt_type.bsr_mode == 1) ? 1 : n_types;
         int n_bsr_edges_for_mu0 = (opt_type.bsr_mode == 3)
             ? (int)opt_type.rlc_shift_eids.size()
-            : (int)get_active_bsr_eids(rtree, luca_eid).size();
+            : (int)get_active_bsr_eids(rtree, trunk_eid).size();
         for(int t = 0; t < n_types; t++){
             double v = x[bsr_mu0_index(nparams_est, n_types_per_edge_for_offset, n_bsr_edges_for_mu0, t)];
             rtree.*(bsr_slots[t].tree_rate) = v;
@@ -1152,11 +1151,11 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         // cout << "  wgd_rate      = " << rtree.wgd_rate << endl;
 
         // if(!opt_type.opt_one_branch)
-        // [2026-08-12 changed] estimate_bsr0_first=false: exclude the root-LUCA edge --
+        // [2026-08-12 changed] estimate_bsr0_first=false: exclude the trunk edge --
         // its rate is mu0 itself (already written into rtree.dup_rate etc above), not
         // mu0 times a multiplier. active_eids stays unchanged when estimate_bsr0_first=true.
-        int luca_eid_bsr1 = (!opt_type.estimate_bsr0_first) ? find_luca_eid(rtree) : -1;
-        active_eids = get_active_bsr_eids(rtree, luca_eid_bsr1);
+        int trunk_eid_bsr1 = (!opt_type.estimate_bsr0_first) ? find_trunk_eid(rtree) : -1;
+        active_eids = get_active_bsr_eids(rtree, trunk_eid_bsr1);
 
         // cout << "\n[BSR1 DEBUG] after get_active_bsr_eids" << endl;
         // cout << "active_eids.size() = " << active_eids.size() << endl;
@@ -1170,15 +1169,14 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
 
         // [2026-07-14 disabled] read-back counterpart of the set_tree_rates removal
         // above: this let each BFGS evaluation overwrite the frozen global reference
-        // rates with whatever was in the per-edge multiplier slots. See
-        // docs/flowcharts.md "Two-step calibration workflow".
+        // rates with whatever was in the per-edge multiplier slots.
         // // update global rate for all active edges
         // update_tree_rates(lnl_type, rtree, x, nparams_est);
 
         RateSet global_rates(0, rtree.dup_rate, rtree.del_rate,
                              rtree.chr_gain_rate, rtree.chr_loss_rate, rtree.wgd_rate);
 
-        // [14 AUG 2026 DEBUG] confirm LUCA edge really gets updated each call. Uncapped
+        // [14 AUG 2026 DEBUG] confirm trunk edge really gets updated each call. Uncapped
         // for now -- this run is a single fixed-tree, single-thread BFGS optimization
         // (mode=3, bsr_mode=1, no population/parallel search), so total call count stays
         // manageable and the log is written to a file, not a terminal. The [2026-07-14
@@ -1186,15 +1184,15 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         // population/parallel candidate search (many trees x many calls each, under
         // OpenMP) -- not this scenario. Re-add a cap (see git history) before using this
         // print in that kind of run.
-        static int luca_debug_calls = 0;
+        static int trunk_debug_calls = 0;
         // [16 AUG 2026 DEBUG] gated on this function's own local `debug`
-        // if set it to 1 and rebuild to turn all of the LUCA/mu0/branch-length prints below on; 
+        // if set it to 1 and rebuild to turn all of the trunk/mu0/branch-length prints below on; 
         // leave at 0 for a normal run. Not wired to --verbose 
         // (a different, global `debug` set from cnetml.cpp's CLI parsing).
         bool print_this_call = debug && !opt_type.estimate_bsr0_first;
         if(print_this_call){
-            luca_debug_calls++;
-            cout << "\n[14 AUG 2026 DEBUG] call #" << luca_debug_calls
+            trunk_debug_calls++;
+            cout << "\n[14 AUG 2026 DEBUG] call #" << trunk_debug_calls
                  << " -- global_rates (= mu0, from rtree.dup_rate etc) BEFORE loop: "
                  << "dup=" << global_rates.dup
                  << " del=" << global_rates.del
@@ -1220,7 +1218,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
             double m = x[nparams_est + k + 1];
             rtree.edge_rates[eid] = global_rates * m;
 
-            // [16 AUG 2026 DEBUG] print every active (non-LUCA) edge. 
+            // [16 AUG 2026 DEBUG] print every active (non-trunk) edge. 
             // It lets you grep a specific eid and see which BFGS call its m first moves off its warm-start value
             // i.e. where in derivativeFunk's dim=1..ndim sweep this edge's slot sits.
             if(print_this_call){
@@ -1234,22 +1232,22 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
             }
         }
 
-        // [2026-08-12 added] estimate_bsr0_first=false: LUCA edge was excluded from the
+        // [2026-08-12 added] estimate_bsr0_first=false: trunk edge was excluded from the
         // loop above, so it needs its own rate set directly here (global_rates now
         // *is* mu0, since it was built from rtree.dup_rate etc, already overwritten
         // with mu0 earlier in this function).
-        if(luca_eid_bsr1 >= 0){
-            rtree.edge_rates[luca_eid_bsr1] = global_rates;
+        if(trunk_eid_bsr1 >= 0){
+            rtree.edge_rates[trunk_eid_bsr1] = global_rates;
             if(print_this_call){
                 // This is the number that actually matters: the real edge_rates entry
-                // the likelihood function reads for LUCA, not the local global_rates copy.
-                cout << "[14 AUG 2026 DEBUG] LUCA edge eid=" << luca_eid_bsr1
+                // the likelihood function reads for the trunk edge, not the local global_rates copy.
+                cout << "[14 AUG 2026 DEBUG] trunk edge eid=" << trunk_eid_bsr1
                      << " edge_rates AFTER assignment: "
-                     << "dup=" << rtree.edge_rates[luca_eid_bsr1].dup
-                     << " del=" << rtree.edge_rates[luca_eid_bsr1].del
-                     << " chr_gain=" << rtree.edge_rates[luca_eid_bsr1].chr_gain
-                     << " chr_loss=" << rtree.edge_rates[luca_eid_bsr1].chr_loss
-                     << " wgd=" << rtree.edge_rates[luca_eid_bsr1].wgd
+                     << "dup=" << rtree.edge_rates[trunk_eid_bsr1].dup
+                     << " del=" << rtree.edge_rates[trunk_eid_bsr1].del
+                     << " chr_gain=" << rtree.edge_rates[trunk_eid_bsr1].chr_gain
+                     << " chr_loss=" << rtree.edge_rates[trunk_eid_bsr1].chr_loss
+                     << " wgd=" << rtree.edge_rates[trunk_eid_bsr1].wgd
                      << endl;
             }
         }
@@ -1282,7 +1280,7 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         // [2026-07-14 disabled] this call used to overwrite the frozen global dup_rate/
         // del_rate/... with whatever was in this shift edge's multiplier slots (confirmed
         // 2026-07-14 via the temporary debug print above: dup_rate jumped from 0.00143 to
-        // 1 as soon as K>=1). See docs/flowcharts.md "Two-step calibration workflow".
+        // 1 as soon as K>=1).
         // update_tree_rates(lnl_type, rtree, x, nparams_est);
         // cout << "[DEBUG-CHECK] dup_rate AFTER=" << rtree.dup_rate << endl;
 
@@ -1293,21 +1291,21 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
         // idx(k, t) = nparams_est + k * n_types_per_edge + t + 1
         // [2026-07-14 disabled] same bug as bsr_mode==1/3 above: this let the frozen
         // global reference rates be overwritten by the first edge's per-type multiplier
-        // values. See docs/flowcharts.md "Two-step calibration workflow".
+        // values.
         // update_tree_rates(lnl_type, rtree, x, nparams_est);
         // [2026-07-14 disabled] recomputed bsr_slots on every call; it's invariant for the
         // whole optimization, so max_likelihood_BFGS now computes it once into
-        // opt_type.bsr_slots_cache instead. See docs/flowcharts.md.
+        // opt_type.bsr_slots_cache instead.
         // auto bsr_slots = get_bsr_rate_slots(rtree, cn_type);
         const vector<BsrRateSlot>& bsr_slots = opt_type.bsr_slots_cache;
         int n_types = (int)bsr_slots.size();
         vector<int> active_eids;
         // if(!opt_type.opt_one_branch)
-        // [2026-08-12 changed] estimate_bsr0_first=false: exclude the root-LUCA edge --
+        // [2026-08-12 changed] estimate_bsr0_first=false: exclude the trunk edge --
         // its rate is mu0 itself (already written into rtree.dup_rate etc above), not
         // mu0 times a multiplier. active_eids stays unchanged when estimate_bsr0_first=true.
-        int luca_eid_bsr2 = (!opt_type.estimate_bsr0_first) ? find_luca_eid(rtree) : -1;
-        active_eids = get_active_bsr_eids(rtree, luca_eid_bsr2);
+        int trunk_eid_bsr2 = (!opt_type.estimate_bsr0_first) ? find_trunk_eid(rtree) : -1;
+        active_eids = get_active_bsr_eids(rtree, trunk_eid_bsr2);
         for(int k = 0; k < (int)active_eids.size(); k++){
             int eid = active_eids[k];
             for(int t = 0; t < n_types; t++){
@@ -1317,13 +1315,13 @@ void update_variables_transformed(evo_tree& rtree, double *x, LNL_TYPE& lnl_type
                 rtree.edge_rates[eid].*(bsr_slots[t].edge_field) = rtree.*(bsr_slots[t].tree_rate) * m;
             }
         }
-        // [2026-08-12 added] estimate_bsr0_first=false: LUCA edge was excluded from the
+        // [2026-08-12 added] estimate_bsr0_first=false: trunk edge was excluded from the
         // loop above, so it needs its own rate set directly here, one field at a time
         // (rtree.*(slot.tree_rate) now *is* mu0, already overwritten earlier in this
         // function).
-        if(luca_eid_bsr2 >= 0){
+        if(trunk_eid_bsr2 >= 0){
             for(int t = 0; t < n_types; t++){
-                rtree.edge_rates[luca_eid_bsr2].*(bsr_slots[t].edge_field) = rtree.*(bsr_slots[t].tree_rate);
+                rtree.edge_rates[trunk_eid_bsr2].*(bsr_slots[t].edge_field) = rtree.*(bsr_slots[t].tree_rate);
             }
         }
     } else if(opt_type.estmu){
@@ -1762,19 +1760,19 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
 
     // build active edge list for variable rate (excludes the normal-sample edge)
     // empty when opt_one_branch=1, so no multipliers enter the optimisation in that case
-    // [2026-08-12 added] estimate_bsr0_first=false: also exclude the root-LUCA edge --
+    // [2026-08-12 added] estimate_bsr0_first=false: also exclude the trunk edge --
     // its rate is mu0 itself, estimated directly (see mu0 block below), not as a
     // multiplier on some reference. bsr_mode==3's active_eids (rlc_shift_eids) already
-    // excludes LUCA structurally (the outer shift-edge search never proposes it as a
+    // excludes the trunk edge structurally (the outer shift-edge search never proposes it as a
     // candidate, see exhaustive/stepwise/genetic_search_shift_edges), so only the
     // bsr_mode==1/2 branch needs the exclusion here.
-    int luca_eid_for_setup = (opt_type.bsr_mode > 0 && !opt_type.estimate_bsr0_first) ? find_luca_eid(rtree) : -1;
+    int trunk_eid_for_setup = (opt_type.bsr_mode > 0 && !opt_type.estimate_bsr0_first) ? find_trunk_eid(rtree) : -1;
     vector<int> active_eids;
     if(opt_type.bsr_mode > 0 && !opt_one_branch){
         if(opt_type.bsr_mode == 3)
             active_eids = opt_type.rlc_shift_eids;   // only the δ=1 shift edges
         else
-            active_eids = get_active_bsr_eids(rtree, luca_eid_for_setup); // all optimizable edges
+            active_eids = get_active_bsr_eids(rtree, trunk_eid_for_setup); // all optimizable edges
     }
     int n_bsr_edges = (int)active_eids.size();  // correct count regardless of constraints
 
@@ -1804,11 +1802,10 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
     // space for the 5 global reference rates even when bsr_mode>0 (where estmu is forced
     // 0 and nothing writes/reads those slots anymore) — wasted, always-
     // [0,0]-bounded optimizer dimensions. nrates is only meaningful when estmu=1 (global
-    // rates genuinely being estimated, which only happens for bsr_mode=0). See
-    // docs/flowcharts.md.
+    // rates genuinely being estimated, which only happens for bsr_mode=0).
     // int ndim = get_ndim(estmu, nparams_est, model, cn_type, bsr_slots.size(), n_types_per_edge, n_bsr_edges);
     // [2026-08-12 changed] estimate_bsr0_first=false: reserve nrates=bsr_slots.size()
-    // extra dims after the per-edge multiplier block for mu0 (root-LUCA edge's own
+    // extra dims after the per-edge multiplier block for mu0 (trunk edge's own
     // rate, one value per active rate type) -- same nrates slot get_ndim already
     // supported for the estmu=1/bsr_mode=0 case, reused here for a different purpose.
     int nrates_arg = estmu ? bsr_slots.size() : 0;
@@ -1884,8 +1881,8 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
     // [2026-07-14 disabled] this pushed the fixed global reference rates (dup_rate etc.)
     // into the BFGS optimization variables for any bsr_mode>0, so they got estimated/
     // corrupted instead of staying frozen (they overlap with the per-edge multiplier
-    // slots set up below). See docs/flowcharts.md "Two-step calibration workflow" for
-    // the full writeup. Kept here commented out, not deleted, per team request.
+    // slots set up below).
+    // Kept here commented out, not deleted, per team request.
     // // reinitialise edge_rates if missing or stale (size mismatch after tree changes)
     // if(opt_type.bsr_mode > 0){ //&& (int)rtree.edge_rates.size() != (int)rtree.edges.size()
     //     set_tree_rates(cn_type, rtree, nparams_est, variables, lower_bound, upper_bound);
@@ -1910,11 +1907,11 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
             int eid = active_eids[k];
             // warm-start: extract shared m from the first available slot
             double m;
-            if(luca_eid_for_setup >= 0 && !bsr_slots.empty()){
+            if(trunk_eid_for_setup >= 0 && !bsr_slots.empty()){
                 // [2026-08-12 added] estimate_bsr0_first=false: warm-start against the
-                // root-LUCA edge's own current rate, not rtree.*(slot.tree_rate) (not
+                // trunk edge's own current rate, not rtree.*(slot.tree_rate) (not
                 // meaningfully set yet -- calibration is skipped in this mode).
-                m = rtree.edge_rates[eid].*(bsr_slots[0].edge_field) / rtree.edge_rates[luca_eid_for_setup].*(bsr_slots[0].edge_field);
+                m = rtree.edge_rates[eid].*(bsr_slots[0].edge_field) / rtree.edge_rates[trunk_eid_for_setup].*(bsr_slots[0].edge_field);
             }else{
                 m = (!bsr_slots.empty())
                     ? rtree.edge_rates[eid].*(bsr_slots[0].edge_field) / rtree.*(bsr_slots[0].tree_rate)
@@ -1925,15 +1922,15 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
             lower_bound[idx] = M_MIN;
             upper_bound[idx] = M_MAX;
         }
-        // [2026-08-12 added] estimate_bsr0_first=false: mu0 block -- root-LUCA edge's
+        // [2026-08-12 added] estimate_bsr0_first=false: mu0 block -- trunk edge's
         // own rate, one value per active rate type, estimated directly (not a
         // multiplier). Bounded by the real rate range (MIN_MRATE/MAX_MRATE), not the
         // multiplier range (M_MIN/M_MAX). n_types_per_edge=1 here matches bsr_mode=1's
         // per-edge block layout (see get_ndim/bsr_var_index), not bsr_slots.size().
-        if(luca_eid_for_setup >= 0){
+        if(trunk_eid_for_setup >= 0){
             for(int t = 0; t < (int)bsr_slots.size(); t++){
                 int idx = bsr_mu0_index(nparams_est, 1, n_bsr_edges, t);
-                variables[idx]   = rtree.edge_rates[luca_eid_for_setup].*(bsr_slots[t].edge_field);
+                variables[idx]   = rtree.edge_rates[trunk_eid_for_setup].*(bsr_slots[t].edge_field);
                 lower_bound[idx] = MIN_MRATE;
                 upper_bound[idx] = MAX_MRATE;
             }
@@ -1946,11 +1943,11 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
             for(int t = 0; t < (int)bsr_slots.size(); t++){
                 auto& slot = bsr_slots[t];
                 double m;
-                if(luca_eid_for_setup >= 0){
+                if(trunk_eid_for_setup >= 0){
                     // [2026-08-12 added] estimate_bsr0_first=false: warm-start against
-                    // the root-LUCA edge's own current rate for this type, not
+                    // the trunk edge's own current rate for this type, not
                     // rtree.*(slot.tree_rate) (not meaningfully set yet).
-                    m = rtree.edge_rates[eid].*(slot.edge_field) / rtree.edge_rates[luca_eid_for_setup].*(slot.edge_field);
+                    m = rtree.edge_rates[eid].*(slot.edge_field) / rtree.edge_rates[trunk_eid_for_setup].*(slot.edge_field);
                 }else{
                     m = rtree.edge_rates[eid].*(slot.edge_field) / rtree.*(slot.tree_rate);
                 }
@@ -1962,18 +1959,18 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
                 upper_bound[idx] = M_MAX;
             }
         }
-        // [2026-08-12 added] estimate_bsr0_first=false: mu0 block -- root-LUCA edge's
+        // [2026-08-12 added] estimate_bsr0_first=false: mu0 block -- trunk edge's
         // own rate, one value per active rate type, estimated directly (not a
         // multiplier). Bounded by the real rate range (MIN_MRATE/MAX_MRATE), not the
         // multiplier range (M_MIN/M_MAX). For bsr_mode=3, n_bsr_edges here is the
         // current outer-search candidate set size (rlc_shift_eids.size()), consistent
         // with the read-back in update_variables_transformed for this same optimization
         // run.
-        if(luca_eid_for_setup >= 0){
+        if(trunk_eid_for_setup >= 0){
             for(int t = 0; t < (int)bsr_slots.size(); t++){
                 auto& slot = bsr_slots[t];
                 int idx = bsr_mu0_index(nparams_est, n_types_per_edge, n_bsr_edges, t);
-                variables[idx]   = rtree.edge_rates[luca_eid_for_setup].*(slot.edge_field);
+                variables[idx]   = rtree.edge_rates[trunk_eid_for_setup].*(slot.edge_field);
                 lower_bound[idx] = MIN_MRATE;
                 upper_bound[idx] = MAX_MRATE;
             }
@@ -2150,7 +2147,7 @@ void update_edge_rates_rlc_from_x(
     // [2026-07-14 disabled] recomputed bsr_slots on every call (fires on every BFGS
     // objective/gradient evaluation for bsr_mode=3); it's invariant for the whole
     // optimization, so the caller now passes max_likelihood_BFGS's cached
-    // opt_type.bsr_slots_cache instead. See docs/flowcharts.md.
+    // opt_type.bsr_slots_cache instead.
     // vector<BsrRateSlot> bsr_slots = get_bsr_rate_slots(rtree, cn_type);
     int n_types_per_edge = (int)bsr_slots.size();
 
@@ -2192,10 +2189,10 @@ void stepwise_search_shift_edges(
     const int n_types_per_edge = (int)get_bsr_rate_slots(rtree, lnl_type.cn_type).size();
 
     // full candidate pool = all optimizable edges (excludes normal-sample edge)
-    // [2026-08-12 changed] estimate_bsr0_first=false: also exclude the root-LUCA edge
+    // [2026-08-12 changed] estimate_bsr0_first=false: also exclude the trunk edge
     // from the shift-edge candidate pool -- its rate is mu0 itself, never a shift off
     // some parent rate, so it must never be selectable as a shift edge.
-    vector<int> all_candidates = get_active_bsr_eids(rtree, opt_type.estimate_bsr0_first ? -1 : find_luca_eid(rtree));
+    vector<int> all_candidates = get_active_bsr_eids(rtree, opt_type.estimate_bsr0_first ? -1 : find_trunk_eid(rtree));
 
     // --- K=0 baseline ---
     OPT_TYPE cur_opt = opt_type;
@@ -2211,7 +2208,7 @@ void stepwise_search_shift_edges(
     if(debug)
         cout << "[RLC] K=0 baseline: nlnl=" << cur_nlnl
              << " raw_logL=" << cur_ic.raw_logL << " AIC=" << cur_ic.aic << " BIC=" << cur_ic.bic
-             << " score=" << cur_score << endl;
+             << " AICc=" << cur_ic.aicc << " score=" << cur_score << endl;
 
     // ----- start here: original code ----- //
     // // --- forward stepwise ---
@@ -2325,6 +2322,7 @@ void stepwise_search_shift_edges(
         vector<double> candidate_nlnls(ncand, MAX_NLNL);
         vector<double> candidate_aics(ncand, MAX_NLNL);
         vector<double> candidate_bics(ncand, MAX_NLNL);
+        vector<double> candidate_aiccs(ncand, MAX_NLNL);
         vector<evo_tree> candidate_trees(ncand, cur_tree);
         vector<OPT_TYPE> candidate_opts(ncand, cur_opt);
 
@@ -2376,6 +2374,7 @@ void stepwise_search_shift_edges(
             candidate_nlnls[i]  = cand_nlnl;
             candidate_aics[i]   = cand_ic.aic;
             candidate_bics[i]   = cand_ic.bic;
+            candidate_aiccs[i]  = cand_ic.aicc;
             candidate_trees[i]  = std::move(cand_tree);
             candidate_opts[i]   = std::move(cand_opt);
         }
@@ -2394,6 +2393,7 @@ void stepwise_search_shift_edges(
                  << " nlnl=" << candidate_nlnls[i]
                  << " AIC=" << candidate_aics[i]
                  << " BIC=" << candidate_bics[i]
+                 << " AICc=" << candidate_aiccs[i]
                  << " score=" << candidate_scores[i] << endl;
         }
 
@@ -2457,6 +2457,7 @@ void stepwise_search_shift_edges(
             vector<double> remove_nlnls(nshift, MAX_NLNL);
             vector<double> remove_aics(nshift, MAX_NLNL);
             vector<double> remove_bics(nshift, MAX_NLNL);
+            vector<double> remove_aiccs(nshift, MAX_NLNL);
             vector<evo_tree> remove_trees(nshift, cur_tree);
             vector<OPT_TYPE> remove_opts(nshift, cur_opt);
 
@@ -2493,6 +2494,7 @@ void stepwise_search_shift_edges(
             remove_nlnls[k]     = try_nlnl;
             remove_aics[k]      = try_ic.aic;
             remove_bics[k]      = try_ic.bic;
+            remove_aiccs[k]     = try_ic.aicc;
             remove_trees[k]     = std::move(try_tree);
             remove_opts[k]      = std::move(try_opt);
         }
@@ -2510,6 +2512,7 @@ void stepwise_search_shift_edges(
                  << " nlnl=" << remove_nlnls[k]
                  << " AIC=" << remove_aics[k]
                  << " BIC=" << remove_bics[k]
+                 << " AICc=" << remove_aiccs[k]
                  << " score=" << remove_scores[k] << endl;
         }
 
@@ -2589,7 +2592,7 @@ void stepwise_search_shift_edges(
     cout << "[RLC] final: K=" << K << " shift_eids=[ ";
     for(int s : opt_type.rlc_shift_eids) cout << s << " ";
     cout << "] raw_logL=" << raw_logL
-         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic
+         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic << " AICc=" << final_ic.aicc
          << " score=" << penalized_score << endl;
 }
 
@@ -2605,6 +2608,7 @@ struct GaIndividual {
     double score = -MAX_NLNL;
     double aic   = MAX_NLNL;  // [2026-07-21 added] reported alongside score/bic, not used for selection
     double bic   = MAX_NLNL;  // [2026-07-21 added] reported alongside score/aic, not used for selection
+    double aicc  = MAX_NLNL;  // reported alongside aic/bic, not used for selection
 };
 
 // Genetic-algorithm search for shift edges under bsr_mode=3 (ML-RLC). Chromosome =
@@ -2623,10 +2627,10 @@ void genetic_search_shift_edges(
     double& min_nlnl,
     int debug)
 {
-    // [2026-08-12 changed] estimate_bsr0_first=false: also exclude the root-LUCA edge
+    // [2026-08-12 changed] estimate_bsr0_first=false: also exclude the trunk edge
     // from the shift-edge candidate pool -- its rate is mu0 itself, never a shift off
     // some parent rate, so it must never be selectable as a shift edge.
-    vector<int> all_candidates = get_active_bsr_eids(rtree, opt_type.estimate_bsr0_first ? -1 : find_luca_eid(rtree));
+    vector<int> all_candidates = get_active_bsr_eids(rtree, opt_type.estimate_bsr0_first ? -1 : find_trunk_eid(rtree));
     int ncand = (int)all_candidates.size();
 
     const int criterion = opt_type.rlc_criterion;  // 0=AIC, 1=BIC (see compute_rlc_ic)
@@ -2638,7 +2642,7 @@ void genetic_search_shift_edges(
     // (elitism keeps it around, crossover/mutation can regenerate it by chance), and each
     // miss costs a full BFGS run. Guarded by #pragma omp critical since evaluate() below
     // runs inside #pragma omp parallel for.
-    struct GaCacheEntry { double nlnl, score, aic, bic; };
+    struct GaCacheEntry { double nlnl, score, aic, bic, aicc; };
     unordered_map<string, GaCacheEntry> score_cache;  // gene pattern -> cached result
 
     // Fitness of one individual: decode its genes into a shift-edge set, warm-start
@@ -2658,6 +2662,7 @@ void genetic_search_shift_edges(
                 indiv.score = it->second.score;
                 indiv.aic   = it->second.aic;
                 indiv.bic   = it->second.bic;
+                indiv.aicc  = it->second.aicc;
                 cache_hit = true;
             }
         }
@@ -2686,10 +2691,11 @@ void genetic_search_shift_edges(
         indiv.score = cand_ic.score;
         indiv.aic   = cand_ic.aic;
         indiv.bic   = cand_ic.bic;
+        indiv.aicc  = cand_ic.aicc;
 
         #pragma omp critical(ga_score_cache)
         {
-            score_cache[key] = {indiv.nlnl, indiv.score, indiv.aic, indiv.bic};
+            score_cache[key] = {indiv.nlnl, indiv.score, indiv.aic, indiv.bic, indiv.aicc};
         }
     };
 
@@ -2881,7 +2887,7 @@ void genetic_search_shift_edges(
     cout << "[GA] final: K=" << K << " shift_eids=[ ";
     for(int s : opt_type.rlc_shift_eids) cout << s << " ";
     cout << "] raw_logL=" << raw_logL
-         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic
+         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic << " AICc=" << final_ic.aicc
          << " score=" << penalized_score << endl;
 }
 
@@ -2911,10 +2917,10 @@ void exhaustive_search_shift_edges(
     const int n_sites = lnl_type.n_sites_for_ic;
     const int n_types_per_edge = (int)get_bsr_rate_slots(rtree, lnl_type.cn_type).size();
 
-    // [2026-08-12 changed] estimate_bsr0_first=false: also exclude the root-LUCA edge
+    // [2026-08-12 changed] estimate_bsr0_first=false: also exclude the trunk edge
     // from the shift-edge candidate pool -- its rate is mu0 itself, never a shift off
     // some parent rate, so it must never be selectable as a shift edge.
-    vector<int> all_candidates = get_active_bsr_eids(rtree, opt_type.estimate_bsr0_first ? -1 : find_luca_eid(rtree));
+    vector<int> all_candidates = get_active_bsr_eids(rtree, opt_type.estimate_bsr0_first ? -1 : find_trunk_eid(rtree));
     int ncand = (int)all_candidates.size();
     long long n_subsets = 1LL << ncand;
 
@@ -2927,6 +2933,7 @@ void exhaustive_search_shift_edges(
     vector<double> subset_nlnls(n_subsets, MAX_NLNL);
     vector<double> subset_aics(n_subsets, MAX_NLNL);
     vector<double> subset_bics(n_subsets, MAX_NLNL);
+    vector<double> subset_aiccs(n_subsets, MAX_NLNL);
     vector<double> subset_scores(n_subsets, -MAX_NLNL);
 
     // [2026-07-22 added] progress counter so a long exhaustive run has some visible heartbeat instead of total silence until the whole parallel loop finishes. Prints roughly every 10% of subsets done (~10 lines total, regardless of n_subsets), guarded by a critical section since cout isn't thread-safe against interleaving from concurrent threads.
@@ -2957,6 +2964,7 @@ void exhaustive_search_shift_edges(
         subset_nlnls[mask]  = cand_nlnl;
         subset_aics[mask]   = ic.aic;
         subset_bics[mask]   = ic.bic;
+        subset_aiccs[mask]  = ic.aicc;
         subset_scores[mask] = ic.score;
 
         long long done;
@@ -2971,16 +2979,19 @@ void exhaustive_search_shift_edges(
     }
 
     // Serial scan: best-by-active-criterion (drives the write-back below), plus
-    // best-by-AIC and best-by-BIC purely for reporting — both already known from the same
-    // pass, unlike stepwise/GA which only explore one criterion-dependent path.
+    // best-by-AIC, best-by-BIC and best-by-AICc purely for reporting — all already known
+    // from the same pass, unlike stepwise/GA which only explore one criterion-dependent
+    // path. AICc comparisons against a NaN candidate (undefined when n_sites <=
+    // k_params+1) are false either way, so NaN subsets are simply never picked as best.
     const double eps = 1e-6;
-    long long best_mask = 0, best_aic_mask = 0, best_bic_mask = 0;
+    long long best_mask = 0, best_aic_mask = 0, best_bic_mask = 0, best_aicc_mask = 0;
     double best_score = subset_scores[0];
-    double best_aic = subset_aics[0], best_bic = subset_bics[0];
+    double best_aic = subset_aics[0], best_bic = subset_bics[0], best_aicc = subset_aiccs[0];
     for(long long mask = 1; mask < n_subsets; ++mask){
         if(subset_scores[mask] > best_score + eps){ best_score = subset_scores[mask]; best_mask = mask; }
         if(subset_aics[mask] < best_aic - eps){ best_aic = subset_aics[mask]; best_aic_mask = mask; }
         if(subset_bics[mask] < best_bic - eps){ best_bic = subset_bics[mask]; best_bic_mask = mask; }
+        if(subset_aiccs[mask] < best_aicc - eps){ best_aicc = subset_aiccs[mask]; best_aicc_mask = mask; }
     }
 
     auto mask_to_shifts = [&](long long mask){
@@ -2994,7 +3005,8 @@ void exhaustive_search_shift_edges(
         cout << "[RLC][exhaustive] " << label << ": K=" << shifts.size() << " shift_eids=[ ";
         for(int s : shifts) cout << s << " ";
         cout << "] nlnl=" << subset_nlnls[mask]
-             << " AIC=" << subset_aics[mask] << " BIC=" << subset_bics[mask] << endl;
+             << " AIC=" << subset_aics[mask] << " BIC=" << subset_bics[mask]
+             << " AICc=" << subset_aiccs[mask] << endl;
     };
 
     // Always-on diagnostic (independent of the general debug flag), same convention as
@@ -3005,6 +3017,7 @@ void exhaustive_search_shift_edges(
     }
     print_combo("AIC-best", best_aic_mask);
     print_combo("BIC-best", best_bic_mask);
+    print_combo("AICc-best", best_aicc_mask);
 
     // --- write back final results using the subset selected by opt_type.rlc_criterion ---
     vector<int> best_shift_eids = mask_to_shifts(best_mask);
@@ -3034,7 +3047,7 @@ void exhaustive_search_shift_edges(
          << "): K=" << K << " shift_eids=[ ";
     for(int s : opt_type.rlc_shift_eids) cout << s << " ";
     cout << "] raw_logL=" << raw_logL
-         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic
+         << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic << " AICc=" << final_ic.aicc
          << " score=" << penalized_score
          << " (evaluated " << n_subsets << " subsets)" << endl;
 }
@@ -3066,9 +3079,9 @@ void optimize_tree_by_bsr_mode(
     // record of whether the redo was actually necessary.
     // if(opt_type.bsr_mode > 0){
     // [2026-08-12 added] estimate_bsr0_first=false skips this calibration sub-optimization
-    // entirely, for bsr_mode 1/2/3 alike -- the root-LUCA edge's own rate (mu0) is
+    // entirely, for bsr_mode 1/2/3 alike -- the trunk edge's own rate (mu0) is
     // estimated jointly with the other edges' multipliers in the main optimization
-    // instead. See worklog_2026-08-11.md.
+    // instead.
     if(opt_type.bsr_mode > 0 && !opt_type.bsr_calibrated && opt_type.estimate_bsr0_first){
         OPT_TYPE calib_opt = opt_type;
         calib_opt.bsr_mode = 0;

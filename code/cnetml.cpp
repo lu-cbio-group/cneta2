@@ -1024,6 +1024,7 @@ void write_run_summary(ostream& out, const evo_tree& tree, int mode, const LNL_T
 
     out << "mode\t" << mode << "\n";
     out << "seed\t" << seed_in_use << "\n";
+    out << "version\t" << version_string() << "\n";
     out << "model\t" << lnl_type.model << "\n";
     out << "bsr_mode\t" << bsr_mode << "\n";
     out << "cn_type\t" << lnl_type.cn_type << "\n";
@@ -1032,9 +1033,9 @@ void write_run_summary(ostream& out, const evo_tree& tree, int mode, const LNL_T
     // [2026-08-12 added] lets R-side analysis tell which reference-parameterization
     // this run used without guessing from directory naming: bsr_mode>0 &&
     // estimate_bsr0_first=0 means the "reference"/dup_rate_reference etc fields below
-    // are root-LUCA edge's own rate (mu0), estimated jointly with per-edge multipliers,
+    // are the trunk edge's own rate (mu0), estimated jointly with per-edge multipliers,
     // not an independently-calibrated bsr_mode=0 reference. NA when bsr_mode==0 (no
-    // such distinction applies). See worklog_2026-08-11.md.
+    // such distinction applies).
     out << "estimate_bsr0_first\t" << (bsr_mode > 0 ? (opt_type.estimate_bsr0_first ? "1" : "0") : "NA") << "\n";
 
     out << "rlc_criterion\t" << (bsr_mode == 3 ? (opt_type.rlc_criterion == 0 ? "AIC" : "BIC") : "NA") << "\n";
@@ -1585,11 +1586,11 @@ void print_desc(int cons, int estmu, int correct_bias, int use_repeat, int optim
             break;
         }
         case BOUNDA:{
-            cout << "\nAssuming One-step bounded model of haplotype-specific copy number (CNTEML)" << endl;
+            cout << "\nAssuming One-step bounded model of haplotype-specific copy number (CNETML)" << endl;
             break;
         }
         case DECOMP:{
-            cout << "\nAssuming independent Markov chains of haplotype-specific copy number changes (CNTEML2)" << endl;
+            cout << "\nAssuming independent Markov chains of haplotype-specific copy number changes (CNETML2)" << endl;
             // if(!is_total){
             //     cout << "This model only supports total copy number for now!" << endl;
             //     exit(EXIT_FAILURE);
@@ -1641,10 +1642,10 @@ int main(int argc, char** const argv){
     double scale_tobs;  // scaling factor for input times, used in likelihood computation when branch length is constrained by sampling time
     int rlc_search_method;  // outer search for bsr_mode=3 ML-RLC shift edges (0: exhaustive search, 1: stepwise greedy [default], 2: genetic algorithm [not yet implemented])
     int rlc_criterion;  // model-selection criterion for bsr_mode=3 ML-RLC (0: AIC, 1: BIC)
-    // [2026-08-12 added] bsr_mode>0 only: 1 (default) = calibrate bsr0 rates first then
-    // estimate per-edge multipliers relative to that reference [unchanged behavior];
-    // 0 = skip calibration, estimate root-LUCA edge's own rate (mu0) jointly with the
-    // other edges' multipliers/shifts relative to mu0. See worklog_2026-08-11.md.
+    // [2026-08-12 added] bsr_mode>0 only: 0 (default) = skip calibration, estimate the
+    // trunk edge's (root -> MRCA) own rate (mu0) jointly with the other edges'
+    // multipliers/shifts relative to mu0; 1 = calibrate bsr0 rates first then
+    // estimate per-edge multipliers relative to that reference.
     int estimate_bsr0_first;
 
     /********* derived from input ***********/
@@ -1728,7 +1729,7 @@ int main(int argc, char** const argv){
     ("is_bin", po::value<int>(&is_bin)->default_value(1), "whether or not the input copy number is for each bin. If not, the input copy number is read as it is. Or else, consecutive bins will be merged")
     ("incl_all", po::value<int>(&incl_all)->default_value(1), "whether or not to include all the input copy numbers for phylogeny inference")
 
-    ("cn_type", po::value<int>(&cn_type), "Type of copy number changes to consider (0: only segment-level mutations (ONLY_SEG), 1: only chromosome gain/loss and whole genome doubling (EXCLUDE_SEG), 2: only duplication/deletion and whole genome doubling (EXCLUDE_CHR), 3: only duplication/deletion and chromosome gain/loss (EXCLUDE_WGD), 4: all types of mutations (ALL))")
+    ("cn_type", po::value<int>(&cn_type)->required(), "(required) Type of copy number changes to consider (0: only segment-level mutations (ONLY_SEG), 1: only chromosome gain/loss and whole genome doubling (EXCLUDE_SEG), 2: only duplication/deletion and whole genome doubling (EXCLUDE_CHR), 3: only duplication/deletion and chromosome gain/loss (EXCLUDE_WGD), 4: all types of mutations (ALL))")
 
     ("use_repeat", po::value<int>(&use_repeat)->default_value(1), "whether or not to use repeated site patterns when computing the likelihood")
     ("correct_bias", po::value<int>(&correct_bias)->default_value(1), "correct bias when excluding invariant sites")
@@ -1768,7 +1769,7 @@ int main(int argc, char** const argv){
     ("wgd_rate", po::value<double>(&wgd_rate)->default_value(0), "WGD (whole genome doubling) rate")
     ("rlc_search_method", po::value<int>(&rlc_search_method)->default_value(1), "outer search for bsr_mode=3 ML-RLC shift edges (0: exhaustive search over all shift-edge subsets [small trees only], 1: stepwise greedy search [default], 2: genetic algorithm [not yet implemented])")
     ("rlc_criterion", po::value<int>(&rlc_criterion)->default_value(0), "model-selection criterion for bsr_mode=3 ML-RLC shift-edge search (0: AIC, 1: BIC)")
-    ("estimate_bsr0_first", po::value<int>(&estimate_bsr0_first)->default_value(1), "for bsr_mode>0: 1=calibrate bsr0 rates first then estimate per-edge multipliers relative to that reference [default, unchanged behavior], 0=skip calibration, estimate root-LUCA edge's own rate jointly with per-edge multipliers/shifts")
+    ("estimate_bsr0_first", po::value<int>(&estimate_bsr0_first)->default_value(0), "for bsr_mode>0: 0=skip calibration, estimate the trunk edge's (root -> MRCA) own rate jointly with per-edge multipliers/shifts [default], 1=calibrate bsr0 rates first then estimate per-edge multipliers relative to that reference")
 
     ("verbose", po::value<int>(&debug)->default_value(0), "verbose level (0: default, 1: debug)")
     ("seed", po::value<unsigned>(&seed)->default_value(0), "seed used for generating random numbers")
@@ -1782,12 +1783,12 @@ int main(int argc, char** const argv){
       po::store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
       if(vm.count("help")){
           cout << cmdline_options << endl;
-          return 1;
+          return 0;
       }
       if(vm.count("version")){
-          cout << "CNETML [version " << VERSION << "], a program to build a maximum likelihood phylogenetic tree from total or haplotype-specific copy number profiles of multiple (spatio-temporal) samples for a single patient" << endl;
+          cout << "CNETML [version " << version_string() << "], a program to build a maximum likelihood phylogenetic tree from total or haplotype-specific copy number profiles of multiple (spatio-temporal) samples for a single patient" << endl;
           cout << "This program can also be used to compute the likelihood and ancestral states of a given tree, maximum likelihood of a tree with fixed topology (and/or mutation rates), given the copy number profiles." << endl;
-          return 1;
+          return 0;
       }
       po::notify(vm);
     } catch (const std::exception& e) {
@@ -1810,6 +1811,13 @@ int main(int argc, char** const argv){
         cerr << "Error: bsr_mode=" << bsr_mode << " is not compatible with mode=" << mode << "." << endl;
         exit(EXIT_FAILURE);
     }
+    // Branch-specific rates only enter the likelihood of model 3 (DECOMP):
+    // targetFunk uses the per-edge rates only for that model, so with any
+    // other model the multipliers stay at 1 and the option changes nothing.
+    if(bsr_mode > 0 && model != 3){
+        cerr << "Error: bsr_mode=" << bsr_mode << " requires model=3 (--model 3, independent Markov chains); with model=" << model << " the branch-specific rates would be ignored." << endl;
+        exit(EXIT_FAILURE);
+    }
     if(rlc_search_method != 0 && rlc_search_method != 1 && rlc_search_method != 2){
         cerr << "Error: unknown rlc_search_method=" << rlc_search_method << " (0: exhaustive search, 1: stepwise greedy search, 2: genetic algorithm)." << endl;
         exit(EXIT_FAILURE);
@@ -1828,6 +1836,7 @@ int main(int argc, char** const argv){
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
     r = gsl_rng_alloc(gsl_rng_mt19937);
+    cout << "version:" << "\t" << version_string() << endl;
     seed = setup_rng(r, seed);
     seed_in_use = seed;
 

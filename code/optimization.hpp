@@ -67,7 +67,7 @@ struct OPT_TYPE{
   // objective/gradient evaluation by update_variables_transformed/
   // update_edge_rates_rlc_from_x — those used to call get_bsr_rate_slots() themselves
   // every call, which is wasted work since it's invariant for the whole optimization
-  // (the 5 global reference rates are frozen for bsr_mode>0). See docs/flowcharts.md.
+  // (the 5 global reference rates are frozen for bsr_mode>0).
   vector<BsrRateSlot> bsr_slots_cache;
   // [2026-07-14 added] set to true once optimize_tree_by_bsr_mode's auto-calibration
   // sub-optimization has *successfully* estimated the 5 global reference rates (calib_nlnl
@@ -76,15 +76,15 @@ struct OPT_TYPE{
   // calibration sub-optimization from scratch every retry even when calibration itself had
   // already succeeded and only the later shift-edge search failed. Checked (and left false
   // on calibration failure, so a retry still retries calibration too) instead of assuming
-  // "called before" means "succeeded before". See docs/flowcharts.md.
+  // "called before" means "succeeded before".
   bool bsr_calibrated = false;
-  // [2026-08-12 added] bsr_mode>0 only. true (default): unchanged behavior -- run an
+  // [2026-08-12 added] bsr_mode>0 only. false (default): skip calibration; the trunk
+  // edge's own rate (mu0) is estimated jointly with the other edges' multipliers in the
+  // same optimization, and used as the reference those multipliers scale. true: run an
   // independent bsr_mode=0/estmu=1 calibration sub-optimization first, freeze the 5
   // global reference rates, estimate only per-edge multipliers relative to that
-  // reference. false: skip calibration; the root-LUCA edge's own rate (mu0) is
-  // estimated jointly with the other edges' multipliers in the same optimization,
-  // and used as the reference those multipliers scale. See worklog_2026-08-11.md.
-  bool estimate_bsr0_first = true;
+  // reference.
+  bool estimate_bsr0_first = false;
 };
 
 struct GSL_PARAM{
@@ -236,7 +236,7 @@ void update_variables_transformed(evo_tree &rtree, double *x, LNL_TYPE &lnl_type
 
 // [2026-07-14] bsr_mode param added so this can assert it's never called for bsr_mode>0
 // (global reference rates must stay frozen there) — see the assert in the definition
-// and docs/flowcharts.md for why this guard exists.
+// for why this guard exists.
 void update_tree_rates(LNL_TYPE &lnl_type, evo_tree &rtree, double *x, int nparams_est, int bsr_mode);
 
 /**
@@ -291,14 +291,14 @@ double L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, cons
 // x[]/variables[]. Previously hand-written identically in three places (the
 // population loop in max_likelihood_BFGS, the bsr_mode==2 read-back in
 // update_variables_transformed, and update_edge_rates_rlc_from_x for bsr_mode==3),
-// risking silent drift if only some were updated. See docs/flowcharts.md.
+// risking silent drift if only some were updated.
 inline int bsr_var_index(int nparams_est, int k, int n_types_per_edge, int t){
     return nparams_est + k * n_types_per_edge + t + 1;
 }
 
 // [2026-08-12 added] estimate_bsr0_first=false only: index of mu0's slot for rate-type
 // t in x[]/variables[]. Placed right after the per-edge multiplier block (n_bsr_edges
-// edges, already excluding the root-LUCA edge -- see get_active_bsr_eids), matching how
+// edges, already excluding the trunk edge -- see get_active_bsr_eids), matching how
 // get_ndim's nrates argument reserves this many extra dims at the end. n_bsr_edges here
 // must be the same active-edge count used to build that block, so this stays consistent
 // with bsr_var_index's own indexing.
@@ -345,7 +345,7 @@ inline vector<BsrRateSlot> get_bsr_rate_slots(const evo_tree& rtree, int cn_type
 // Returns edge IDs that receive per-branch rate multipliers (excludes the normal-sample edge).
 // [2026-08-12 changed] exclude_eid: optional extra edge to exclude, default -1 (exclude
 // nothing extra, original behavior unchanged). Used by the estimate_bsr0_first=false path
-// to keep the root-LUCA edge out of every "which edges get a multiplier / are shift-edge
+// to keep the trunk edge out of every "which edges get a multiplier / are shift-edge
 // candidates" list, since that edge's rate is mu0 itself, not mu0 times a multiplier.
 inline vector<int> get_active_bsr_eids(const evo_tree& rtree, int exclude_eid = -1){
     vector<int> eids;
@@ -360,12 +360,12 @@ inline vector<int> get_active_bsr_eids(const evo_tree& rtree, int exclude_eid = 
     return eids;
 }
 
-// [2026-08-12 added] Root-to-LUCA edge: the edge leaving root_node_id with length>0
+// [2026-08-12 added] Trunk edge (root -> MRCA of the tumour samples): the edge leaving root_node_id with length>0
 // (excludes the zero-length normal-sample edge). Used by the estimate_bsr0_first=false
 // path to identify which edge's rate is estimated directly (mu0) rather than as a
 // multiplier on some other reference. Returns -1 if none found (should not happen for a
 // valid tree with at least one non-normal-sample edge).
-inline int find_luca_eid(const evo_tree& rtree){
+inline int find_trunk_eid(const evo_tree& rtree){
     for(int eid = 0; eid < (int)rtree.edges.size(); ++eid){
         if(rtree.edges[eid].start == rtree.root_node_id && rtree.edges[eid].length > 0)
             return eid;
@@ -379,7 +379,7 @@ void max_likelihood_BFGS(evo_tree &rtree, const map<int, vector<vector<int>>> &v
 
 // [2026-07-14] bsr_mode param added so this can assert it's never called for bsr_mode>0
 // (global reference rates must stay frozen there) — see the assert in the definition
-// and docs/flowcharts.md for why this guard exists.
+// for why this guard exists.
 void set_tree_rates(int cn_type, evo_tree &rtree, int nparams_est, double* variables, double* lower_bound, double* upper_bound, int bsr_mode);
 
 /****** bsr_mode=3 ML-RLC functions ******/
@@ -419,10 +419,14 @@ void update_edge_rates_rlc_from_x(
 // so existing comparison code (pick_best_improving, sorting) keeps working unchanged; aic
 // and bic are both always computed so callers can log/report the non-selected criterion
 // too (search decisions still follow `score`/rlc_criterion only, not the other one).
+// aicc is the small-sample-corrected AIC (AIC + 2k(k+1)/(n-k-1)),
+// reported alongside aic/bic for diagnostics only -- not wired into `score` or
+// rlc_criterion, so it never changes which shift edges get selected.
 struct RlcIC {
     double raw_logL;
     double aic;
     double bic;
+    double aicc;
     double score;
 };
 
@@ -432,6 +436,11 @@ inline RlcIC compute_rlc_ic(double nlnl, int K, int n_types_per_edge, int n_site
     double k_params = (double)K * (double)n_types_per_edge;
     ic.aic = -2.0 * ic.raw_logL + 2.0 * k_params;
     ic.bic = -2.0 * ic.raw_logL + log((double)n_sites) * k_params;
+    // undefined when n_sites <= k_params+1 (denominator non-positive); report as NaN
+    // rather than a nonsensical or misleadingly finite value.
+    double denom = (double)n_sites - k_params - 1.0;
+    ic.aicc = (denom > 0.0) ? ic.aic + (2.0 * k_params * (k_params + 1.0)) / denom
+                            : std::numeric_limits<double>::quiet_NaN();
     ic.score = -(criterion == 0 ? ic.aic : ic.bic);
     return ic;
 }
@@ -441,7 +450,7 @@ inline RlcIC compute_rlc_ic(double nlnl, int K, int n_types_per_edge, int n_site
 // smaller id). Returns -1 if none qualify. Previously this ~25-line selection logic was
 // hand-copied for stepwise_search_shift_edges's forward candidate selection and backward
 // removal selection; centralized here so both (and the future genetic_search_shift_edges)
-// share one implementation. See docs/flowcharts.md.
+// share one implementation.
 inline int pick_best_improving(int n, const vector<char>& evaluated, const vector<double>& scores,
                                 const vector<int>& ids, double cur_score, double eps){
     int best = -1;

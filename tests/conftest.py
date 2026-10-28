@@ -46,6 +46,13 @@ def data_dir() -> Path:
 
 
 @pytest.fixture(scope="session")
+def cneta_version(repo_root: Path) -> str:
+    """The version in the VERSION file, which the build passes to the
+    programs (see docs/source/developer-guide/releases.md)."""
+    return (repo_root / "VERSION").read_text().strip()
+
+
+@pytest.fixture(scope="session")
 def bin_dir(repo_root: Path) -> Path:
     """Where the three executables live.
 

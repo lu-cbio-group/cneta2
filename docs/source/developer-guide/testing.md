@@ -18,15 +18,20 @@ The suite lives in `tests/` and has three layers:
 : pytest tests that configure and compile the project from scratch and check
   `build.sh`'s argument handling.
 
-To run everything:
+To run everything, from the top of the repository with the `cneta-build`
+environment active (it includes pytest; see
+[Installation](../installation/index.md)):
 
 ```bash
+conda activate cneta-build
+OMP_NUM_THREADS=1 pytest tests -m "not build"   # end-to-end and run-script tests
+pytest tests -m build                            # build-system tests
 cmake -S code -B code/build -DCNETA_BUILD_TESTING=ON
 cmake --build code/build -j 4
-ctest --test-dir code/build --output-on-failure
-pip install -r tests/requirements.txt
-OMP_NUM_THREADS=1 pytest tests -m "not build"
+ctest --test-dir code/build --output-on-failure  # C++ unit tests
 ```
+
+Without conda, install pytest with `pip install -r tests/requirements.txt`.
 
 `OMP_NUM_THREADS=1` keeps timings comparable and a failure easy to repeat by
 hand. `cnetml` parallelises its tree search with OpenMP, but the result does

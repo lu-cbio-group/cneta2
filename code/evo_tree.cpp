@@ -480,7 +480,7 @@ void evo_tree::init_edge_rates_rlc(const RateSet& mean_rates, int bsr_dist, doub
   edge_rates.resize(edges.size());
 
   // [2026-07-14 added] two fixes so the simulated ground truth matches what the
-  // inference side (bsr_mode=3) actually assumes. See docs/flowcharts.md.
+  // inference side (bsr_mode=3) actually assumes.
   // 1. rlc_shift_eids was never recorded here, so write_simulation_edge_rate_table's
   //    is_shift_edge/m_shared/etc. columns always reported "no shift" even when a
   //    shift really was drawn below.
@@ -1363,7 +1363,7 @@ void evo_tree::update_edge_from_ratio(double ratio, int eid){
 //
 //     // Find the branch length of each edge
 //     for(int i = 0; i <  edges.size(); i++){
-//         // Skip the edge from LUCA to normal genome
+//         // Skip the edge from the root to the normal genome
 //         if(edges[i].start==nleaf && edges[i].end==nleaf-1){
 //             pair<int, double> id_len(i, edges[i].length);
 //             blens_map.insert(id_len);
