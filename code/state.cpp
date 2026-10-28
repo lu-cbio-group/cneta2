@@ -873,13 +873,22 @@ int get_tcn_max_from_haplotype_change(int max_haplotype_change){
 }
 
 
+// Transition matrix of the edge into node `node`. With constant rates the matrices are
+// shared by branch length; with branch-specific rates each edge has its own matrix.
+static double* get_edge_pmat(const map<double, double*>& pmats_by_blen, const map<int, double*>& pmats_by_eid, const evo_tree& rtree, int node, bool use_edge_rates){
+    int eid = rtree.nodes[node].e_in;
+    if(use_edge_rates) return pmats_by_eid.at(eid);
+    return pmats_by_blen.at(rtree.edges[eid].length);
+}
+
+
 // Unnormalised posterior of each MRCA state: the likelihood of the data below
 // the MRCA times the probability of reaching that state from the root state
-// along the trunk edge (root -> MRCA). Returns a copy of the table with only
-// the MRCA row changed, so cached tables are left as they are.
-static vector<vector<double>> get_mrca_posterior_table(const vector<vector<double>>& lnl_table, const evo_tree& rtree, int nid, const map<double, double*>& pmats, int dim, int root_state){
+// along the trunk edge (root -> MRCA), whose transition matrix is pmat.
+// Returns a copy of the table with only the MRCA row changed, so cached tables
+// are left as they are.
+static vector<vector<double>> get_mrca_posterior_table(const vector<vector<double>>& lnl_table, int nid, const double* pmat, int dim, int root_state){
     vector<vector<double>> post = lnl_table;
-    const double* pmat = pmats.at(rtree.edges[rtree.nodes[nid].e_in].length);
     for(int s = 0; s < dim; s++){
         post[nid][s] *= pmat[root_state + s * dim];
     }
@@ -1001,7 +1010,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
                 assert(lnl_table_seg.size() > nid);  // sanity check, the likelihood table should have the same number of nodes as the tree
 
                 // Posterior of the MRCA node (with largest ID), not just the likelihood below it
-                vector<vector<double>> post_seg = get_mrca_posterior_table(lnl_table_seg, rtree, nid, pmat_decomp.pmats_seg, dim_decomp.dim_seg, NO_CHANGE_HAPLOTYPE);
+                vector<vector<double>> post_seg = get_mrca_posterior_table(lnl_table_seg, nid, get_edge_pmat(pmat_decomp.pmats_seg, pmat_decomp.pmats_seg_var, rtree, nid, use_edge_rates), dim_decomp.dim_seg, NO_CHANGE_HAPLOTYPE);
                 int site_state = get_node_change_state(post_seg, nid, lnl_type.is_total, lnl_type.max_site_change_haplotype);
                 cn_mrca[nchr][nc].cn_change_site = site_state;
                 mrca_post_site[nchr][nc] = post_seg[nid];
@@ -1029,7 +1038,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
 
             assert(lnl_table_chr.size() > nid);  // sanity check, the likelihood table should have the same number of nodes as the tree
 
-            vector<vector<double>> post_chr = get_mrca_posterior_table(lnl_table_chr, rtree, nid, pmat_decomp.pmats_chr, dim_decomp.dim_chr, NO_CHANGE_HAPLOTYPE);
+            vector<vector<double>> post_chr = get_mrca_posterior_table(lnl_table_chr, nid, get_edge_pmat(pmat_decomp.pmats_chr, pmat_decomp.pmats_chr_var, rtree, nid, use_edge_rates), dim_decomp.dim_chr, NO_CHANGE_HAPLOTYPE);
             int chr_state = get_node_change_state(post_chr, nid, lnl_type.is_total, lnl_type.max_chr_change_haplotype);
             mrca_post_chr[nchr] = post_chr[nid];
             // reuse nc for consistency of indexing
@@ -1069,7 +1078,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
         // There may be multiple possible copy numbers given different ordering of events, so we need to compute the CN for each possible combination of events and then aggregate them to get the final CN for MRCA
         // int cn = pow(2, c[0] + 1) +  c[1] + c[2] + 2 * c[3] + 2 * c[4];
         // the index is the same as the number of WGDs
-        vector<vector<double>> post_wgd = get_mrca_posterior_table(lnl_table_wgd, rtree, nid, pmat_decomp.pmats_wgd, dim_decomp.dim_wgd, 0);
+        vector<vector<double>> post_wgd = get_mrca_posterior_table(lnl_table_wgd, nid, get_edge_pmat(pmat_decomp.pmats_wgd, pmat_decomp.pmats_wgd_var, rtree, nid, use_edge_rates), dim_decomp.dim_wgd, 0);
         int wgd_state = (int)distance(post_wgd[nid].begin(), max_element(post_wgd[nid].begin(), post_wgd[nid].end()));
         mrca_post_wgd = post_wgd[nid];
         for(auto vcn : vobs_change){
@@ -1165,15 +1174,6 @@ void set_tip_states_tcn_decomp(int state_chr, int max_change_haplotype, int& si,
     for (int k = si; k <= ei; k++){
         tip_states.push_back(k);
     }
-}
-
-
-// Transition matrix of the edge into node `node`. With constant rates the matrices are
-// shared by branch length; with branch-specific rates each edge has its own matrix.
-static double* get_edge_pmat(const map<double, double*>& pmats_by_blen, const map<int, double*>& pmats_by_eid, const evo_tree& rtree, int node, bool use_edge_rates){
-    int eid = rtree.nodes[node].e_in;
-    if(use_edge_rates) return pmats_by_eid.at(eid);
-    return pmats_by_blen.at(rtree.edges[eid].length);
 }
 
 
