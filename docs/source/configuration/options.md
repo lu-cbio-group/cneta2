@@ -128,6 +128,7 @@ the simulation (`cnets` has no `--cn_type` option).
 | `--meta_file` | | "" | file path | Meta information: known number of WGDs (required if the file is given), optionally per-chromosome gain/loss and per-site duplication/deletion |
 | `--nsample` | `-s` | 5 | positive integer | Number of samples; must match the input file |
 | `--tree_file` | | "" | file path | Given tree (needed for `mode` 1–4) |
+| `--edge_rate_file` | | "" | file path | `mode=4` only: per-branch rate table for the tree in `--tree_file` (the `.edge_rates.txt` written by `cnetml`, or the `-edge_rates.txt` written by `cnets`); ancestral states then use each branch's own rates. Requires `model=3`; with another mode or model `cnetml` stops with an error. Empty: all branches use the global rates |
 | `--ofile` | `-o` | `maxL-tree.txt` | file path | Output maximum-likelihood tree; other outputs are `<ofile>.nex`, `.nmut.nex`, `.summary.txt`, `.edge_rates.txt`, etc. |
 | `--seg_file` | | "" | file path | Write the preprocessed copy-number matrix used for tree building |
 
