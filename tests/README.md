@@ -129,17 +129,18 @@ shared. Only run `cnets` yourself if you need to compare two simulations.
 
 Worth knowing before trusting a green run:
 
-- Only one model configuration is exercised (`model=2`, `cn_type=0`, no
-  chromosome-level events and no WGD). The other models and `--cn_type`
-  settings are untested.
-- `cnetml` modes 1, 3, 4 and 5 have no coverage; only tree search (0) and
-  scoring (2) are tested.
-- Branch-specific rates (`--bsr_mode`) and the random-local-clock search are
+- Tree search and scoring exercise one model configuration (`model=2`,
+  `cn_type=0`, no chromosome-level events and no WGD). The other models and
+  `--cn_type` settings are untested there.
+- `cnetml` modes 1, 3 and 5 have no coverage. Mode 4 is covered only for
+  model 3: `unit/test_state_decomp.cpp` compares it with brute-force
+  enumeration (WGD, chromosome-level and site-level changes, 3 and 5
+  regions), and `unit/test_state.cpp` and `e2e/test_cnetml_asr.py` cover
+  per-branch rates. Ancestral state reconstruction under models 0-2 is
   untested.
-- Bootstrapping and the `util/` R scripts have no tests. Ancestral state
-  reconstruction is tested only for model 3, by unit tests in
-  `unit/test_state_decomp.cpp` that compare its output with brute-force
-  enumeration on the 3-region tree; models 0-2 and `cnetml --mode 4`
-  end to end are untested.
+- Fitting branch-specific rates (`--bsr_mode`) and the random-local-clock
+  search are untested. Reading per-branch rates into mode 4
+  (`--edge_rate_file`) is tested.
+- Bootstrapping and the `util/` R scripts have no tests.
 - The regression anchor covers one dataset. It will catch a change in the
   likelihood; it will not localise it.
