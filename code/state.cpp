@@ -896,6 +896,20 @@ int get_tcn_max_from_haplotype_change(int max_haplotype_change){
 }
 
 
+// Unnormalised posterior of each MRCA state: the likelihood of the data below
+// the MRCA times the probability of reaching that state from the root state
+// along the trunk edge (root -> MRCA). Returns a copy of the table with only
+// the MRCA row changed, so cached tables are left as they are.
+static vector<vector<double>> get_mrca_posterior_table(const vector<vector<double>>& lnl_table, const evo_tree& rtree, int nid, const map<double, double*>& pmats, int dim, int root_state){
+    vector<vector<double>> post = lnl_table;
+    const double* pmat = pmats.at(rtree.edges[rtree.nodes[nid].e_in].length);
+    for(int s = 0; s < dim; s++){
+        post[nid][s] *= pmat[root_state + s * dim];
+    }
+    return post;
+}
+
+
 // Infer the copy number of the MRCA given a tree at a site, assuming independent Markov chains
 // Get states for individual event type first, then figure out how to merge them
 // knodes here does not equal to knodes in lnl_type
@@ -999,13 +1013,14 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
 
                 assert(lnl_table_seg.size() > nid);  // sanity check, the likelihood table should have the same number of nodes as the tree
 
-                // Get the likelihood table of MRCA node (with largest ID) in the tree from likelihood table
-                int site_state = get_node_change_state(lnl_table_seg, nid, lnl_type.is_total, lnl_type.max_site_change_haplotype);
+                // Posterior of the MRCA node (with largest ID), not just the likelihood below it
+                vector<vector<double>> post_seg = get_mrca_posterior_table(lnl_table_seg, rtree, nid, pmat_decomp.pmats_seg, dim_decomp.dim_seg, NO_CHANGE_HAPLOTYPE);
+                int site_state = get_node_change_state(post_seg, nid, lnl_type.is_total, lnl_type.max_site_change_haplotype);
                 cn_mrca[nchr][nc].cn_change_site = site_state;
 
                 // Print the state of MRCA at this site: sample, chromosome, segment, CN, probability of each change state (index for haplotype-specific CNs)
                 int cn_max = get_tcn_max_from_haplotype_change(lnl_type.max_site_change_haplotype);  // maximum total CN change given the maximum haplotype-specific change
-                string line = get_prob_line(lnl_table_seg, nid, nchr, nc, DECOMP, lnl_type.is_total, cn_max);
+                string line = get_prob_line(post_seg, nid, nchr, nc, DECOMP, lnl_type.is_total, cn_max);
                 // fout << setprecision(dbl::max_digits10) << line << endl;
                 fout_seg << line << endl;
 
@@ -1026,14 +1041,15 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
 
             assert(lnl_table_chr.size() > nid);  // sanity check, the likelihood table should have the same number of nodes as the tree
 
-            int chr_state = get_node_change_state(lnl_table_chr, nid, lnl_type.is_total, lnl_type.max_chr_change_haplotype);
+            vector<vector<double>> post_chr = get_mrca_posterior_table(lnl_table_chr, rtree, nid, pmat_decomp.pmats_chr, dim_decomp.dim_chr, NO_CHANGE_HAPLOTYPE);
+            int chr_state = get_node_change_state(post_chr, nid, lnl_type.is_total, lnl_type.max_chr_change_haplotype);
             // reuse nc for consistency of indexing
             for(size_t nc = 0; nc < vobs_change.at(nchr).size(); nc++){ 
                 cn_mrca[nchr][nc].cn_change_chr = chr_state;
             }
  
             int cn_max = get_tcn_max_from_haplotype_change(lnl_type.max_chr_change_haplotype);  // maximum total CN change given the maximum haplotype-specific change
-            string line = get_prob_line(lnl_table_chr, nid, nchr, -1, DECOMP, lnl_type.is_total, cn_max);
+            string line = get_prob_line(post_chr, nid, nchr, -1, DECOMP, lnl_type.is_total, cn_max);
             // fout << setprecision(dbl::max_digits10) << line << endl;
             fout_chr << line << endl;
 
@@ -1060,7 +1076,8 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
         // There may be multiple possible copy numbers given different ordering of events, so we need to compute the CN for each possible combination of events and then aggregate them to get the final CN for MRCA
         // int cn = pow(2, c[0] + 1) +  c[1] + c[2] + 2 * c[3] + 2 * c[4];
         // the index is the same as the number of WGDs
-        int wgd_state = (int)distance(lnl_table_wgd[nid].begin(), max_element(lnl_table_wgd[nid].begin(), lnl_table_wgd[nid].end()));
+        vector<vector<double>> post_wgd = get_mrca_posterior_table(lnl_table_wgd, rtree, nid, pmat_decomp.pmats_wgd, dim_decomp.dim_wgd, 0);
+        int wgd_state = (int)distance(post_wgd[nid].begin(), max_element(post_wgd[nid].begin(), post_wgd[nid].end()));
         for(auto vcn : vobs_change){
             // reuse nchr, nc for consistency of indexing
             int nchr = vcn.first;
@@ -1069,7 +1086,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
             }           
         }
             string line = to_string(nid + 1);
-            get_prob_line_orig(lnl_table_wgd, nid, line);
+            get_prob_line_orig(post_wgd, nid, line);
             // fout << setprecision(dbl::max_digits10) << line << endl;
             fout_wgd << line << endl;
 

@@ -7,14 +7,71 @@
 // numbers are wrong even when the reconstructed states are right.
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include "likelihood.hpp"
 #include "parse_cn.hpp"
 #include "state.hpp"
+#include "tree_op.hpp"
 
 namespace {
+
+std::string data_path(const std::string& name){
+    return std::string(CNETA_TEST_DATA_DIR) + "/" + name;
+}
+
+const int NS = 3;    // tumour regions in the fixture
+
+// Fixture data in the form mode 4 hands to the reconstruction: total copy
+// number, segment-level changes only.
+struct AsrInput {
+    evo_tree tree;
+    map<int, vector<vector<CN_CHANGE>>> vobs_change;
+    OBS_DECOMP obs_decomp;
+    LNL_TYPE lnl_type;
+    vector<int> inodes;
+};
+
+AsrInput load_fixture(int max_site_change_haplotype){
+    AsrInput in;
+    const int cn_max = 4, max_wgd = 1, max_chr_change_haplotype = 1;
+    INPUT_PROPERTY prop{NS, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype,
+                        DECOMP, /*is_total*/ 1, /*is_rcn*/ 0, /*is_bin*/ 0, /*incl_all*/ 1};
+    INPUT_DATA data{0, 0, 0, vector<int>(NS, 0), vector<int>(NS, 0), vector<int>(NS, 0)};
+    map<int, vector<vector<int>>> data_change;
+    read_data_var_regions_by_chr_change(data_change, data_path("tiny-cn.txt.gz"), "", "", prop, data, 0);
+    get_obs_vector_by_chr_change(data_change, in.vobs_change, NS);
+
+    int max_site_change = *max_element(data.site_max_change.begin(), data.site_max_change.end());
+    in.obs_decomp = {/*m_max*/ 1, /*max_wgd*/ 0, /*max_chr_change*/ 0, max_site_change};
+
+    in.tree = read_tree_info(data_path("tiny-tree.txt"), NS);
+    restore_mutation_rates(in.tree, vector<double>{0, 0.001, 0.001, 0, 0, 0});
+    in.inodes = get_inodes_bottom_up(in.tree, 0);
+
+    in.lnl_type = {DECOMP, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype,
+                   /*is_total*/ 1, /*cons*/ 1, /*max_tobs*/ 4.0, /*age*/ 100,
+                   /*use_repeat*/ 1, /*correct_bias*/ 0, data.num_invar_bins, data.seg_size,
+                   /*cn_type*/ 0, in.inodes};
+    return in;
+}
+
+std::string out_prefix(const std::string& name){
+    auto dir = std::filesystem::temp_directory_path() / "cneta_test_state_decomp";
+    std::filesystem::create_directories(dir);
+    for(const auto& entry : std::filesystem::directory_iterator(dir)){
+        if(entry.path().filename().string().rfind(name + ".", 0) == 0){
+            std::filesystem::remove(entry.path());
+        }
+    }
+    return (dir / name).string();
+}
 
 LNL_TYPE lnl_type_for(int max_chr_change, int max_site_change, int is_total){
     LNL_TYPE t{};
@@ -54,6 +111,90 @@ TEST_CASE("chromosome-level states decode to the copy number of their change pai
             REQUIRE(get_cn_from_state_decomp(0, idx, NO_CHANGE_HAPLOTYPE, t) == expected);
         }
     }
+}
+
+TEST_CASE("marginal MRCA probabilities are the exact posterior", "[state]"){
+    // On the 3-region tree the MRCA has one internal child, so the posterior of
+    // each MRCA state can be computed by summing over every state of that child
+    // and every tip state compatible with the observed total copy number. The
+    // root is in the normal state, so the MRCA posterior includes the transition
+    // along the trunk edge (root -> MRCA).
+    AsrInput in = load_fixture(2);
+    const evo_tree& t = in.tree;
+
+    DIM_DECOMP dim;
+    set_pmat_decomp_dim(in.obs_decomp, dim, in.lnl_type, 0);
+    REQUIRE(dim.dim_seg > 0);
+    QMAT_DECOMP qmat;
+    build_rate_matrices(qmat, t, dim, in.lnl_type, 0);
+    PMAT_DECOMP pmat;
+    build_transition_matrices(pmat, t, in.inodes, qmat, dim, 0);
+
+    const int n = dim.dim_seg;
+    const int mrca = 2 * NS;
+    const int inner = NS + 2;
+    REQUIRE(t.edges[t.nodes[inner].e_in].start == mrca);
+    auto states = build_pair_states(in.lnl_type.max_site_change_haplotype);
+    REQUIRE((int)states.size() == n);
+
+    auto p = [&](int child, int from, int to){
+        return pmat.pmats_seg.at(t.edges[t.nodes[child].e_in].length)[from + to * n];
+    };
+
+    std::string prefix = out_prefix("marginal");
+    reconstruct_marginal_ancestral_state_decomp(t, in.vobs_change, in.inodes, in.obs_decomp, in.lnl_type, prefix, 0);
+
+    std::ifstream fin(prefix + ".mrca.seg.state");
+    std::string line;
+    REQUIRE(std::getline(fin, line));    // header
+
+    int nsite = 0;
+    for(const auto& [chr, sites] : in.vobs_change){
+        for(size_t nc = 0; nc < sites.size(); nc++){
+            const auto& obs = sites[nc];
+            auto tip = [&](int leaf, int from){
+                double sum = 0.0;
+                for(int s = 0; s < n; s++){
+                    if(states[s].first + states[s].second == obs[leaf].cn_change_site) sum += p(leaf, from, s);
+                }
+                return sum;
+            };
+
+            const int ncn = (int)(2 * (in.lnl_type.max_site_change_haplotype + 1)) + 1;
+            vector<double> post(ncn, 0.0);
+            for(int a = 0; a < n; a++){
+                double below = 0.0;
+                for(int b = 0; b < n; b++){
+                    double v = p(inner, a, b);
+                    for(int k : {mrca, inner}){
+                        for(int e = 0; e < 2; e++){
+                            int child = t.edges[t.nodes[k].e_ot[e]].end;
+                            if(child < NS) v *= tip(child, k == mrca ? a : b);
+                        }
+                    }
+                    below += v;
+                }
+                post[2 + states[a].first + states[a].second] += p(mrca, NO_CHANGE_HAPLOTYPE, a) * below;
+            }
+            double total = 0.0;
+            for(double v : post) total += v;
+
+            REQUIRE(std::getline(fin, line));
+            std::istringstream ss(line);
+            std::string node, site;
+            ss >> node >> site;
+            INFO("site " << site);
+            REQUIRE(site == std::to_string(chr) + "_" + std::to_string(nc + 1));
+            for(int cn = 0; cn < ncn; cn++){
+                double written;
+                REQUIRE(ss >> written);
+                INFO("copy number " << cn);
+                REQUIRE_THAT(written, Catch::Matchers::WithinAbs(post[cn] / total, 2e-6));
+            }
+            nsite++;
+        }
+    }
+    REQUIRE(nsite > 0);
 }
 
 TEST_CASE("a WGD doubles the baseline before chromosome- and site-level changes", "[state]"){
