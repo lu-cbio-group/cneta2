@@ -89,8 +89,11 @@ Shift-edge search (`--bsr_mode 3`, with `mode` 3)
   only. BIC's sample size is the number of sites in the likelihood. The
   invariant sites are always in it: with `incl_all 1` (the default) each
   is a site of its own; with `incl_all 0` the likelihood of one all-normal
-  site is multiplied by their number (the bias correction). The search
-  prints these counts at its start.
+  site is multiplied by their number (the bias correction). `correct_bias`
+  follows `incl_all` (0 with `incl_all 1`, 1 with `incl_all 0`); a
+  `--correct_bias 0` given with `incl_all 0` is overridden with a note,
+  since it would drop the invariant sites. The search prints these counts
+  at its start.
 
 Tree search (`tree_search`)
 : - `0` — genetic algorithm. Slow, deprecated.

@@ -2149,7 +2149,7 @@ int main (int argc, char ** const argv) {
             ("max_site_change_haplotype", po::value<int>(&max_site_change_haplotype)->default_value(2), "maximum number of site duplication/deletion allowed for each haplotype, determining the dimension of rate matrix for site duplication/deletion")
 
             ("is_bin", po::value<int>(&is_bin)->default_value(1), "whether or not the input copy number is for each bin. If not, the input copy number is read as it is")
-            ("incl_all", po::value<int>(&incl_all)->default_value(1), "whether or not to include all the input copy numbers without further propressing")
+            ("incl_all", po::value<int>(&incl_all)->default_value(1), "how the invariant sites (normal copy number in every sample) enter the likelihood, with is_bin 0 (1: each is listed as a site of its own; 0: they are left out of the site list and the likelihood of one all-normal site times their number is added)")
             ("is_total", po::value<int>(&is_total)->default_value(1), "whether or not the input is total copy number")
 
             // Parameters used for generating initial coalescence tree
@@ -2170,7 +2170,7 @@ int main (int argc, char ** const argv) {
             ("fix_topology", po::value<int>(&fix_topology)->default_value(0), "whether or not to fix the topology of the tree")
             ("cons", po::value<int>(&cons)->default_value(1), "constraints on branch length (0: none, 1: fixed total time)")
             ("estmu", po::value<int>(&estmu)->default_value(1), "estimation of mutation rate (0: mutation rate fixed to be the given value, 1: estimating mutation rate)")
-            ("correct_bias", po::value<int>(&correct_bias)->default_value(1), "correct ascertainment bias")
+            ("correct_bias", po::value<int>(&correct_bias)->default_value(1), "whether to add the likelihood of the invariant sites that the site list leaves out; with is_bin 0 it follows incl_all (0 with incl_all 1, 1 with incl_all 0) and any other value is overridden")
 
             ("init_tree", po::value<int>(&init_tree)->default_value(0), "method of building inital tree for MCMC sampling (0: Random coalescence tree, 1: Provided tree, 2: Tree with the same topology as the true tree)")
             ("file_itree", po::value<string>(&file_itree)->default_value(""), "path of inital tree for MCMC sampling")
@@ -2263,6 +2263,21 @@ int main (int argc, char ** const argv) {
             return 1;
     }
 
+    // With is_bin 0 the invariant sites (normal copy number in every sample)
+    // enter the likelihood either way: incl_all 1 lists each as a site of its
+    // own, so nothing is added back; incl_all 0 leaves them out of the site
+    // list, so the likelihood of one all-normal site times their number must
+    // be added (correct_bias). Settled here so the settings printed below are
+    // the ones in use. Before, incl_all 1 cleared correct_bias after the
+    // printout and incl_all 0 accepted correct_bias 0, which dropped the
+    // invariant sites from the likelihood. [2026-10-28 changed]
+    if(!is_bin){
+        if(!incl_all && !correct_bias){
+            cout << "Note: incl_all 0 leaves the invariant sites out of the site list; using correct_bias 1 to add their likelihood back" << endl;
+        }
+        correct_bias = incl_all ? 0 : 1;
+    }
+
     // Always MT19937 (GSL's default), named here rather than taken from
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
@@ -2313,8 +2328,7 @@ int main (int argc, char ** const argv) {
         cout << "   Merging consecutive bins in the input" << endl;
     }else{
         if(incl_all){
-            cout << "   Using all input segments " << endl;
-            correct_bias = 0;
+            cout << "   Using all input segments " << endl;    // each invariant site is a site of its own; correct_bias is 0 (settled above)
         }else{
             cout << "   Using variable input segments " << endl;
         }

@@ -87,6 +87,28 @@ def test_scoring_is_reproducible(data_dir, cnetml, run):
     assert scores[0] == scores[1]
 
 
+def test_leaving_the_invariant_sites_out_keeps_the_bias_correction(
+        data_dir, cnetml, run, expected):
+    """With incl_all 0 the site list holds only the variable sites, and the
+    likelihood of one all-normal site times the number left out is added
+    back (correct_bias). --correct_bias 0 used to switch that off, which
+    dropped the invariant sites from the likelihood and gave a higher score.
+    It is now overridden with a note, so the score is the reference one."""
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--incl_all": 0, "--correct_bias": 0},
+        ),
+    ]).assert_ok()
+
+    assert "using correct_bias 1" in result.stdout
+    assert parse_scored_logl(result.stdout) == pytest.approx(
+        expected["mode2_logl"]["tiny-tree.txt"], rel=LOGL_TOLERANCE)
+
+
 def test_cn_type_is_required(data_dir, cnetml, run):
     """`--cn_type` decides which event types the model considers, and there is
     no right default. It used to have none and no check either: without it the

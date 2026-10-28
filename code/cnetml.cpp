@@ -1727,12 +1727,12 @@ int main(int argc, char** const argv){
     ("is_total", po::value<int>(&is_total)->default_value(1), "whether or not the input is total copy number")
     ("is_rcn", po::value<int>(&is_rcn)->default_value(0), "whether or not the input is relative copy number")
     ("is_bin", po::value<int>(&is_bin)->default_value(1), "whether or not the input copy number is for each bin. If not, the input copy number is read as it is. Or else, consecutive bins will be merged")
-    ("incl_all", po::value<int>(&incl_all)->default_value(1), "whether or not to include all the input copy numbers for phylogeny inference")
+    ("incl_all", po::value<int>(&incl_all)->default_value(1), "how the invariant sites (normal copy number in every sample) enter the likelihood, with is_bin 0 (1: each is listed as a site of its own; 0: they are left out of the site list and the likelihood of one all-normal site times their number is added)")
 
     ("cn_type", po::value<int>(&cn_type)->required(), "(required) Type of copy number changes to consider (0: only segment-level mutations (ONLY_SEG), 1: only chromosome gain/loss and whole genome doubling (EXCLUDE_SEG), 2: only duplication/deletion and whole genome doubling (EXCLUDE_CHR), 3: only duplication/deletion and chromosome gain/loss (EXCLUDE_WGD), 4: all types of mutations (ALL))")
 
     ("use_repeat", po::value<int>(&use_repeat)->default_value(1), "whether or not to use repeated site patterns when computing the likelihood")
-    ("correct_bias", po::value<int>(&correct_bias)->default_value(1), "correct bias when excluding invariant sites")
+    ("correct_bias", po::value<int>(&correct_bias)->default_value(1), "whether to add the likelihood of the invariant sites that the site list leaves out; with is_bin 0 it follows incl_all (0 with incl_all 1, 1 with incl_all 0) and any other value is overridden")
 
     // options related to inferring ancestry state
     ("infer_marginal_state", po::value<int>(&infer_marginal_state)->default_value(1), "whether or not to infer marginal ancestral state of MRCA")
@@ -1825,6 +1825,21 @@ int main(int argc, char** const argv){
         exit(EXIT_FAILURE);
     }
 
+    // With is_bin 0 the invariant sites (normal copy number in every sample)
+    // enter the likelihood either way: incl_all 1 lists each as a site of its
+    // own, so nothing is added back; incl_all 0 leaves them out of the site
+    // list, so the likelihood of one all-normal site times their number must
+    // be added (correct_bias). Settled here so the settings printed below are
+    // the ones in use. Before, incl_all 1 cleared correct_bias after the
+    // printout and incl_all 0 accepted correct_bias 0, which dropped the
+    // invariant sites from the likelihood. [2026-10-28 changed]
+    if(!is_bin){
+        if(!incl_all && !correct_bias){
+            cout << "Note: incl_all 0 leaves the invariant sites out of the site list; using correct_bias 1 to add their likelihood back" << endl;
+        }
+        correct_bias = incl_all ? 0 : 1;
+    }
+
     // Always MT19937 (GSL's default), named here rather than taken from
     // gsl_rng_env_setup(): that would let a GSL_RNG_TYPE variable in the
     // environment silently swap the generator and change every seeded result.
@@ -1866,8 +1881,7 @@ int main(int argc, char** const argv){
         cout << "Merging consecutive bins in the input" << endl;
     }else{
         if(incl_all){
-            cout << "Using all input segments " << endl;    // no need to correct acquisition bias
-            correct_bias = 0;   // normal site is treated as a site pattern in the computation
+            cout << "Using all input segments " << endl;    // each invariant site is a site of its own; correct_bias is 0 (settled above)
         }else{
             cout << "Using only variable input segments " << endl;
         }
