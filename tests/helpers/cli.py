@@ -150,6 +150,43 @@ def cnetml_score_args(cn_file: Path, times_file: Path, tree_file: Path,
     return _flatten(options)
 
 
+def cnetml_asr_args(cn_file: Path, times_file: Path, tree_file: Path,
+                    out_file: Path, **overrides: Any) -> list[str]:
+    """Reconstruct ancestral states on one supplied tree (``--mode 4``).
+
+    Uses the independent-chain model (``-d 3``), the only one that accepts
+    ``--edge_rate_file``. Writes ``out_file.mrca.*`` (marginal, MRCA only) and
+    ``out_file.joint.*`` (joint, all internal nodes).
+    """
+    options: dict[str, Any] = {
+        "-c": cn_file,
+        "-t": times_file,
+        "--tree_file": tree_file,
+        "-o": out_file,
+        "-s": NS,
+        "--is_total": 1,
+        "--is_bin": 0,
+        "--incl_all": 1,
+        "--m_max": 1,
+        "-d": 3,
+        "--cn_max": 4,
+        "--cn_type": 0,
+        "--constrained": 1,
+        "--correct_bias": 1,
+        "-x": 0,
+        "--dup_rate": 0.001,
+        "--del_rate": 0.001,
+        "--chr_gain_rate": 0,
+        "--chr_loss_rate": 0,
+        "--wgd_rate": 0,
+        "--mode": 4,
+        "--verbose": 0,
+        "--seed": SEED,
+    }
+    options.update(overrides)
+    return _flatten(options)
+
+
 def cnetmcmc_args(cn_file: Path, times_file: Path, tree_file: Path,
                   config_file: Path, trace_param: Path, trace_tree: Path,
                   **overrides: Any) -> list[str]:
