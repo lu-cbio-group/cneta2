@@ -221,17 +221,55 @@ In `<ofile>.mrca.state`/`<ofile>.joint.state`, `site_ID` is written as
 `chromosomeID_siteID`, and the state ID matches the state index of the
 Markov-model rate matrix used for reconstruction.
 
-:::{note}
-Model 3 (independent Markov chains) writes `<ofile>.mrca.cn` the same
-way, but splits the MRCA state file by event type instead of one
-`.mrca.state`: `<ofile>.mrca.seg.state` (only if segment-level events
-are in play), `<ofile>.mrca.chr.state` (chromosome-level), and
-`<ofile>.mrca.wgd.state` (whole-genome doubling) — each written only
-when that event type has a non-zero state-space dimension. The joint
-file stays a single `<ofile>.joint.state`, same format as above. None of
-this is in `README.md`; model 3 is still described there as
+For model 3 (independent Markov chains), a copy number is built from
+three chains: whole-genome doublings (WGD), chromosome-level changes and
+site-level changes. Each file is tab-separated.
+
+| file                      | contents |
+| ------------------------- | -------- |
+| `<ofile>.joint.cn`        | Reconstructed copy number of every internal node at every site, and the change of each chain behind it. |
+| `<ofile>.mrca.cn`         | Most likely copy number of the MRCA at every site, as above plus `prob`. |
+| `<ofile>.joint.state`     | State index of each chain for every internal node: `node site wgd_state chr_state site_state`. |
+| `<ofile>.mrca.seg.state`  | Posterior probability of each site-level state at the MRCA, per site. |
+| `<ofile>.mrca.chr.state`  | Same, chromosome-level, per chromosome. |
+| `<ofile>.mrca.wgd.state`  | Posterior probability of 0, 1, … WGDs at the MRCA. |
+
+The `.cn` files start with a header line beginning with `#`, so a reader
+that skips comment lines sees the same leading columns as for models
+0-2:
+
+```text
+#node  chr  site  cn  num_wgd  chr_change  site_change  [prob]                                                      (total)
+#node  chr  site  cnA cnB  num_wgd  chr_change_A  chr_change_B  site_change_A  site_change_B  [prob]                (haplotype-specific)
+```
+
+- `num_wgd` is the number of WGDs; each one doubles the baseline of one
+  copy per haplotype. `chr_change` and `site_change` are the copies
+  gained (positive) or lost (negative) at chromosome and site level, on
+  top of that baseline. A copy number is the baseline plus both changes,
+  e.g. `cn 3 num_wgd 0 chr_change 1 site_change 0`. With total copy
+  numbers the changes are summed over the two haplotypes.
+- A chain that is not modelled (its maximum change is 0, or the data
+  have no events of that type) is reported as no change.
+- `prob` (`.mrca.cn` only) is the posterior probability of the reported
+  copy number, summed over every combination of chain states giving it.
+  The chains are independent, so a combination has the product of the
+  chain probabilities. Several combinations can give the same copy
+  number, so the reported copy number is not always the one built from
+  each chain's most likely state; the chain changes on the line are the
+  most likely combination giving it.
+- In the `.mrca.*.state` files, `probablity_k` is the probability of
+  state `k`: for total copy numbers, the copy number `k` from that chain
+  alone (`k = 2` is no change); for haplotype-specific copy numbers, the
+  index of the change pair in the chain's rate matrix. The probabilities
+  include the trunk edge from the normal root to the MRCA. The
+  `.seg`/`.chr`/`.wgd` files are written only for chains with a
+  non-zero state space.
+- `.joint.state` writes each distinct pattern of observed copy numbers
+  once, at its first site; `.joint.cn` has every site.
+
+None of this is in `README.md`; model 3 is still described there as
 "in development, at test branch".
-:::
 
 ## MCMC configuration and trace files
 

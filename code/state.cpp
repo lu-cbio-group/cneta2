@@ -776,45 +776,6 @@ void write_pattern_all(const map<int, vector<vector<int>>>& vobs)
 /*************** functions for independent chain model on multiple levels of CNAs *****************/
 
 
-// print copy number changes for a node
-void print_node_cnp_decomp(ofstream& fout, const copy_number_change& cnp, int nid, const LNL_TYPE& lnl_type, const DIM_DECOMP& dim_decomp){
-    for(auto site_cn : cnp){
-        int nchr = site_cn.first;
-        for(auto seg: site_cn.second){
-            int nc = seg.first;
-            // output CN for all sites: nid, chr, seg, cn
-            string line_cn = to_string(nid + 1) + "\t" + to_string(nchr) + "\t" + to_string(nc + 1) + "\t";
-
-            CN_CHANGE cc = seg.second;
-
-            if(lnl_type.is_total){               
-                line_cn += cc.to_string();
-            }else{
-                vector<pair<int,int>> states_chr = build_pair_states(lnl_type.max_chr_change_haplotype);   
-                pair<int, int> cnAB_chr = states_chr[cc.cn_change_chr];
-
-                vector<pair<int,int>> states_site = build_pair_states(lnl_type.max_site_change_haplotype);   
-                pair<int, int> cnAB_site = states_site[cc.cn_change_site];
-
-                line_cn += "CN_CHANGE(cn_state=" + to_string(cc.cn_state);
-                if(dim_decomp.dim_wgd > 0){
-                    line_cn += ", num_wgd=" + to_string(cc.num_wgd); 
-                }
-                if(dim_decomp.dim_chr > 0){
-                    line_cn += ", cn_change_chr=" + to_string(cnAB_chr.first) + "|" + to_string(cnAB_chr.second); 
-                }
-                if(dim_decomp.dim_seg > 0){
-                    line_cn += ", cn_change_site=" + to_string(cnAB_site.first) + "|" + to_string(cnAB_site.second);
-                }
-                                      
-                line_cn += ")";
-            }
-            fout << line_cn << endl;
-        }
-    }
-}
-
-
 double compute_site_likelihood(
     const evo_tree& rtree,
     const vector<CN_CHANGE>& obs,
@@ -1104,18 +1065,17 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
     }
 
     // Most likely copy number of the MRCA at each site, over all combinations of chain states
+    fout_cn << get_cn_call_header(lnl_type.is_total, true) << endl;
     for(const auto& vcn : vobs_change){
         int nchr = vcn.first;
         const vector<double> no_post;
         const vector<double>& post_chr = mrca_post_chr.count(nchr) ? mrca_post_chr.at(nchr) : no_post;
         for(size_t nc = 0; nc < vcn.second.size(); nc++){
             const vector<double>& post_site = (mrca_post_site.count(nchr) && mrca_post_site.at(nchr).count(nc)) ? mrca_post_site.at(nchr).at(nc) : no_post;
-            map<pair<int, int>, double> post_cn = get_allele_cn_posterior_decomp(mrca_post_wgd, post_chr, post_site, lnl_type);
-            cn_mrca[nchr][nc].cn_state = get_most_likely_cn_decomp(post_cn, lnl_type.is_total).first;
+            CN_CALL call = get_most_likely_cn_call_decomp(mrca_post_wgd, post_chr, post_site, lnl_type);
+            fout_cn << get_cn_call_line(nid, nchr, nc, call, lnl_type.is_total, true) << endl;
         }
     }
-
-    print_node_cnp_decomp(fout_cn, cn_mrca, nid, lnl_type, dim_decomp);
 
     fout_seg.close();
     fout_chr.close();
@@ -1451,7 +1411,13 @@ int get_cn_from_state_decomp(int state_wgd,
 }
 
 
-map<pair<int, int>, double> get_allele_cn_posterior_decomp(const vector<double>& post_wgd, const vector<double>& post_chr, const vector<double>& post_site, const LNL_TYPE& lnl_type) {
+// Call f(num_wgd, chr_change, site_change, probability) for every combination
+// of chain states, from the posterior of each chain's states at a node. The
+// chains are independent, so a combination has the product of the normalised
+// chain posteriors. An empty vector means the chain is not modelled and stays
+// unchanged.
+template <typename F>
+static void for_each_chain_combination(const vector<double>& post_wgd, const vector<double>& post_chr, const vector<double>& post_site, const LNL_TYPE& lnl_type, F f) {
     // (change pair, normalised probability) of each state of one chain
     auto chain_changes = [](const vector<double>& post, int max_change_haplotype) {
         vector<pair<pair<int, int>, double>> changes;
@@ -1474,27 +1440,83 @@ map<pair<int, int>, double> get_allele_cn_posterior_decomp(const vector<double>&
     auto chr = chain_changes(post_chr, lnl_type.max_chr_change_haplotype);
     auto site = chain_changes(post_site, lnl_type.max_site_change_haplotype);
 
-    map<pair<int, int>, double> post_cn;
     for (const auto& [w, pw] : wgd) {
         for (const auto& [c, pc] : chr) {
             for (const auto& [s, ps] : site) {
-                post_cn[allele_cn_from_changes(w.first, c, s)] += pw * pc * ps;
+                f(w.first, c, s, pw * pc * ps);
             }
         }
     }
+}
+
+
+map<pair<int, int>, double> get_allele_cn_posterior_decomp(const vector<double>& post_wgd, const vector<double>& post_chr, const vector<double>& post_site, const LNL_TYPE& lnl_type) {
+    map<pair<int, int>, double> post_cn;
+    for_each_chain_combination(post_wgd, post_chr, post_site, lnl_type,
+        [&](int w, pair<int, int> c, pair<int, int> s, double p) {
+            post_cn[allele_cn_from_changes(w, c, s)] += p;
+        });
     return post_cn;
 }
 
 
-pair<int, double> get_most_likely_cn_decomp(const map<pair<int, int>, double>& post_cn, int is_total) {
-    map<int, double> post_state;
-    for (const auto& [cn, p] : post_cn) {
-        int state = is_total ? cn.first + cn.second : allele_cn_to_state(cn.first, cn.second);
-        post_state[state] += p;
-    }
-    auto best = max_element(post_state.begin(), post_state.end(),
+CN_CALL get_most_likely_cn_call_decomp(const vector<double>& post_wgd, const vector<double>& post_chr, const vector<double>& post_site, const LNL_TYPE& lnl_type) {
+    // probability of each reported copy number (total, or cnA and cnB), and
+    // the most likely combination of chain changes giving it
+    map<pair<int, int>, double> post_cn;
+    map<pair<int, int>, pair<double, CN_CALL>> best_combination;
+    for_each_chain_combination(post_wgd, post_chr, post_site, lnl_type,
+        [&](int w, pair<int, int> c, pair<int, int> s, double p) {
+            pair<int, int> cn = allele_cn_from_changes(w, c, s);
+            pair<int, int> key = lnl_type.is_total ? pair<int, int>{cn.first + cn.second, 0} : cn;
+            post_cn[key] += p;
+            auto it = best_combination.find(key);
+            if (it == best_combination.end() || p > it->second.first) {
+                best_combination[key] = {p, CN_CALL{w, c, s, cn, 0.0}};
+            }
+        });
+
+    auto best = max_element(post_cn.begin(), post_cn.end(),
                             [](const auto& a, const auto& b) { return a.second < b.second; });
-    return *best;
+    CN_CALL call = best_combination.at(best->first).second;
+    call.prob = best->second;
+    return call;
+}
+
+
+// Copy number and chain changes of a node from its chain states in the joint
+// reconstruction. Chains that are not modelled stay unchanged.
+static CN_CALL get_cn_call_from_states_decomp(const CN_CHANGE& state, const LNL_TYPE& lnl_type, const DIM_DECOMP& dim_decomp) {
+    CN_CALL call;
+    call.num_wgd = dim_decomp.dim_wgd > 0 ? state.num_wgd : 0;
+    if (dim_decomp.dim_chr > 0) call.chr_change = decomp_state_to_change_pair(state.cn_change_chr, lnl_type.max_chr_change_haplotype);
+    if (dim_decomp.dim_seg > 0) call.site_change = decomp_state_to_change_pair(state.cn_change_site, lnl_type.max_site_change_haplotype);
+    call.cn = allele_cn_from_changes(call.num_wgd, call.chr_change, call.site_change);
+    return call;
+}
+
+
+string get_cn_call_header(int is_total, bool with_prob) {
+    string header = is_total ? "#node\tchr\tsite\tcn\tnum_wgd\tchr_change\tsite_change"
+                             : "#node\tchr\tsite\tcnA\tcnB\tnum_wgd\tchr_change_A\tchr_change_B\tsite_change_A\tsite_change_B";
+    if (with_prob) header += "\tprob";
+    return header;
+}
+
+
+string get_cn_call_line(int nid, int nchr, int nc, const CN_CALL& call, int is_total, bool with_prob) {
+    string line = to_string(nid + 1) + "\t" + to_string(nchr) + "\t" + to_string(nc + 1) + "\t";
+    if (is_total) {
+        line += to_string(call.cn.first + call.cn.second) + "\t" + to_string(call.num_wgd) + "\t"
+              + to_string(call.chr_change.first + call.chr_change.second) + "\t"
+              + to_string(call.site_change.first + call.site_change.second);
+    } else {
+        line += to_string(call.cn.first) + "\t" + to_string(call.cn.second) + "\t" + to_string(call.num_wgd) + "\t"
+              + to_string(call.chr_change.first) + "\t" + to_string(call.chr_change.second) + "\t"
+              + to_string(call.site_change.first) + "\t" + to_string(call.site_change.second);
+    }
+    if (with_prob) line += "\t" + to_string(call.prob);
+    return line;
 }
 
 
@@ -1575,12 +1597,10 @@ void extract_tree_ancestral_state_decomp(const evo_tree& rtree, const vector<int
 }
 
 
-void get_inode_cnp_decomp(int max_id, int Ns, map<int, CN_CHANGE>& asr_states, const LNL_TYPE& lnl_type, map<int, copy_number_change>& cnps, int nchr, int nc){
+void get_inode_cnp_decomp(int max_id, int Ns, map<int, CN_CHANGE>& asr_states, const LNL_TYPE& lnl_type, const DIM_DECOMP& dim_decomp, map<int, map<int, map<int, CN_CALL>>>& cnps, int nchr, int nc){
     // For all sites
     for (int nid = max_id; nid > Ns + 1; nid--){
-        CN_CHANGE state = asr_states[nid];
-        // TODO: compute abosolute copy numbers
-        cnps[nid][nchr][nc] = state;       
+        cnps[nid][nchr][nc] = get_cn_call_from_states_decomp(asr_states[nid], lnl_type, dim_decomp);
     }
 }
 
@@ -1588,7 +1608,8 @@ void get_inode_cnp_decomp(int max_id, int Ns, map<int, CN_CHANGE>& asr_states, c
 void write_joint_state_line_decomp(int max_id, int Ns, map<int, CN_CHANGE>& asr_states, int nchr, int nc, const LNL_TYPE& lnl_type, ofstream& fout){
     for (int nid = max_id; nid > Ns + 1; nid--){
         CN_CHANGE state = asr_states[nid]; // state assigned to nid when its parent is optimal
-        string line = to_string(nid + 1) + "\t" + to_string(nchr) + "_" + to_string(nc + 1) + "\t" + state.to_string();
+        string line = to_string(nid + 1) + "\t" + to_string(nchr) + "_" + to_string(nc + 1) + "\t"
+                    + to_string(state.num_wgd) + "\t" + to_string(state.cn_change_chr) + "\t" + to_string(state.cn_change_site);
         // fout << setprecision(dbl::max_digits10) << line << endl;
         fout << line << endl;
     }
@@ -1611,12 +1632,14 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<i
     string ofile_joint = ofile + ".joint.state";
     ofstream fout(ofile_joint);
 
-    string header = "node\tsite\tcn_change";
+    // state indices of each chain, as in the rate matrices
+    string header = "node\tsite\twgd_state\tchr_state\tsite_state";
     fout << header << endl;
 
-    // no header to be consistent the main input copy number file, which also does not have header
+    // header starts with '#', so readers of the header-less model 0-2 file can skip it as a comment
     string ofile_joint_cn = ofile + ".joint.cn";
     ofstream fout_cn(ofile_joint_cn);
+    fout_cn << get_cn_call_header(lnl_type.is_total, false) << endl;
 
     int Ns = rtree.nleaf - 1;
     int max_id = 2 * Ns;   // node ID for MRCA
@@ -1638,7 +1661,7 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<i
     map<vector<CN_CHANGE>, LNL_TABLE> sites_lnl_map;    // Use a map to store computed log likelihood
     map<vector<CN_CHANGE>, STATE_TABLE> sites_state_map;
     // map<vector<int>, vector<vector<double>>> chr_lnl_map;    // Use a map to store computed log likelihood
-    map<int, copy_number_change> cnps;  // all CNs for all internal nodes
+    map<int, map<int, map<int, CN_CALL>>> cnps;  // node, chr, site: CNs for all internal nodes
 
     // similar to the likelihood computation, but store the state for each node at each site in a separate table, and then extract the ancestral state for all internal nodes by backtracking from the root to the tips
     // do calculation for CNAs at different levels separately, and then combine them to get the final CN for each node
@@ -1685,14 +1708,18 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<i
             write_joint_state_line_decomp(max_id, Ns, asr_states, nchr, nc, lnl_type, fout);
         }
         if(debug) cout << "\t\tgetting joint CN for Chr " << nchr << " site " << nc << endl;
-        get_inode_cnp_decomp(max_id, Ns, asr_states, lnl_type, cnps, nchr, nc);
+        get_inode_cnp_decomp(max_id, Ns, asr_states, lnl_type, dim_decomp, cnps, nchr, nc);
       }
     } // for each chromosome
 
      if(debug) cout << "\twriting joint CN for all internal nodes" << endl;
      for(int nid = max_id; nid > Ns + 1; nid--){
         if(debug) cout << "\t\tfor node " << nid + 1 << endl;
-        print_node_cnp_decomp(fout_cn, cnps[nid], nid, lnl_type, dim_decomp);
+        for(const auto& [nchr, sites] : cnps[nid]){
+            for(const auto& [nc, call] : sites){
+                fout_cn << get_cn_call_line(nid, nchr, nc, call, lnl_type.is_total, false) << endl;
+            }
+        }
      }
 
     fout.close();

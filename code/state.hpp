@@ -28,6 +28,17 @@ struct STATE_TABLE{
 };
 
 
+// Copy number reconstructed at one node and site under model 3, with the
+// haplotype-specific changes of each chain that give it
+struct CN_CALL{
+    int num_wgd = 0;
+    pair<int, int> chr_change{0, 0};
+    pair<int, int> site_change{0, 0};
+    pair<int, int> cn{1, 1};    // cnA, cnB
+    double prob = 0.0;          // posterior probability of the copy number (marginal only)
+};
+
+
 /******************* functions for bounded model on site duplication/deletion *************/
 
 void set_pmat(const evo_tree &rtree, int Ns, int nstate, int model, int cn_max, const vector<int> &knodes, vector<double> &blens, vector<double *> &pmat_per_blen, ofstream &fout);
@@ -124,9 +135,14 @@ int get_cn_from_state_decomp(int state_wgd, int state_chr, int state_site, const
 // chain is not modelled and stays unchanged.
 map<pair<int, int>, double> get_allele_cn_posterior_decomp(const vector<double>& post_wgd, const vector<double>& post_chr, const vector<double>& post_site, const LNL_TYPE& lnl_type);
 
-// Most likely copy number (total, or haplotype-specific state index) and its
-// probability, summing over all (cnA, cnB) with that copy number
-pair<int, double> get_most_likely_cn_decomp(const map<pair<int, int>, double>& post_cn, int is_total);
+// Most likely copy number at one site (total if lnl_type.is_total, else cnA and
+// cnB), with its probability summed over all chain combinations giving it, and
+// the most likely of those combinations
+CN_CALL get_most_likely_cn_call_decomp(const vector<double>& post_wgd, const vector<double>& post_chr, const vector<double>& post_site, const LNL_TYPE& lnl_type);
+
+// Header and lines of <ofile>.mrca.cn / <ofile>.joint.cn under model 3
+string get_cn_call_header(int is_total, bool with_prob);
+string get_cn_call_line(int nid, int nchr, int nc, const CN_CALL& call, int is_total, bool with_prob);
 
 void set_change_wgd_chr(const vector<CN_CHANGE>& obs, const evo_tree& rtree, vector<int>& sample_num_wgd, vector<int>& change_chr);
 

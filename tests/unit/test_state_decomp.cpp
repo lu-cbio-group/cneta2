@@ -150,6 +150,7 @@ TEST_CASE("marginal MRCA probabilities are the exact posterior", "[state]"){
 
     int nsite = 0;
     vector<int> best_cn;
+    vector<double> best_prob;
     for(const auto& [chr, sites] : in.vobs_change){
         for(size_t nc = 0; nc < sites.size(); nc++){
             const auto& obs = sites[nc];
@@ -180,6 +181,7 @@ TEST_CASE("marginal MRCA probabilities are the exact posterior", "[state]"){
             double total = 0.0;
             for(double v : post) total += v;
             best_cn.push_back(distance(post.begin(), max_element(post.begin(), post.end())));
+            best_prob.push_back(post[best_cn.back()] / total);
 
             REQUIRE(std::getline(fin, line));
             std::istringstream ss(line);
@@ -198,15 +200,23 @@ TEST_CASE("marginal MRCA probabilities are the exact posterior", "[state]"){
     }
     REQUIRE(nsite > 0);
 
-    // .mrca.cn reports the most likely copy number at each site
+    // .mrca.cn reports the most likely copy number at each site and its probability
     std::ifstream fcn(prefix + ".mrca.cn");
+    REQUIRE(std::getline(fcn, line));
+    REQUIRE(line == get_cn_call_header(1, true));
     for(int i = 0; i < nsite; i++){
         REQUIRE(std::getline(fcn, line));
         INFO("line " << line);
-        auto pos = line.find("cn_state=");
-        REQUIRE(pos != std::string::npos);
-        REQUIRE(std::stoi(line.substr(pos + 9)) == best_cn[i]);
+        std::istringstream ss(line);
+        int node, chr, site, cn, num_wgd, chr_change, site_change;
+        double prob;
+        REQUIRE(ss >> node >> chr >> site >> cn >> num_wgd >> chr_change >> site_change >> prob);
+        REQUIRE(node == mrca + 1);
+        REQUIRE(cn == best_cn[i]);
+        REQUIRE(cn == 2 + chr_change + site_change);
+        REQUIRE_THAT(prob, Catch::Matchers::WithinAbs(best_prob[i], 2e-6));
     }
+    REQUIRE_FALSE(std::getline(fcn, line));
 }
 
 TEST_CASE("MRCA copy number posterior combines the independent chains", "[state]"){
@@ -230,15 +240,17 @@ TEST_CASE("MRCA copy number posterior combines the independent chains", "[state]
         REQUIRE_THAT(by_total[cn], Catch::Matchers::WithinAbs(p, 1e-12));
     }
 
-    auto best = get_most_likely_cn_decomp(post_cn, 1);
-    REQUIRE(best.first == 4);
-    REQUIRE_THAT(best.second, Catch::Matchers::WithinAbs(0.33, 1e-12));
+    CN_CALL best = get_most_likely_cn_call_decomp({}, chain, chain, t);
+    REQUIRE(best.cn.first + best.cn.second == 4);
+    REQUIRE_THAT(best.prob, Catch::Matchers::WithinAbs(0.33, 1e-12));
+    // the chain changes reported are one of the two most likely ways to get 4 (0.12 each)
+    REQUIRE(best.chr_change.first + best.chr_change.second + best.site_change.first + best.site_change.second == 2);
+    REQUIRE(best.chr_change != best.site_change);
 
     // unnormalised chain posteriors give the same result
     vector<double> scaled = chain;
     for(double& p : scaled) p *= 7.0;
-    REQUIRE_THAT(get_most_likely_cn_decomp(get_allele_cn_posterior_decomp({}, scaled, chain, t), 1).second,
-                 Catch::Matchers::WithinAbs(0.33, 1e-12));
+    REQUIRE_THAT(get_most_likely_cn_call_decomp({}, scaled, chain, t).prob, Catch::Matchers::WithinAbs(0.33, 1e-12));
 
     // haplotype-specific: (2,2) arises from chr 1|1 + site 0|0 or chr 0|0 + site 1|1
     REQUIRE_THAT(post_cn.at({2, 2}), Catch::Matchers::WithinAbs(0.24, 1e-12));
@@ -251,7 +263,24 @@ TEST_CASE("a WGD in the MRCA posterior doubles the baseline copy number", "[stat
     REQUIRE(post_cn.size() == 2);
     REQUIRE_THAT(post_cn.at({1, 1}), Catch::Matchers::WithinAbs(0.25, 1e-12));
     REQUIRE_THAT(post_cn.at({2, 2}), Catch::Matchers::WithinAbs(0.75, 1e-12));
-    REQUIRE(get_most_likely_cn_decomp(post_cn, 1).first == 4);
+    CN_CALL best = get_most_likely_cn_call_decomp({0.25, 0.75}, {}, {}, t);
+    REQUIRE(best.num_wgd == 1);
+    REQUIRE(best.cn == std::make_pair(2, 2));
+    REQUIRE_THAT(best.prob, Catch::Matchers::WithinAbs(0.75, 1e-12));
+}
+
+TEST_CASE("model-3 copy number lines have one value per column", "[state]"){
+    CN_CALL call;
+    call.num_wgd = 1;
+    call.chr_change = {1, 0};
+    call.site_change = {0, -1};
+    call.cn = {3, 1};
+    call.prob = 0.5;
+
+    REQUIRE(get_cn_call_header(1, false) == "#node\tchr\tsite\tcn\tnum_wgd\tchr_change\tsite_change");
+    REQUIRE(get_cn_call_line(10, 2, 4, call, 1, false) == "11\t2\t5\t4\t1\t1\t-1");
+    REQUIRE(get_cn_call_header(0, true) == "#node\tchr\tsite\tcnA\tcnB\tnum_wgd\tchr_change_A\tchr_change_B\tsite_change_A\tsite_change_B\tprob");
+    REQUIRE(get_cn_call_line(10, 2, 4, call, 0, true) == "11\t2\t5\t3\t1\t1\t1\t0\t0\t-1\t0.500000");
 }
 
 TEST_CASE("haplotype tip states are the one observed state, also when marked as possibly before a WGD", "[state]"){
