@@ -784,13 +784,22 @@ double compute_site_likelihood(
     PMAT_DECOMP& pmat_decomp,   
     map<vector<CN_CHANGE>, vector<vector<double>>>& sites_lnl_map,
     vector<vector<double>>& lnl_table_seg,
+    bool use_edge_rates,
     int debug)
 {
+    auto fill_table = [&](){
+        initialize_lnl_table_site(lnl_table_seg, rtree, obs, dim_decomp, lnl_type, debug);
+        if(use_edge_rates){
+            get_likelihood_site_change_variable(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
+        }else{
+            get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
+        }
+    };
+
     if(lnl_type.use_repeat){
         if(sites_lnl_map.find(obs) == sites_lnl_map.end()){
             if(debug) cout << "sites new" << endl;
-            initialize_lnl_table_site(lnl_table_seg, rtree, obs, dim_decomp, lnl_type, debug);
-            get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
+            fill_table();
             sites_lnl_map[obs] = lnl_table_seg;
         }else{
             if(debug) cout << "sites repeated" << endl;
@@ -798,8 +807,7 @@ double compute_site_likelihood(
         }
     }else{
         if(debug) cout << "sites no repeat consideration" << endl;
-        initialize_lnl_table_site(lnl_table_seg, rtree, obs, dim_decomp, lnl_type, debug);
-        get_likelihood_site_change(lnl_table_seg, rtree, pmat_decomp, dim_decomp, lnl_type, debug);
+        fill_table();
     }
 
     double site_logL = extract_tree_lnl_change(lnl_table_seg, rtree.nleaf, NO_CHANGE_HAPLOTYPE, debug);
@@ -818,16 +826,25 @@ double compute_chr_likelihood(
     PMAT_DECOMP& pmat_decomp,
     map<vector<int>, vector<vector<double>>>& chr_lnl_map,
     vector<vector<double>>& lnl_table_chr,
+    bool use_edge_rates,
     int debug)
 {
-    if(lnl_type.use_repeat){ 
+    auto fill_table = [&](){
+        initialize_lnl_table_chr(lnl_table_chr, rtree, change_chr, dim_decomp, lnl_type, debug);
+        if(use_edge_rates){
+            get_likelihood_per_chr_variable(lnl_table_chr, rtree, knodes, pmat_decomp, dim_decomp, debug);
+        }else{
+            get_likelihood_per_chr(lnl_table_chr, rtree, knodes, pmat_decomp, dim_decomp, debug);
+        }
+    };
+
+    if(lnl_type.use_repeat){
         if(chr_lnl_map.find(change_chr) == chr_lnl_map.end()){
             if(debug){
                 cout << "chr sites new on chr " << nchr << endl;
                 print_vector<int>(change_chr);
             }
-            initialize_lnl_table_chr(lnl_table_chr, rtree, change_chr, dim_decomp, lnl_type, debug);
-            get_likelihood_per_chr(lnl_table_chr, rtree, knodes, pmat_decomp, dim_decomp, debug);
+            fill_table();
             chr_lnl_map[change_chr] = lnl_table_chr;
         }else{
             if(debug){
@@ -841,8 +858,7 @@ double compute_chr_likelihood(
             cout << "chr sites no repeat consideration" << endl;
             print_vector<int>(change_chr);
         }
-        initialize_lnl_table_chr(lnl_table_chr, rtree, change_chr, dim_decomp, lnl_type, debug);
-        get_likelihood_per_chr(lnl_table_chr, rtree, knodes, pmat_decomp, dim_decomp, debug);
+        fill_table();
     }
 
     double chr_logL = log(lnl_table_chr[rtree.nleaf][NO_CHANGE_HAPLOTYPE]);   // likelihood for no change on chromosome, which is the same for all sites on the chromosome
@@ -874,7 +890,7 @@ static vector<vector<double>> get_mrca_posterior_table(const vector<vector<doubl
 // Infer the copy number of the MRCA given a tree at a site, assuming independent Markov chains
 // Get states for individual event type first, then figure out how to merge them
 // knodes here does not equal to knodes in lnl_type
-double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const vector<int>& knodes, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type_orig, string ofile, int debug){
+double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const vector<int>& knodes, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type_orig, bool use_edge_rates, string ofile, int debug){
     // int debug = 0;
     if(debug) cout << "\treconstruct marginal ancestral state with independent chain model" << endl;
 
@@ -894,13 +910,18 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
     DIM_DECOMP dim_decomp;
     set_pmat_decomp_dim(obs_decomp, dim_decomp, lnl_type, debug);
 
-    QMAT_DECOMP qmat_decomp;
-    if(debug) cout << "\tBuilding Q rate matrices for multiple levels" << endl;
-    build_rate_matrices(qmat_decomp, rtree, dim_decomp, lnl_type, debug);
+    PMAT_DECOMP pmat_decomp;
+    if(use_edge_rates){
+        if(debug) cout << "\tBuilding per-edge P transition matrices (variable rate)" << endl;
+        build_transition_matrices_variable(pmat_decomp, rtree, dim_decomp, lnl_type, debug);
+    }else{
+        QMAT_DECOMP qmat_decomp;
+        if(debug) cout << "\tBuilding Q rate matrices for multiple levels" << endl;
+        build_rate_matrices(qmat_decomp, rtree, dim_decomp, lnl_type, debug);
 
-    if(debug) cout << "\tBuilding P transition matrices for multiple levels" << endl;
-    PMAT_DECOMP pmat_decomp; 
-    build_transition_matrices(pmat_decomp, rtree, knodes, qmat_decomp, dim_decomp, debug);
+        if(debug) cout << "\tBuilding P transition matrices for multiple levels" << endl;
+        build_transition_matrices(pmat_decomp, rtree, knodes, qmat_decomp, dim_decomp, debug);
+    }
 
     string ofile_mrca = ofile + ".mrca.seg.state";
     ofstream fout_seg;
@@ -975,7 +996,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
             set_change_wgd_chr(obs, rtree, sample_num_wgd, change_chr);
 
             if(dim_decomp.dim_seg > 0){
-                site_logL += compute_site_likelihood(rtree, obs, dim_decomp, lnl_type, pmat_decomp, sites_lnl_map, lnl_table_seg, debug);
+                site_logL += compute_site_likelihood(rtree, obs, dim_decomp, lnl_type, pmat_decomp, sites_lnl_map, lnl_table_seg, use_edge_rates, debug);
 
                 assert(lnl_table_seg.size() > nid);  // sanity check, the likelihood table should have the same number of nodes as the tree
 
@@ -1003,7 +1024,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
             if(debug){
                 cout << "\nChr-level changes observed, computing chromosome-level likelihood for Chr " << nchr << endl;
             }
-            double chr_logL = compute_chr_likelihood(rtree, nchr, change_chr, knodes, dim_decomp, lnl_type, pmat_decomp, chr_lnl_map, lnl_table_chr, debug);
+            double chr_logL = compute_chr_likelihood(rtree, nchr, change_chr, knodes, dim_decomp, lnl_type, pmat_decomp, chr_lnl_map, lnl_table_chr, use_edge_rates, debug);
             logL += chr_logL;   
 
             assert(lnl_table_chr.size() > nid);  // sanity check, the likelihood table should have the same number of nodes as the tree
@@ -1033,8 +1054,12 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
     // only need to compute once for WGD as it is the same for all sites in the sample
     if(dim_decomp.dim_wgd > 0){
         vector<vector<double>> lnl_table_wgd;
-        initialize_lnl_table_wgd(lnl_table_wgd, rtree, sample_num_wgd, dim_decomp, debug);    
-        get_likelihood_wgd(lnl_table_wgd, rtree, knodes, pmat_decomp, dim_decomp, debug);  
+        initialize_lnl_table_wgd(lnl_table_wgd, rtree, sample_num_wgd, dim_decomp, debug);
+        if(use_edge_rates){
+            get_likelihood_wgd_variable(lnl_table_wgd, rtree, knodes, pmat_decomp, dim_decomp, debug);
+        }else{
+            get_likelihood_wgd(lnl_table_wgd, rtree, knodes, pmat_decomp, dim_decomp, debug);
+        }
 
         double wgd_logL = log(lnl_table_wgd[rtree.nleaf][0]);
         logL += wgd_logL;   // likelihood for WGD is the same for all sites, so only compute once
@@ -1143,22 +1168,24 @@ void set_tip_states_tcn_decomp(int state_chr, int max_change_haplotype, int& si,
 }
 
 
-// pmat_per_blen is a map with key as branch length and value as the corresponding transition probability matrix, which is a vector of size dim*dim in row-major order
-void record_parent_state_decomp(int i, int dim, const vector<int>& tip_states, const map<double, double*>& pmat_per_blen, double blen, vector<vector<double>>& lnl_table, vector<vector<int>>& state_table, int debug){
+// Transition matrix of the edge into node `node`. With constant rates the matrices are
+// shared by branch length; with branch-specific rates each edge has its own matrix.
+static double* get_edge_pmat(const map<double, double*>& pmats_by_blen, const map<int, double*>& pmats_by_eid, const evo_tree& rtree, int node, bool use_edge_rates){
+    int eid = rtree.nodes[node].e_in;
+    if(use_edge_rates) return pmats_by_eid.at(eid);
+    return pmats_by_blen.at(rtree.edges[eid].length);
+}
+
+
+// pmat_blen is the transition probability matrix of the edge into node i, a vector of size dim*dim in row-major order
+void record_parent_state_decomp(int i, int dim, const vector<int>& tip_states, double* pmat_blen, double blen, vector<vector<double>>& lnl_table, vector<vector<int>>& state_table, int debug){
     if(debug){
         cout << "recording parent states for node " << i + 1 << " with branch length " << blen << endl;
-        // print_pmatrix_map(pmat_per_blen, dim, "X");
     }
 
-    double* pmat_blen = pmat_per_blen.at(blen);
+    assert(pmat_blen != nullptr);
     if(debug > 1){
-        r8mat_print(dim, dim, pmat_per_blen.at(blen), "  P matrix:");
-
-        auto pmat_it = pmat_per_blen.find(blen);
-        assert(pmat_it != pmat_per_blen.end());
-        double* pmat = pmat_it->second;
-        assert(pmat != nullptr);        
-        r8mat_print(dim, dim, pmat, " Found P matrix:");
+        r8mat_print(dim, dim, pmat_blen, "  P matrix:");
     }
     for(int j = 0; j < dim; ++j){  // For each possible parent state, find the most likely tip states
         vector<double> vec_lnl(dim, SMALL_LNL);
@@ -1232,7 +1259,7 @@ void set_tip_states_decomp(const CN_CHANGE& obs_val, vector<int>& tip_states_chr
  * state_table: vectors to store tip states
  * pmat_decomp: multiple P matrices for each branches for multiple CNA types
 */
-void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, LNL_TABLE& lnl_table, STATE_TABLE& state_table, const LNL_TYPE& lnl_type, int debug){
+void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, LNL_TABLE& lnl_table, STATE_TABLE& state_table, const LNL_TYPE& lnl_type, bool use_edge_rates, int debug){
     if(debug){
         cout << "Initializing tables for reconstructing joint ancestral state under independent chain model" << endl;
     }
@@ -1254,21 +1281,24 @@ void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& r
 
         if(dim_decomp.dim_wgd > 0){
             if(debug) cout << "Setting tip states for WGD change: " << tip_state_wgd << endl;
-            record_parent_state_decomp(i, dim_decomp.dim_wgd, vector<int>{tip_state_wgd}, pmat_decomp.pmats_wgd, blen, lnl_table.lnl_table_wgd, state_table.state_table_wgd, debug);
+            double* pmat = get_edge_pmat(pmat_decomp.pmats_wgd, pmat_decomp.pmats_wgd_var, rtree, i, use_edge_rates);
+            record_parent_state_decomp(i, dim_decomp.dim_wgd, vector<int>{tip_state_wgd}, pmat, blen, lnl_table.lnl_table_wgd, state_table.state_table_wgd, debug);
         }
         if(dim_decomp.dim_chr > 0){
             if (debug){
                 cout << "Setting tip states for chromosome change: ";
                 print_vector<int>(tip_states_chr);
             }           
-            record_parent_state_decomp(i, dim_decomp.dim_chr, tip_states_chr, pmat_decomp.pmats_chr, blen, lnl_table.lnl_table_chr, state_table.state_table_chr, debug);
+            double* pmat = get_edge_pmat(pmat_decomp.pmats_chr, pmat_decomp.pmats_chr_var, rtree, i, use_edge_rates);
+            record_parent_state_decomp(i, dim_decomp.dim_chr, tip_states_chr, pmat, blen, lnl_table.lnl_table_chr, state_table.state_table_chr, debug);
         }
         if(dim_decomp.dim_seg > 0){
             if (debug){
                 cout << "Setting tip states for site change: ";
                 print_vector<int>(tip_states_site);
             }
-            record_parent_state_decomp(i, dim_decomp.dim_seg, tip_states_site, pmat_decomp.pmats_seg, blen, lnl_table.lnl_table_seg, state_table.state_table_seg, debug);
+            double* pmat = get_edge_pmat(pmat_decomp.pmats_seg, pmat_decomp.pmats_seg_var, rtree, i, use_edge_rates);
+            record_parent_state_decomp(i, dim_decomp.dim_seg, tip_states_site, pmat, blen, lnl_table.lnl_table_seg, state_table.state_table_seg, debug);
         }
     }
 
@@ -1288,21 +1318,24 @@ void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& r
 
 // Find the state of a node k that gives the maximum likelihood under the given parent state sp, and record the state in S_sk_k
 // return the maximum likelihood for node k given parent state sp
-void get_max_prob_children_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_table, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, int k, const DIM_DECOMP& dim_decomp, const CN_CHANGE& sp, int ni, int nj, double blen, int model, int debug){
+void get_max_prob_children_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_table, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, int k, const DIM_DECOMP& dim_decomp, const CN_CHANGE& sp, int ni, int nj, double blen, int model, bool use_edge_rates, int debug){
     if(debug){
         cout << "Getting max probability under independent model for node " << k + 1 << " with parent state : " << sp << endl;
     }
 
     if(dim_decomp.dim_seg > 0){
-        lnl_table.lnl_table_seg[k][sp.cn_change_site] = get_max_prob_children(lnl_table.lnl_table_seg, state_table.state_table_seg, rtree, pmat_decomp.pmats_seg.at(blen), k, dim_decomp.dim_seg, sp.cn_change_site, ni, nj, blen, DECOMP, debug);
+        double* pmat = get_edge_pmat(pmat_decomp.pmats_seg, pmat_decomp.pmats_seg_var, rtree, k, use_edge_rates);
+        lnl_table.lnl_table_seg[k][sp.cn_change_site] = get_max_prob_children(lnl_table.lnl_table_seg, state_table.state_table_seg, rtree, pmat, k, dim_decomp.dim_seg, sp.cn_change_site, ni, nj, blen, DECOMP, debug);
     }
 
     if(dim_decomp.dim_chr > 0){
-        lnl_table.lnl_table_chr[k][sp.cn_change_chr] = get_max_prob_children(lnl_table.lnl_table_chr, state_table.state_table_chr, rtree, pmat_decomp.pmats_chr.at(blen), k, dim_decomp.dim_chr, sp.cn_change_chr, ni, nj, blen, DECOMP, debug);
+        double* pmat = get_edge_pmat(pmat_decomp.pmats_chr, pmat_decomp.pmats_chr_var, rtree, k, use_edge_rates);
+        lnl_table.lnl_table_chr[k][sp.cn_change_chr] = get_max_prob_children(lnl_table.lnl_table_chr, state_table.state_table_chr, rtree, pmat, k, dim_decomp.dim_chr, sp.cn_change_chr, ni, nj, blen, DECOMP, debug);
     }
-    
+
     if(dim_decomp.dim_wgd > 0){
-        lnl_table.lnl_table_wgd[k][sp.num_wgd] = get_max_prob_children(lnl_table.lnl_table_wgd, state_table.state_table_wgd, rtree, pmat_decomp.pmats_wgd.at(blen), k, dim_decomp.dim_wgd, sp.num_wgd, ni, nj, blen, DECOMP, debug);
+        double* pmat = get_edge_pmat(pmat_decomp.pmats_wgd, pmat_decomp.pmats_wgd_var, rtree, k, use_edge_rates);
+        lnl_table.lnl_table_wgd[k][sp.num_wgd] = get_max_prob_children(lnl_table.lnl_table_wgd, state_table.state_table_wgd, rtree, pmat, k, dim_decomp.dim_wgd, sp.num_wgd, ni, nj, blen, DECOMP, debug);
     }
 }
 
@@ -1312,7 +1345,7 @@ void get_max_prob_children_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_table
  * @brief Get the ancestral states site for nonroot internal nodes under independent Markov chain model (Step 2 of Pupko algorithm)
  * For each node, get the state with maximum likelihood given the parent state, and record the state in the state table for each type of CNAs
  */
-void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_table, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug){
+void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_table, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, bool use_edge_rates, int debug){
   if(debug){
       cout << "Getting ancestral state for one site under independent Markov chain model" << endl;
       cout << dim_decomp.dim_wgd << "\t" << dim_decomp.dim_chr << "\t"  << dim_decomp.dim_seg << endl;
@@ -1332,19 +1365,22 @@ void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_t
         if(k == 2 * Ns){    // root node is always normal, for edge (Ns + 1, 2Ns)
             CN_CHANGE sp {NORM_PLOIDY, 0, NO_CHANGE_HAPLOTYPE, NO_CHANGE_HAPLOTYPE};
             if(debug) cout << "Getting states for MRCA node " << k + 1 << " with state " << sp << endl;
-            get_max_prob_children_decomp(lnl_table, state_table, rtree, pmat_decomp, k, dim_decomp, sp, ni, nj, blen, DECOMP, debug);
-        }else{  
-            if(debug) cout << "Getting multiple-level states for node " << k + 1 << endl; 
-            for(int sp = 0; sp < dim_decomp.dim_seg; ++sp){               
-                lnl_table.lnl_table_seg[k][sp] = get_max_prob_children(lnl_table.lnl_table_seg, state_table.state_table_seg, rtree, pmat_decomp.pmats_seg.at(blen), k, dim_decomp.dim_seg, sp, ni, nj, blen, DECOMP, debug);
+            get_max_prob_children_decomp(lnl_table, state_table, rtree, pmat_decomp, k, dim_decomp, sp, ni, nj, blen, DECOMP, use_edge_rates, debug);
+        }else{
+            if(debug) cout << "Getting multiple-level states for node " << k + 1 << endl;
+            for(int sp = 0; sp < dim_decomp.dim_seg; ++sp){
+                double* pmat = get_edge_pmat(pmat_decomp.pmats_seg, pmat_decomp.pmats_seg_var, rtree, k, use_edge_rates);
+                lnl_table.lnl_table_seg[k][sp] = get_max_prob_children(lnl_table.lnl_table_seg, state_table.state_table_seg, rtree, pmat, k, dim_decomp.dim_seg, sp, ni, nj, blen, DECOMP, debug);
             }
 
             for(int sp = 0; sp < dim_decomp.dim_chr; ++sp){
-                lnl_table.lnl_table_chr[k][sp] = get_max_prob_children(lnl_table.lnl_table_chr, state_table.state_table_chr, rtree, pmat_decomp.pmats_chr.at(blen), k, dim_decomp.dim_chr, sp, ni, nj, blen, DECOMP, debug);
+                double* pmat = get_edge_pmat(pmat_decomp.pmats_chr, pmat_decomp.pmats_chr_var, rtree, k, use_edge_rates);
+                lnl_table.lnl_table_chr[k][sp] = get_max_prob_children(lnl_table.lnl_table_chr, state_table.state_table_chr, rtree, pmat, k, dim_decomp.dim_chr, sp, ni, nj, blen, DECOMP, debug);
             }
 
             for(int sp = 0; sp < dim_decomp.dim_wgd; ++sp){
-                lnl_table.lnl_table_wgd[k][sp] = get_max_prob_children(lnl_table.lnl_table_wgd, state_table.state_table_wgd, rtree, pmat_decomp.pmats_wgd.at(blen), k, dim_decomp.dim_wgd, sp, ni, nj, blen, DECOMP, debug);
+                double* pmat = get_edge_pmat(pmat_decomp.pmats_wgd, pmat_decomp.pmats_wgd_var, rtree, k, use_edge_rates);
+                lnl_table.lnl_table_wgd[k][sp] = get_max_prob_children(lnl_table.lnl_table_wgd, state_table.state_table_wgd, rtree, pmat, k, dim_decomp.dim_wgd, sp, ni, nj, blen, DECOMP, debug);
             }
         }
   }
@@ -1619,7 +1655,7 @@ void write_joint_state_line_decomp(int max_id, int Ns, map<int, CN_CHANGE>& asr_
 // Infer the copy number of all internal nodes given a tree at a site, assuming independent Markov chains
 // Similar to the dynamic programming of likelihood computation, store the most likely state for each node at each site and then extract the ancestral state for all internal nodes by backtracking from the root to the tips
 // Replace “sum over child states” with “max over child states and remember the argmax”
-void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, vector<int>& knodes, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type_orig, string ofile, int debug){
+void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, vector<int>& knodes, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type_orig, bool use_edge_rates, string ofile, int debug){
     if(debug) cout << "\treconstruct joint ancestral state under independent chain model" << endl;
 
     LNL_TYPE lnl_type = lnl_type_orig;
@@ -1649,12 +1685,17 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<i
     DIM_DECOMP dim_decomp;
     set_pmat_decomp_dim(obs_decomp, dim_decomp, lnl_type, debug);
 
-    QMAT_DECOMP qmat_decomp;
-    build_rate_matrices(qmat_decomp, rtree, dim_decomp, lnl_type, debug);
+    PMAT_DECOMP pmat_decomp;
+    if(use_edge_rates){
+        if(debug) cout << "\tBuilding per-edge P transition matrices (variable rate)" << endl;
+        build_transition_matrices_variable(pmat_decomp, rtree, dim_decomp, lnl_type, debug);
+    }else{
+        QMAT_DECOMP qmat_decomp;
+        build_rate_matrices(qmat_decomp, rtree, dim_decomp, lnl_type, debug);
 
-    if(debug) cout << "\tBuilding P transition matrices for multiple levels" << endl;
-    PMAT_DECOMP pmat_decomp; 
-    build_transition_matrices(pmat_decomp, rtree, lnl_type.knodes, qmat_decomp, dim_decomp, debug);
+        if(debug) cout << "\tBuilding P transition matrices for multiple levels" << endl;
+        build_transition_matrices(pmat_decomp, rtree, lnl_type.knodes, qmat_decomp, dim_decomp, debug);
+    }
 
     // vector<int> sample_num_wgd(rtree.nleaf - 1, -1);         // use -1 to indicate uninitialized
     // vector<vector<int>> chr_sample_change;   // indexed by chromosome first and then sample, to facilitate likelihood computation
@@ -1685,8 +1726,8 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<i
 
         if(lnl_type.use_repeat){
             if (sites_lnl_map.find(obs) == sites_lnl_map.end()){
-                initialize_asr_table_decomp(obs, rtree, pmat_decomp, dim_decomp, lnl_table, state_table, lnl_type, debug);
-                get_ancestral_states_site_decomp(lnl_table, state_table, rtree, knodes, pmat_decomp, dim_decomp, debug);
+                initialize_asr_table_decomp(obs, rtree, pmat_decomp, dim_decomp, lnl_table, state_table, lnl_type, use_edge_rates, debug);
+                get_ancestral_states_site_decomp(lnl_table, state_table, rtree, knodes, pmat_decomp, dim_decomp, use_edge_rates, debug);
                 sites_lnl_map[obs] = lnl_table;
                 sites_state_map[obs] = state_table;
             }else{
@@ -1696,8 +1737,8 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree& rtree, const map<i
                 is_repeated = true;
             }
         }else{
-            initialize_asr_table_decomp(obs, rtree, pmat_decomp, dim_decomp, lnl_table, state_table, lnl_type, debug);
-            get_ancestral_states_site_decomp(lnl_table, state_table, rtree, knodes, pmat_decomp, dim_decomp, debug);
+            initialize_asr_table_decomp(obs, rtree, pmat_decomp, dim_decomp, lnl_table, state_table, lnl_type, use_edge_rates, debug);
+            get_ancestral_states_site_decomp(lnl_table, state_table, rtree, knodes, pmat_decomp, dim_decomp, use_edge_rates, debug);
         }
 
         map<int, CN_CHANGE> asr_states;
