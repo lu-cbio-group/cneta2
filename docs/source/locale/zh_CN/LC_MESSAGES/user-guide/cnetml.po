@@ -83,8 +83,15 @@ msgid ""
 msgstr "`3`：给定拓扑，优化枝长（和速率）。加 `-b 1` 做 bootstrap。"
 
 #: ../../source/user-guide/cnetml.md:35
-msgid "`4` — Infer marginal and joint ancestral states for a given tree."
-msgstr "`4`：推断给定树的边际和联合祖先状态。"
+msgid ""
+"`4` — Infer marginal and joint ancestral states for a given tree. With "
+"`-d 3`, `--edge_rate_file` uses a different rate on each branch; see "
+"[Ancestral states with branch-specific rates](#ancestral-states-with-"
+"branch-specific-rates)."
+msgstr ""
+"`4`：推断给定树的边际和联合祖先状态。配合 `-d 3` 时，`--edge_rate_file` "
+"可让每条分支使用不同的速率；见[分支特异速率下的祖先状态](#ancestral-states-with-branch-specific-"
+"rates)。"
 
 #: ../../source/user-guide/cnetml.md:37
 msgid ""
@@ -348,3 +355,88 @@ msgid ""
 "output."
 msgstr "如何接着 `cnets` 的输出运行，见[快速上手](../quickstart/index.md)。"
 
+#: ../../source/user-guide/cnetml.md:148
+msgid "Ancestral states with branch-specific rates"
+msgstr "分支特异速率下的祖先状态"
+
+#: ../../source/user-guide/cnetml.md:149
+msgid ""
+"By default, mode 4 uses the same rates (`--dup_rate`, `--del_rate`, …) on"
+" every branch. If the rates were estimated per branch (`--bsr_mode 1`, "
+"`2` or `3` in mode 3), the reconstruction can use those rates instead. "
+"This takes two runs:"
+msgstr ""
+"默认情况下，mode 4 在每条分支上使用相同的速率（`--dup_rate`、`--del_rate`……）。如果速率是按分支估计的（mode "
+"3 中的 `--bsr_mode 1`、`2` 或 `3`），重建可以改用这些速率。需要运行两次："
+
+#: ../../source/user-guide/cnetml.md:165
+msgid ""
+"In step 2, give the tree written by step 1, not the input tree. Step 1 "
+"re-estimates the branch lengths, and the rate table records the lengths "
+"it was fitted with. For simulated data, the true tree (`*-tree.txt`) and "
+"the true rates (`*-edge_rates.txt`) from `cnets` can also be used "
+"together."
+msgstr ""
+"第 2 步要给第 1 步写出的树，而不是输入的树。第 1 步会重新估计分支长度，速率表记录的是拟合时所用的分支长度。对模拟数据，也可以把 "
+"`cnets` 给出的真实树（`*-tree.txt`）和真实速率（`*-edge_rates.txt`）一起使用。"
+
+#: ../../source/user-guide/cnetml.md:170
+msgid "`--edge_rate_file`"
+msgstr "`--edge_rate_file`"
+
+#: ../../source/user-guide/cnetml.md:171
+msgid ""
+"Only with `--mode 4` and `-d 3`. Any other combination stops with an "
+"error, because only the independent Markov chain model reads per-branch "
+"rates."
+msgstr ""
+"只能与 `--mode 4` 和 `-d 3` 一起使用。其他组合会报错退出，因为只有 independent Markov chain "
+"模型会读取每条分支的速率。"
+
+#: ../../source/user-guide/cnetml.md:174
+msgid ""
+"Reads the `.edge_rates.txt` written by `cnetml` or the `-edge_rates.txt` "
+"written by `cnets`. Columns are found by name: `start`, `end`, `length`, "
+"`dup_rate`, `del_rate`, `chr_gain_rate`, `chr_loss_rate` and `wgd_rate`. "
+"Other columns are ignored."
+msgstr ""
+"读取 `cnetml` 写出的 `.edge_rates.txt` 或 `cnets` 写出的 "
+"`-edge_rates.txt`。按列名查找各列：`start`、`end`、`length`、`dup_rate`、`del_rate`、`chr_gain_rate`、`chr_loss_rate`"
+" 和 `wgd_rate`。其他列被忽略。"
+
+#: ../../source/user-guide/cnetml.md:178
+msgid ""
+"Each row is matched to a branch by its start and end node. cnetml stops "
+"if a branch is missing or repeated, a node pair is not in the tree, a "
+"rate is negative or not a number, or a `length` differs from the tree's "
+"branch length. The length check catches a rate table paired with the "
+"wrong tree. It cannot catch a table fitted to a different dataset on the "
+"same tree, so keep the tree and the rate table from the same run."
+msgstr ""
+"每一行按起点和终点节点对应到一条分支。以下情况 cnetml "
+"会报错退出：缺少或重复某条分支、节点对不在树上、速率为负数或不是数字、`length` "
+"与树上的分支长度不同。长度检查能发现速率表配错了树，但发现不了同一棵树上用其他数据拟合出的速率表，所以树和速率表要来自同一次运行。"
+
+#: ../../source/user-guide/cnetml.md:185
+msgid ""
+"If the data contain an event type whose rate is zero on every branch of "
+"the table, cnetml prints a warning and continues. That chain then cannot "
+"change along any branch."
+msgstr "如果数据中有某类事件，而速率表中该类事件在所有分支上的速率都为零，cnetml 会打印警告并继续运行。此时这条链在任何分支上都不会变化。"
+
+#: ../../source/user-guide/cnetml.md:188
+msgid ""
+"When a rate table is given, the global rate options (`--dup_rate`, "
+"`--del_rate`, …) do not affect the reconstruction."
+msgstr "给出速率表时，全局速率选项（`--dup_rate`、`--del_rate`……）不影响重建。"
+
+#: ../../source/user-guide/cnetml.md:191
+msgid ""
+"The log likelihood that mode 4 prints is computed without the "
+"acquisition-bias correction, and mode 4 always uses all sites "
+"(`incl_all=1`). It equals the log likelihood from step 1 only when step 1"
+" also ran with `--incl_all 1`."
+msgstr ""
+"mode 4 打印的 log likelihood 没有做 acquisition bias 校正，且 mode 4 总是使用全部 "
+"site（`incl_all=1`）。只有第 1 步也用 `--incl_all 1` 运行时，它才等于第 1 步的 log "
+"likelihood。"
