@@ -91,6 +91,9 @@ void write_pattern_all(const map<int, vector<vector<int>>>& vobs);
 // L_sk_k (S_sk_k) has one row for each tree node and one column for each possible state
 void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, LNL_TABLE& lnl_table, STATE_TABLE& state_table, const LNL_TYPE& lnl_type, int debug);
 
+// Rate-matrix states compatible with an observed copy number change at a tip
+void set_tip_states_decomp(const CN_CHANGE& obs_val, vector<int>& tip_states_chr, vector<int>& tip_states_site, const LNL_TYPE& lnl_type, int debug);
+
 // Assume the likelihood table is for each combination of states
 double get_max_children_decomp2(const vector<vector<double>>& L_sk_k, vector<vector<int>>& S_sk_k, const evo_tree& rtree, const set<vector<int>>& comps, int k, int nstate, double* pbli_wgd, double* pbli_chr, double* pbli_seg, DIM_DECOMP& dim_decomp, int sp, int ni, int nj, int blen);
 

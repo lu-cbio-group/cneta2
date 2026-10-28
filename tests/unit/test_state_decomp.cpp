@@ -197,6 +197,27 @@ TEST_CASE("marginal MRCA probabilities are the exact posterior", "[state]"){
     REQUIRE(nsite > 0);
 }
 
+TEST_CASE("haplotype tip states are the one observed state, also when marked as possibly before a WGD", "[state]"){
+    // With a likely WGD, a chromosome-level change is stored as its state
+    // index times CHANGE_CHR (parse_cn.cpp). The likelihood marks only the
+    // decoded state at the tip, so the joint reconstruction must use the same
+    // single state and never the encoded value, which is not a valid index.
+    for(int max_chr_change = 1; max_chr_change <= 2; max_chr_change++){
+        const int dim_chr = build_pair_states(max_chr_change).size();
+        LNL_TYPE t = lnl_type_for(max_chr_change, 2, /*is_total*/ 0);
+        for(int idx = 0; idx < dim_chr; idx++){
+            for(int encoded : {0, 1}){
+                INFO("max_chr_change " << max_chr_change << ", index " << idx << ", encoded " << encoded);
+                CN_CHANGE obs{0, 1, encoded ? idx * CHANGE_CHR : idx, NO_CHANGE_HAPLOTYPE};
+                vector<int> tip_chr, tip_site;
+                set_tip_states_decomp(obs, tip_chr, tip_site, t, 0);
+                REQUIRE(tip_chr == vector<int>{idx});
+                REQUIRE(tip_site == vector<int>{NO_CHANGE_HAPLOTYPE});
+            }
+        }
+    }
+}
+
 TEST_CASE("a WGD doubles the baseline before chromosome- and site-level changes", "[state]"){
     LNL_TYPE t = lnl_type_for(1, 2, 1);
     REQUIRE(get_cn_from_state_decomp(1, NO_CHANGE_HAPLOTYPE, NO_CHANGE_HAPLOTYPE, t) == 4);

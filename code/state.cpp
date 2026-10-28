@@ -1240,8 +1240,7 @@ void set_tip_states_decomp(const CN_CHANGE& obs_val, vector<int>& tip_states_chr
             // need to distinguish changes on haplotypes to get exact haplotype-specific copy numbers
         }else{    
             tip_states_chr.push_back(obs_val.cn_change_chr);
-        }            
-        tip_states_chr.push_back(obs_val.cn_change_chr);
+        }
 
         tip_states_site.push_back(obs_val.cn_change_site);
     }
