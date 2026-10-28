@@ -457,7 +457,7 @@ string get_prob_line_header(int nstate){
     string header = "";
     for (int i = 0; i < nstate; i++)
     {
-        header += "\tprobablity_" + to_string(i);
+        header += "\tprobability_" + to_string(i);
     }
     return(header);
 }

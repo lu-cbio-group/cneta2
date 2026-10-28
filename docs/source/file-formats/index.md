@@ -258,7 +258,7 @@ that skips comment lines sees the same leading columns as for models
   number, so the reported copy number is not always the one built from
   each chain's most likely state; the chain changes on the line are the
   most likely combination giving it.
-- In the `.mrca.*.state` files, `probablity_k` is the probability of
+- In the `.mrca.*.state` files, `probability_k` is the probability of
   state `k`: for total copy numbers, the copy number `k` from that chain
   alone (`k = 2` is no change); for haplotype-specific copy numbers, the
   index of the change pair in the chain's rate matrix. The probabilities
