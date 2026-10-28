@@ -1,0 +1,255 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/api/cpp.md:1
+msgid "C++ API (preview)"
+msgstr "C++ API（预览）"
+
+#: ../../source/api/cpp.md:3
+msgid "Generated from the C++ sources with Doxygen and rendered by Breathe."
+msgstr ""
+
+#: ../../source/api/cpp.md:6
+msgid ""
+"Coverage is currently **structural**. The sources carry few Doxygen comments"
+" so far; as comments are added to the headers destined for `libcneta`, "
+"descriptions will appear here automatically."
+msgstr ""
+
+#: ../../source/api/cpp.md:10
+msgid "Regenerate locally with `make -C docs api`."
+msgstr ""
+
+#: ../../source/api/cpp.md:13
+msgid "Trees"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "Defines"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "Typedefs"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "Neighbor vector."
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "Enums"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "direction of a Neighbor from the root, for rooted tree only"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "Values:"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "Variables"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "Public Functions"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "Public Members"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "Neighbor list of a node in the tree, from node.h (IQTREE), used for NNI."
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "construct class with a node and length"
+msgstr ""
+
+#: ../../source/api/cpp.md
+msgid "Parameters"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "construct class with another Neighbor"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "true if this Neighbor is directed towards the root"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "the other end of the branch"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "branch length"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "branch ID"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "direction of the Neighbor in a rooted tree"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "size of subtree below this neighbor in terms of number of taxa"
+msgstr ""
+
+#: ../../source/api/cpp.md
+msgid "Returns"
+msgstr ""
+
+#: ../../source/api/cpp.md:15
+msgid "Private Functions"
+msgstr ""
+
+#: ../../source/api/cpp.md:19
+msgid "Copy-number parsing"
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid "Functions"
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Convert a state (0-based index of copy number combinations used for rate "
+"matrix) to total copy number."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Convert a change state (0-based index of copy number combinations used for "
+"rate matrix) to total copy number."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Decompose relative total copy number into multi-level changes (WGD, "
+"chromosome, segment) given original data and computed changes."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Decompose total copy number into multi-level changes (WGD, chromosome, "
+"segment) given original data and computed changes."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid "Estimate the potential number of WGDs for each sample."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Estimate the potential number of total chromosome changes for each sample "
+"based on known number of WGD or estimated average copy number for each "
+"sample."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Estimate the potential number of haplotype-specific chromosome changes for "
+"each sample."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Compute per-sample site-level max deviation from avg_cn (baseline) using "
+"total copy numbers, then take ceiling as an integer bound."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Compute per-sample site-level max deviation from avg_cn (baseline) using "
+"haplotype-specific copy numbers, then take ceiling as an integer bound."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid "Calculate average total copy number or ploidy for a single sample."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"compute ploidy for either total copy number or haplotype-specific copy "
+"number, depending on the input format"
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid "Identify variable bins across all samples for segment merging."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Merge consecutive variable bins with the same copy number profiles across "
+"all samples into segments."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid "Read the input copy number file and merge bins into segments if specified."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid "Compute average copy number for a given segment across all samples at site i."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid "Merge consecutive bins with the same copy numbers across all samples."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Group observed copy numbers by chromosome to construct the CN matrix for "
+"tree inference."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid "Group observed copy number changes by chromosome for tree inference."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Generate bootstrap resampled copy number observations by chromosome for tree"
+" inference."
+msgstr ""
+
+#: ../../source/api/cpp.md
+msgid "Template Parameters"
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid "Read time information from a file."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid "Read the input copy number file."
+msgstr ""
+
+#: ../../source/api/cpp.md:21
+msgid ""
+"Read data and group regions by chromosome, used in tree building for more "
+"comprehensive data processing."
+msgstr ""
+

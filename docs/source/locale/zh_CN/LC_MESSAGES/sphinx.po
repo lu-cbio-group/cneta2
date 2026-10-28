@@ -1,0 +1,75 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 15:31+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/_templates/page.html:32
+msgid "Skip to content"
+msgstr ""
+
+#: ../../source/_templates/page.html:88
+msgid "Back to top"
+msgstr ""
+
+#: ../../source/_templates/page.html:142
+msgid "Next"
+msgstr ""
+
+#: ../../source/_templates/page.html:154
+msgid "Previous"
+msgstr ""
+
+#: ../../source/_templates/page.html:157
+msgid "Home"
+msgstr ""
+
+#: ../../source/_templates/page.html:170
+#, python-format
+msgid "<a href=\"%(path)s\">Copyright</a> &#169; %(copyright)s"
+msgstr ""
+
+#: ../../source/_templates/page.html:174
+#, python-format
+msgid "Copyright &#169; %(copyright)s"
+msgstr ""
+
+#: ../../source/_templates/page.html:180
+msgid "Made with "
+msgstr ""
+
+#: ../../source/_templates/page.html:182
+msgid "<a href=\"https://www.sphinx-doc.org/\">Sphinx</a> and "
+msgstr ""
+
+#: ../../source/_templates/page.html:185
+msgid ""
+"\n"
+"            <a href=\"https://github.com/pradyunsg/furo\">Furo</a>\n"
+"            "
+msgstr ""
+
+#: ../../source/_templates/page.html:190
+#, python-format
+msgid "Last updated on %(last_updated)s"
+msgstr ""
+
+#: ../../source/_templates/page.html:236
+msgid "On this page"
+msgstr ""
+

@@ -1,0 +1,338 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/user-guide/cnetml.md:1
+msgid "`cnetml`"
+msgstr ""
+
+#: ../../source/user-guide/cnetml.md:3
+msgid ""
+"`cnetml` builds phylogenetic trees from copy-number profiles by maximum "
+"likelihood, jointly inferring tree topology, node ages, and mutation rates "
+"from (optionally longitudinal) samples of a single patient."
+msgstr "`cnetml` 用最大似然法从拷贝数谱构建系统发育树，从单个患者的样本（可以是纵向多时间点样本）中联合推断树拓扑、节点年龄和突变速率。"
+
+#: ../../source/user-guide/cnetml.md:7
+msgid ""
+"Overview of the cnetml2 workflow, from longitudinal sampling to copy number "
+"profiles to evolutionary inference"
+msgstr "cnetml2 工作流程概览：从纵向采样到拷贝数谱，再到演化推断"
+
+#: ../../source/user-guide/cnetml.md:16
+msgid "Status"
+msgstr "状态"
+
+#: ../../source/user-guide/cnetml.md:17
+msgid ""
+"Mature and published — see [Lu et al., Genome Biology "
+"2023](https://doi.org/10.1186/s13059-023-02983-0)."
+msgstr ""
+"成熟、已发表，见 [Lu et al., Genome Biology "
+"2023](https://doi.org/10.1186/s13059-023-02983-0)。"
+
+#: ../../source/user-guide/cnetml.md:20
+msgid "Usage"
+msgstr "用法"
+
+#: ../../source/user-guide/cnetml.md:25
+msgid ""
+"`bin/run-cnetml.sh` is the maintained example driver, parameterised by a "
+"`mode` variable at the top of the script."
+msgstr "`bin/run-cnetml.sh` 是持续维护的示例运行脚本，用脚本顶部的 `mode` 变量选择运行模式。"
+
+#: ../../source/user-guide/cnetml.md:28
+msgid "Modes (`mode`)"
+msgstr "运行模式（`mode`）"
+
+#: ../../source/user-guide/cnetml.md:29
+msgid ""
+"`0` (default) — Infer the maximum-likelihood tree from input copy numbers. "
+"Add `-b 1` to bootstrap."
+msgstr "`0`（默认）：从输入拷贝数推断最大似然树。加 `-b 1` 做 bootstrap。"
+
+#: ../../source/user-guide/cnetml.md:31
+msgid "`1` — Simple comprehensive test on a simulated tree."
+msgstr "`1`：在模拟树上做简单的综合测试。"
+
+#: ../../source/user-guide/cnetml.md:32
+msgid "`2` — Compute the likelihood of a given tree and parameters."
+msgstr "`2`：计算给定树和参数的似然。"
+
+#: ../../source/user-guide/cnetml.md:33
+msgid ""
+"`3` — Optimize branch lengths (and rates) for a given topology. Add `-b 1` "
+"to bootstrap."
+msgstr "`3`：给定拓扑，优化枝长（和速率）。加 `-b 1` 做 bootstrap。"
+
+#: ../../source/user-guide/cnetml.md:35
+msgid "`4` — Infer marginal and joint ancestral states for a given tree."
+msgstr "`4`：推断给定树的边际和联合祖先状态。"
+
+#: ../../source/user-guide/cnetml.md:37
+msgid ""
+"Modes 1-3 are mainly used to validate the likelihood computation, per the "
+"original README."
+msgstr "据原 README，模式 1-3 主要用于验证似然计算。"
+
+#: ../../source/user-guide/cnetml.md:40
+msgid "Options"
+msgstr "参数"
+
+#: ../../source/user-guide/cnetml.md:41
+msgid ""
+"Grouped by purpose; see `run-cnetml.sh` for the full set with example "
+"values, and the [options reference](../configuration/options.md#cnetml-"
+"maximum-likelihood-inference) for every option with its default and accepted"
+" values."
+msgstr ""
+"按用途分组；完整参数及示例值见 `run-"
+"cnetml.sh`，每个参数的默认值和可选值见[参数参考](../configuration/options.md#cnetml-maximum-"
+"likelihood-inference)。"
+
+#: ../../source/user-guide/cnetml.md:45
+msgid "Time constraints"
+msgstr "时间约束"
+
+#: ../../source/user-guide/cnetml.md:46
+msgid "`--constrained`/`cons` — optimize under patient-age/tip-timing constraints."
+msgstr "`--constrained`/`cons`：在患者年龄和 tip 采样时间的约束下优化。"
+
+#: ../../source/user-guide/cnetml.md:48
+msgid ""
+"`--estmu` — estimate mutation rates. Only reliable with informative tip-"
+"timing, i.e. `cons=1` and non-zero time differences between tips."
+msgstr "`--estmu`：估计突变速率。只有 tip 采样时间提供足够信息时才可靠，即 `cons=1` 且各 tip 之间的时间差不为零。"
+
+#: ../../source/user-guide/cnetml.md:51
+msgid "Model (`--model`/`-d`)"
+msgstr "模型（`--model`/`-d`）"
+
+#: ../../source/user-guide/cnetml.md:52
+msgid "`0` — Mk, deprecated."
+msgstr "`0`：Mk，已弃用。"
+
+#: ../../source/user-guide/cnetml.md:53
+msgid "`1` — bounded total copy number, deprecated."
+msgstr "`1`：bounded total copy number，已弃用。"
+
+#: ../../source/user-guide/cnetml.md:54
+msgid "`2` — bounded haplotype-specific copy number."
+msgstr "`2`：bounded haplotype-specific copy number。"
+
+#: ../../source/user-guide/cnetml.md:55
+msgid ""
+"`3` — independent Markov chain, recommended for data with chromosome "
+"gain/loss and WGD. Differs from the model typically used to *simulate* such "
+"data in `cnets` (usually model 2). Model 2 can also be used for "
+"reconstruction, but assumes a strict event order: WGD, then chromosomal "
+"gain/loss, then duplication/deletion."
+msgstr ""
+"`3`：independent Markov chain，数据含染色体 gain/loss 和 WGD 时推荐使用。它和 `cnets` "
+"中通常用来*模拟*这类数据的模型（一般是 model 2）不同。Model 2 也可以用于重建，但假设事件严格按顺序发生：先 WGD，再染色体 "
+"gain/loss，最后 duplication/deletion。"
+
+#: ../../source/user-guide/cnetml.md:61
+msgid "Independent Markov chain dimensions (model 3 only)"
+msgstr "Independent Markov chain 的维度（仅 model 3）"
+
+#: ../../source/user-guide/cnetml.md:62
+msgid "`max_wgd` — at most 1; simulations allow at most one WGD per sample."
+msgstr "`max_wgd`：最多为 1；模拟中每个样本最多一次 WGD。"
+
+#: ../../source/user-guide/cnetml.md:64
+msgid ""
+"`max_chr_change` — usually 1, higher only if some chromosomes undergo more "
+"than one gain/loss event."
+msgstr "`max_chr_change`：通常为 1；只有某些染色体发生多于一次 gain/loss 时才需要更大。"
+
+#: ../../source/user-guide/cnetml.md:66
+msgid ""
+"`max_site_change` — often >1, since site-level CNAs frequently overlap, e.g."
+" with no WGD/chromosome events and a maximum copy number of 5, use "
+"`max_site_change = 3`."
+msgstr ""
+"`max_site_change`：常常大于 1，因为 site 级 CNA 经常重叠。例如没有 WGD 和染色体级事件、最大拷贝数为 5 时，用 "
+"`max_site_change = 3`。"
+
+#: ../../source/user-guide/cnetml.md:69
+msgid "`m_max` — maximum segment copies before chromosome-level events."
+msgstr "`m_max`：染色体级事件之前 segment 的最大拷贝数。"
+
+#: ../../source/user-guide/cnetml.md:71
+msgid ""
+"Setting these too low gives an incorrect likelihood; too high slows "
+"computation. Use `Rscript util/check_site_pattern.R -c sim1-cn.txt -t "
+"sim1-patterns.txt` to help pick values for real data."
+msgstr ""
+"设得太小似然不正确，太大计算慢。真实数据可以用 `Rscript util/check_site_pattern.R -c sim1-cn.txt -t"
+" sim1-patterns.txt` 帮助选取取值。"
+
+#: ../../source/user-guide/cnetml.md:76
+msgid "Tree search (`tree_search`)"
+msgstr "树搜索（`tree_search`）"
+
+#: ../../source/user-guide/cnetml.md:77
+msgid "`0` — genetic algorithm. Slow, deprecated."
+msgstr "`0`：遗传算法。慢，已弃用。"
+
+#: ../../source/user-guide/cnetml.md:78
+msgid "`1` — heuristic/hill-climbing. For at least 5 samples."
+msgstr "`1`：启发式爬山搜索。适用于至少 5 个样本。"
+
+#: ../../source/user-guide/cnetml.md:79
+msgid "`2` — exhaustive. Efficient for up to 7 samples."
+msgstr "`2`：穷举。最多 7 个样本时高效。"
+
+#: ../../source/user-guide/cnetml.md:81
+msgid "Mutation types (`cn_type`)"
+msgstr "突变类型（`cn_type`）"
+
+#: ../../source/user-guide/cnetml.md:82
+msgid "`0` — segment only."
+msgstr "`0`：仅 segment 级。"
+
+#: ../../source/user-guide/cnetml.md:83
+msgid "`1` — chromosome+WGD."
+msgstr "`1`：染色体级 + WGD。"
+
+#: ../../source/user-guide/cnetml.md:84
+msgid "`2` — segment+WGD."
+msgstr "`2`：segment 级 + WGD。"
+
+#: ../../source/user-guide/cnetml.md:85
+msgid "`3` — segment+chromosome."
+msgstr "`3`：segment 级 + 染色体级。"
+
+#: ../../source/user-guide/cnetml.md:86
+msgid "`4` — all."
+msgstr "`4`：全部。"
+
+#: ../../source/user-guide/cnetml.md:88
+msgid ""
+"Which rate categories to estimate. This flag is specific to "
+"`cnetml`/`cnetmcmc` — `cnets` has no `cn_type` selector; it turns event "
+"types on/off by zeroing the corresponding rate flag instead (see [`cnets` "
+"options](cnets.md#options))."
+msgstr ""
+"选择估计哪些类别的速率。这个参数只有 `cnetml`/`cnetmcmc` 有；`cnets` 没有 "
+"`cn_type`，而是通过把对应速率参数设为零来关闭某类事件（见 [`cnets` 参数](cnets.md#options)）。"
+
+#: ../../source/user-guide/cnetml.md:93
+msgid "Inputs"
+msgstr "输入"
+
+#: ../../source/user-guide/cnetml.md:94
+msgid "Required"
+msgstr "必需"
+
+#: ../../source/user-guide/cnetml.md:95
+msgid ""
+"A copy-number file (`*-cn.txt.gz` or `*-haplotype-cn.txt.gz`), space "
+"separated, **no header row**: `sample_ID chr_ID site_ID CN` (4 columns) for "
+"total copy number, or `sample_ID chr_ID site_ID cnA cnB` (5 columns) for "
+"haplotype-specific. `sample_ID` must be ordered from 1 to the number of "
+"patient samples."
+msgstr ""
+"拷贝数文件（`*-cn.txt.gz` 或 `*-haplotype-cn.txt.gz`），空格分隔，**没有表头行**：总拷贝数为 "
+"`sample_ID chr_ID site_ID CN`（4 列），haplotype-specific 拷贝数为 "
+"`sample_ID chr_ID site_ID cnA cnB`（5 列）。`sample_ID` 必须从 1 编号到患者样本数。"
+
+#: ../../source/user-guide/cnetml.md:100
+msgid "Optional"
+msgstr "可选"
+
+#: ../../source/user-guide/cnetml.md:101
+msgid ""
+"A sample-timing file (`*-rel-times.txt`); a directory of initial trees for "
+"tree search (recommended for large trees, to avoid local optima)."
+msgstr "样本时间文件（`*-rel-times.txt`）；树搜索用的初始树目录（大树推荐使用，减少陷入局部最优）。"
+
+#: ../../source/user-guide/cnetml.md:104
+msgid "See [File formats](../file-formats/index.md) for full column definitions."
+msgstr "各列的完整定义见[文件格式](../file-formats/index.md)。"
+
+#: ../../source/user-guide/cnetml.md:107
+msgid ""
+"\"Please ensure the input file exists and its name is correct, or else there"
+" may be an error of 'Segmentation fault (core dumped)'\" — from the original"
+" README."
+msgstr "\"请确认输入文件存在且文件名正确，否则可能出现 'Segmentation fault (core dumped)' 错误。\"（摘自原 README）"
+
+#: ../../source/user-guide/cnetml.md:112
+msgid "Outputs"
+msgstr "输出"
+
+#: ../../source/user-guide/cnetml.md:114
+msgid ""
+"The original README (and earlier versions of this page) described these as "
+"`*-tree.txt` / `*-tree.nex` / `*-tree.nmut.nex`. That's not what the code "
+"does: there is no hardcoded `-tree` suffix. All of the files below are "
+"`<ofile>` plus a fixed extension, where `<ofile>` is whatever you pass to "
+"`-o`/`--ofile` (default `maxL-tree.txt`; `run-cnetml.sh` sets it to "
+"`MaxL-<suffix>.txt`). See [File formats](../file-formats/index.md) for the "
+"verified naming."
+msgstr ""
+"原 README（以及本页早期版本）把这些文件写成 `*-tree.txt` / `*-tree.nex` / "
+"`*-tree.nmut.nex`，但代码并不是这样：代码里没有固定的 `-tree` 后缀。下面所有文件名都是 `<ofile>` "
+"加固定扩展名，`<ofile>` 就是传给 `-o`/`--ofile` 的值（默认 `maxL-tree.txt`；`run-cnetml.sh` "
+"设为 `MaxL-<suffix>.txt`）。经核实的命名见[文件格式](../file-formats/index.md)。"
+
+#: ../../source/user-guide/cnetml.md:123
+msgid ""
+"`<ofile>` / `<ofile>.nex` (reconstructed tree, calendar-time branch "
+"lengths), `<ofile>.nmut.nex` (branch lengths in mutation counts), "
+"`<ofile>.summary.txt` (run metadata: mode, model, `bsr_mode`, likelihood, "
+"mutation-rate estimates), `<ofile>.edge_rates.txt` (per-branch rate and "
+"expected/observed mutation-count breakdown — only meaningful with `bsr_mode "
+"> 0`), `*-segs.txt` (postprocessed copy-number matrix, written when reading "
+"the input file, named by `--seg_file`)."
+msgstr ""
+"`<ofile>` / "
+"`<ofile>.nex`（重建的树，枝长为日历时间），`<ofile>.nmut.nex`（枝长为突变数），`<ofile>.summary.txt`（运行信息：mode、model、`bsr_mode`、似然、突变速率估计），`<ofile>.edge_rates.txt`（各分支速率及期望/观测突变数明细，只在"
+" `bsr_mode > 0` 时有意义），`*-segs.txt`（预处理后的拷贝数矩阵，读取输入文件时写出，文件名由 `--seg_file` "
+"指定）。"
+
+#: ../../source/user-guide/cnetml.md:131
+msgid ""
+"Ancestral-state mode (`mode=4`) additionally writes `<ofile>.mrca.cn` / "
+"`<ofile>.joint.cn` and `<ofile>.mrca.state` / `<ofile>.joint.state` for "
+"models 0-2. Model 3 (independent Markov chains) splits the MRCA state file "
+"by event type instead — `<ofile>.mrca.seg.state` / `.mrca.chr.state` / "
+"`.mrca.wgd.state` — while the joint state file stays a single "
+"`<ofile>.joint.state`. See [File formats](../file-formats/index.md) for "
+"column definitions."
+msgstr ""
+"祖先状态模式（`mode=4`）在 model 0-2 下还会写出 `<ofile>.mrca.cn` / `<ofile>.joint.cn` 和 "
+"`<ofile>.mrca.state` / `<ofile>.joint.state`。Model 3（independent Markov "
+"chains）则把 MRCA 状态文件按事件类型拆分为 `<ofile>.mrca.seg.state` / `.mrca.chr.state` / "
+"`.mrca.wgd.state`，联合状态文件仍是一个 `<ofile>.joint.state`。各列定义见[文件格式](../file-"
+"formats/index.md)。"
+
+#: ../../source/user-guide/cnetml.md:139
+msgid "Examples"
+msgstr "示例"
+
+#: ../../source/user-guide/cnetml.md:144
+msgid ""
+"See [Quick start](../quickstart/index.md) for how this chains onto `cnets`' "
+"output."
+msgstr "如何接着 `cnets` 的输出运行，见[快速上手](../quickstart/index.md)。"
+

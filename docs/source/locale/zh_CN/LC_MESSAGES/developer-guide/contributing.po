@@ -1,0 +1,52 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/developer-guide/contributing.md:1
+msgid "Contributing"
+msgstr "参与贡献"
+
+#: ../../source/developer-guide/contributing.md:3
+msgid ""
+"**Workflow**: branch from `main` → make your change → open a pull request "
+"into `main` → get it reviewed if the change warrants it → merge. For a docs "
+"change, `make -C docs strict` locally is the same check CI runs, so a local "
+"pass means CI will pass too — see [Working on the "
+"documentation](documentation.md)."
+msgstr ""
+
+#: ../../source/developer-guide/contributing.md:9
+msgid ""
+"**Branch naming**: short and descriptive, e.g. `fix-cnetml-options-page` or "
+"`add-slurm-tutorial`."
+msgstr ""
+
+#: ../../source/developer-guide/contributing.md:27
+msgid ""
+"Then open a pull request into `main` on GitHub (a GUI git client works just "
+"as well for these steps)."
+msgstr ""
+
+#: ../../source/developer-guide/contributing.md:30
+msgid ""
+"There's no issue tracker linked to branches/PRs yet — for now, just branch "
+"and go."
+msgstr ""
+

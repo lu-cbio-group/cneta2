@@ -13,7 +13,7 @@
 
 # Core
 sphinx
-sphinx-rtd-theme
+furo==2025.12.19      # pinned: _templates/page.html is a copy of this version's page.html
 
 # Markdown authoring 
 myst-parser
@@ -29,6 +29,7 @@ breathe                # renders Doxygen XML into Sphinx pages
 # Authoring convenience 
 sphinx-autobuild       # `make live`
 sphinx-copybutton      # copy button on code blocks
+sphinx-intl            # `make intl-update`: maintains the translation .po files
 
 # Optional extras 
 # Uncomment as needed; each one also needs adding to `extensions` in conf.py.

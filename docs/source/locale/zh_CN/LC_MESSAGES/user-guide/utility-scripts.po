@@ -1,0 +1,225 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/user-guide/utility-scripts.md:1
+msgid "Utility scripts"
+msgstr "辅助脚本"
+
+#: ../../source/user-guide/utility-scripts.md:3
+msgid ""
+"The `util/` directory contains R and Python helpers used around the main "
+"tools. They are standalone scripts rather than installed packages."
+msgstr "`util/` 目录中是配合主程序使用的 R 和 Python 辅助脚本。它们是独立脚本，不是需要安装的包。"
+
+#: ../../source/user-guide/utility-scripts.md:6
+msgid ""
+"See [Installation](../installation/index.md#dependencies) for the package "
+"list, or run `conda env create -f util/environment.yml` to install all of it"
+" in one step."
+msgstr ""
+"所需的包见[安装](../installation/index.md#dependencies)，也可以运行 `conda env create -f "
+"util/environment.yml` 一步装好。"
+
+#: ../../source/user-guide/utility-scripts.md:11
+msgid ""
+"Descriptions below come from each script's own header comments and "
+"`option_list`/argument parser. Please review — they have not been verified "
+"against actual runs."
+msgstr "下面的说明来自各脚本开头的注释和 `option_list`/参数解析部分，尚未经实际运行验证，请核对。"
+
+#: ../../source/user-guide/utility-scripts.md:16
+msgid "R scripts"
+msgstr "R 脚本"
+
+#: ../../source/user-guide/utility-scripts.md:18
+msgid "`preprocess_QDNASeq.R`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:19
+msgid ""
+"Converts QDNAseq copy-number-calling output into `cnetml` input (`*-cn.txt`,"
+" `*-sample-ids.txt`, and optionally `*-rel-times.txt`). A library of "
+"functions (`transform.data`, `write_cn`, ...) rather than a standalone CLI —"
+" source it and call the functions you need."
+msgstr ""
+"把 QDNAseq 的拷贝数检测结果转换成 `cnetml` 的输入（`*-cn.txt`、`*-sample-ids.txt`，可选 `*-rel-"
+"times.txt`）。它是一组函数（`transform.data`、`write_cn` 等），不是独立的命令行工具，需要 source "
+"后调用所需的函数。"
+
+#: ../../source/user-guide/utility-scripts.md:24
+msgid "`build_parsimony_tree.R`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:25
+msgid ""
+"Builds maximum-parsimony NEWICK trees (via `phangorn`) to use as initial "
+"trees for `cnetml` tree search. Options: `-f/--file_cn`, `-b/--bootstrap`, "
+"`-i/--input_format`, `-o/--output_format`, `-d/--dir_nwk`, `-c/--file_bs`, "
+"`-m/--incl_normal`, `-a/--is_haplotype_specific`, `-n/--num_generate`, "
+"`-s/--num_select`."
+msgstr ""
+"用 `phangorn` 构建最大简约 NEWICK 树，作为 `cnetml` "
+"树搜索的初始树。参数：`-f/--file_cn`、`-b/--bootstrap`、`-i/--input_format`、`-o/--output_format`、`-d/--dir_nwk`、`-c/--file_bs`、`-m/--incl_normal`、`-a/--is_haplotype_specific`、`-n/--num_generate`、`-s/--num_select`。"
+
+#: ../../source/user-guide/utility-scripts.md:31
+msgid "`check_convergence.R`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:32
+msgid ""
+"Checks MCMC chain convergence with "
+"[RWTY](https://github.com/danlwarren/RWTY). Positional arguments: `Rscript "
+"check_convergence.R <mcmc_dir> <output.pdf>`."
+msgstr ""
+"用 [RWTY](https://github.com/danlwarren/RWTY) 检查 MCMC 链的收敛情况。位置参数：`Rscript "
+"check_convergence.R <mcmc_dir> <output.pdf>`。"
+
+#: ../../source/user-guide/utility-scripts.md:36
+msgid "`compare_trees.R`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:37
+msgid ""
+"A library of tree-comparison functions (Robinson-Foulds and related metrics "
+"via `ape`/`phangorn`/`Quartet`, plus MEDICC tree import). Its CLI option "
+"parsing is currently commented out in the source — it is sourced by other "
+"analysis scripts rather than run directly."
+msgstr ""
+"一组比较树的函数（通过 `ape`/`phangorn`/`Quartet` 计算 Robinson-Foulds 等距离，并支持导入 MEDICC "
+"的树）。源码中的命令行参数解析目前被注释掉了，它由其他分析脚本 source 调用，不直接运行。"
+
+#: ../../source/user-guide/utility-scripts.md:42
+msgid "`compute_ci.R`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:43
+msgid ""
+"Computes a confidence interval (normal approximation or 2.5th/97.5th "
+"percentile) from a two-column `ID value` file. Positional arguments: "
+"`Rscript compute_ci.R <file> <digits> <Y/N: normal approximation>`."
+msgstr ""
+"从两列的 `ID value` 文件计算置信区间（正态近似或 2.5%/97.5% 分位数）。位置参数：`Rscript compute_ci.R "
+"<file> <digits> <Y/N: normal approximation>`。"
+
+#: ../../source/user-guide/utility-scripts.md:47
+msgid "`plot-cns.R`, `plot-trees-all.R`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:48
+msgid ""
+"Plot simulated/inferred copy-number profiles and trees (a single tree, all "
+"trees, or bootstrap trees with support values). `plot-util.R` is the shared "
+"helper library both source and is not run directly. See the `Rscript util"
+"/plot-trees-all.R ...` and `Rscript util/plot-cns.R -d $dir -b "
+"util/bin_locations_4401.Rdata` calls in `run-cnets.sh` / `run-cnetml.sh` for"
+" working examples."
+msgstr ""
+"绘制模拟或推断的拷贝数谱和树（单棵树、全部树，或带支持度的 bootstrap 树）。`plot-util.R` "
+"是这两个脚本共用的函数库，不直接运行。可运行的示例见 `run-cnets.sh` / `run-cnetml.sh` 中的 `Rscript util"
+"/plot-trees-all.R ...` 和 `Rscript util/plot-cns.R -d $dir -b "
+"util/bin_locations_4401.Rdata`。"
+
+#: ../../source/user-guide/utility-scripts.md:55
+msgid "`convert4medicc_fasta.R`, `convert4medicc_tsv.R`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:56
+msgid ""
+"Convert simulated haplotype-specific copy numbers to MEDICC / MEDICC2 input "
+"format. Example: `Rscript convert4medicc_fasta.R -i sim-data-1-allele-cn.txt"
+" -d medicc_input`."
+msgstr ""
+"把模拟的 haplotype-specific 拷贝数转换成 MEDICC / MEDICC2 的输入格式。示例：`Rscript "
+"convert4medicc_fasta.R -i sim-data-1-allele-cn.txt -d medicc_input`。"
+
+#: ../../source/user-guide/utility-scripts.md:60
+msgid "`create_pseudo_subclone.R`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:61
+msgid ""
+"Creates data with subclonal structure (purity-mixed samples) from `cnets` "
+"output; total copy number only. A library of functions, not a standalone "
+"CLI."
+msgstr "从 `cnets` 的输出生成带亚克隆结构的数据（按纯度混合的样本），只支持总拷贝数。它是一组函数，不是独立的命令行工具。"
+
+#: ../../source/user-guide/utility-scripts.md:65
+msgid "`check_site_pattern.R`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:66
+msgid ""
+"Counts unique copy-number site patterns across samples — used to choose "
+"`max_site_change` for `cnetml` model 3. Example (from the original README): "
+"`Rscript util/check_site_pattern.R -c sim1-cn.txt -t sim1-patterns.txt`."
+msgstr ""
+"统计各样本间不同的拷贝数 site pattern，用于为 `cnetml` model 3 选择 `max_site_change`。示例（摘自原 "
+"README）：`Rscript util/check_site_pattern.R -c sim1-cn.txt -t "
+"sim1-patterns.txt`。"
+
+#: ../../source/user-guide/utility-scripts.md:71
+msgid "Python scripts"
+msgstr "Python 脚本"
+
+#: ../../source/user-guide/utility-scripts.md:73
+msgid "`newick2elist.py`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:74
+msgid ""
+"Converts NEWICK/NEXUS trees into the edge-list format read by the `svtree*` "
+"family of programs. Examples (from the script's own docstring): `python "
+"newick2elist.py -f 0 -t AllTreesNr5.txt -b 5.25` (NEXUS, may contain "
+"multiple trees) or `python newick2elist.py -f 1 -t tree1.nwk` (NEWICK, "
+"single tree)."
+msgstr ""
+"把 NEWICK/NEXUS 格式的树转换成 `svtree*` 系列程序读取的边列表格式。示例（摘自脚本自身的说明）：`python "
+"newick2elist.py -f 0 -t AllTreesNr5.txt -b 5.25`（NEXUS，可包含多棵树）或 `python "
+"newick2elist.py -f 1 -t tree1.nwk`（NEWICK，单棵树）。"
+
+#: ../../source/user-guide/utility-scripts.md:81
+msgid "Reference data"
+msgstr "参考数据"
+
+#: ../../source/user-guide/utility-scripts.md:83
+msgid "`bin_locations_4401.Rdata`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:84
+msgid ""
+"Bin-boundary table (chromosome/start/end for 4401 fixed-size bins), used by "
+"`preprocess_QDNASeq.R` and passed to `plot-cns.R` via `-b`."
+msgstr ""
+"bin 边界表（4401 个固定大小 bin 的染色体/起点/终点），供 `preprocess_QDNASeq.R` 使用，并通过 `-b` 传给 "
+"`plot-cns.R`。"
+
+#: ../../source/user-guide/utility-scripts.md:87
+msgid "`cytoBand_hg19.txt`, `cytoBand_hg38.txt`"
+msgstr ""
+
+#: ../../source/user-guide/utility-scripts.md:88
+msgid ""
+"Standard UCSC cytoband tables for hg19/hg38, used by `plot-trees-all.R` via "
+"`--cyto_file` for chromosome-level plot annotation."
+msgstr ""
+"hg19/hg38 的标准 UCSC cytoband 表，`plot-trees-all.R` 通过 `--cyto_file` "
+"读取，用于在图上标注染色体。"
+

@@ -1,0 +1,311 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/configuration/index.md:1
+msgid "Configuration"
+msgstr "配置"
+
+#: ../../source/configuration/index.md:3
+msgid "Command-line options"
+msgstr "命令行参数"
+
+#: ../../source/configuration/index.md:5
+msgid ""
+"Each tool's options are documented on its own User guide page, grouped by "
+"purpose rather than as a flat alphabetical list:"
+msgstr "每个工具的参数在各自的使用指南页面中按用途分组说明，而不是按字母顺序平铺："
+
+#: ../../source/configuration/index.md:8
+msgid ""
+"[`cnets` options](../user-guide/cnets.md#options) — tree generation, "
+"mutation model, event rates, branch-specific rates."
+msgstr "[`cnets` 参数](../user-guide/cnets.md#options)：树的生成、突变模型、事件速率、分支特异速率。"
+
+#: ../../source/configuration/index.md:10
+msgid ""
+"[`cnetml` options](../user-guide/cnetml.md#options) — time constraints, "
+"evolutionary model, independent Markov chain dimensions, tree search, "
+"mutation types."
+msgstr ""
+"[`cnetml` 参数](../user-guide/cnetml.md#options)：时间约束、演化模型、independent Markov "
+"chain 维度、树搜索、突变类型。"
+
+#: ../../source/configuration/index.md:13
+msgid ""
+"[`cnetmcmc` options](../user-guide/cnetmcmc.md#options) — reference "
+"tree/init tree, and everything read from `config/cnet_mcmc.cfg`."
+msgstr ""
+"[`cnetmcmc` 参数](../user-guide/cnetmcmc.md#options)：参考树/初始树，以及从 "
+"`config/cnet_mcmc.cfg` 读取的全部参数。"
+
+#: ../../source/configuration/index.md:16
+msgid ""
+"For every `cnets` and `cnetml` option in one table, with short forms, "
+"defaults and accepted values, see the [Command-line options "
+"reference](options.md)."
+msgstr "`cnets` 和 `cnetml` 全部参数的简写、默认值和可选值汇总表，见[命令行参数参考](options.md)。"
+
+#: ../../source/configuration/index.md:26
+msgid "Run scripts and config files"
+msgstr "运行脚本和配置文件"
+
+#: ../../source/configuration/index.md:28
+msgid ""
+"The driver scripts live in `bin/`, next to the compiled programs, and their "
+"configuration in `config/`:"
+msgstr "运行脚本放在 `bin/` 中，和编译好的程序在一起；它们的配置放在 `config/` 中："
+
+#: ../../source/configuration/index.md:41
+msgid "Run scripts"
+msgstr "运行脚本"
+
+#: ../../source/configuration/index.md:43
+msgid ""
+"The current pattern is: **edit the script, don't type flags by hand.** Each "
+"`bin/run-*.sh` sets its tool's options as shell variables in a block at the "
+"top of the file (input paths, model parameters, etc.), then builds the "
+"command line from those variables. To run with different settings, copy the "
+"relevant script (or edit it in place) and change the variable values — see "
+"the \"Examples\" section on each tool's [User guide](../user-guide/index.md)"
+" page."
+msgstr ""
+"目前的做法是：**修改脚本，不要手动输入参数。** 每个 `bin/run-*.sh` 都在文件顶部用 shell "
+"变量设置该工具的参数（输入路径、模型参数等），再用这些变量拼出命令行。要换一组设置运行，就复制对应的脚本（或直接修改），改变量的值，见各工具[使用指南"
+"](../user-guide/index.md)页面的\"示例\"部分。"
+
+#: ../../source/configuration/index.md:51
+msgid ""
+"The scripts find the programs, `config/` and `util/` relative to the "
+"repository, so they can be run from any directory. Output goes to "
+"`CNETA_OUT` (default `./example`), which is relative to the directory you "
+"run them from — usually the top of the repository:"
+msgstr ""
+"脚本按仓库的相对位置查找程序、`config/` 和 `util/`，所以可以在任何目录下运行。输出写到 `CNETA_OUT`（默认 "
+"`./example`），它相对于运行脚本时所在的目录，通常是仓库顶层："
+
+#: ../../source/configuration/index.md:60
+msgid "Shared settings: `config/common.conf`"
+msgstr "共用设置：`config/common.conf`"
+
+#: ../../source/configuration/index.md:62
+msgid ""
+"Sourced by all three scripts before anything else. It holds settings that "
+"belong to a whole pipeline run rather than to one tool:"
+msgstr "三个脚本在执行任何操作之前都会先 source 它。其中保存的是属于整个流程而不是某一个工具的设置："
+
+#: ../../source/configuration/index.md:20
+msgid "Variable"
+msgstr "变量"
+
+#: ../../source/configuration/index.md:20
+msgid "Meaning"
+msgstr "含义"
+
+#: ../../source/configuration/index.md:20
+msgid "Default"
+msgstr "默认值"
+
+#: ../../source/configuration/index.md:20
+msgid "`CNETA_OUT`"
+msgstr ""
+
+#: ../../source/configuration/index.md:20
+msgid ""
+"Working directory. `cnets` writes its simulated data here; `cnetml` and "
+"`cnetmcmc` read their input from here and write their results alongside."
+msgstr "工作目录。`cnets` 把模拟数据写到这里；`cnetml` 和 `cnetmcmc` 从这里读取输入，并把结果写在同一位置。"
+
+#: ../../source/configuration/index.md:20
+msgid "`./example`"
+msgstr ""
+
+#: ../../source/configuration/index.md:20
+msgid "`CNETA_SEED`"
+msgstr ""
+
+#: ../../source/configuration/index.md:20
+msgid ""
+"Random seed. Empty (or 0) means a new random seed for every run. Set a "
+"number to reproduce a run; see [Reproducing a run](#reproducing-a-run)."
+msgstr "随机种子。为空（或 0）表示每次运行使用新的随机种子。设为某个数可以重现一次运行，见[重现一次运行](#reproducing-a-run)。"
+
+#: ../../source/configuration/index.md:20
+msgid "empty"
+msgstr "空"
+
+#: ../../source/configuration/index.md:70
+#, python-brace-format
+msgid ""
+"It is read by the shell, so use shell syntax: no spaces around `=`. Write "
+"each setting as `VAR=\"${VAR:-value}\"`, so that a value set in the "
+"environment still takes precedence over the file."
+msgstr ""
+"该文件由 shell 读取，所以要用 shell 语法：`=` 两边不能有空格。每项设置写成 "
+"`VAR=\"${VAR:-value}\"`，这样环境变量中设定的值仍然优先于文件。"
+
+#: ../../source/configuration/index.md:74
+msgid "Environment overrides"
+msgstr "用环境变量覆盖"
+
+#: ../../source/configuration/index.md:76
+msgid ""
+"Every setting can be overridden for a single run from the environment, e.g. "
+"`CNETA_SEED=42 bin/run-cnets.sh`. The order of precedence is: environment, "
+"then `config/common.conf`, then the script's own default."
+msgstr ""
+"每项设置都可以通过环境变量对单次运行覆盖，例如 `CNETA_SEED=42 bin/run-cnets.sh`。优先级为：环境变量 > "
+"`config/common.conf` > 脚本自身的默认值。"
+
+#: ../../source/configuration/index.md:20
+msgid "Used by"
+msgstr "使用者"
+
+#: ../../source/configuration/index.md:20
+msgid "all scripts"
+msgstr "所有脚本"
+
+#: ../../source/configuration/index.md:20
+msgid "a new random seed each run"
+msgstr "每次运行使用新的随机种子"
+
+#: ../../source/configuration/index.md:20
+msgid "`CNETA_BIN`"
+msgstr ""
+
+#: ../../source/configuration/index.md:20
+msgid "`bin/` in the repository"
+msgstr "仓库中的 `bin/`"
+
+#: ../../source/configuration/index.md:20
+msgid "`CNETA_CONFIG_DIR`"
+msgstr ""
+
+#: ../../source/configuration/index.md:20
+msgid "`config/` in the repository"
+msgstr "仓库中的 `config/`"
+
+#: ../../source/configuration/index.md:20
+msgid "`CNETA_CONFIG`"
+msgstr ""
+
+#: ../../source/configuration/index.md:20
+msgid "`run-cnetmcmc.sh`"
+msgstr ""
+
+#: ../../source/configuration/index.md:20
+msgid "`$CNETA_CONFIG_DIR/cnet_mcmc.cfg`"
+msgstr ""
+
+#: ../../source/configuration/index.md:88
+msgid "Reproducing a run"
+msgstr "重现一次运行"
+
+#: ../../source/configuration/index.md:90
+msgid ""
+"Every script passes the seed to the program on every invocation and records "
+"it twice: as the first line of the log (`seed <number>`), and as a line in "
+"`seed-history.txt` in the working directory, which is appended to and never "
+"overwritten, so the record survives re-running with the same settings. "
+"Bootstrap replicates and MCMC chains use the seed plus 1, 2, ... and each is"
+" recorded under its own log name."
+msgstr ""
+"每个脚本每次调用程序时都会传入种子，并记录两次：一次在日志第一行（`seed <number>`），一次在工作目录的 `seed-"
+"history.txt` 中追加一行。该文件只追加、不覆盖，所以用相同设置重新运行后记录仍然保留。Bootstrap 重复和 MCMC 链使用种子加 "
+"1、2……，每个都记录在各自的日志名下。"
+
+#: ../../source/configuration/index.md:97
+msgid ""
+"The programs also print the seed they actually used, as `seed:` followed by "
+"a tab and the number, including the clock-based seed they pick when called "
+"directly without `--seed`. The record also travels with the data: `cnets` "
+"writes its seeds at the top of `<prefix>-info.txt`, and `cnetml` writes its "
+"seed into `<output>.summary.txt`, whatever launched them."
+msgstr ""
+"程序本身也会打印实际使用的种子，格式为 `seed:` 加制表符和数字；直接调用程序且没有指定 `--seed` "
+"时，打印的是根据时钟选取的种子。种子记录也会随数据一起保存：无论程序由谁启动，`cnets` 都把种子写在 `<prefix>-info.txt` "
+"开头，`cnetml` 把种子写进 `<output>.summary.txt`。"
+
+#: ../../source/configuration/index.md:103
+msgid ""
+"To repeat a run, put that number in front of the script, e.g. "
+"`CNETA_SEED=<number> bin/run-cnetml.sh`, or pass `--seed <number>` when "
+"calling a program directly. The same seed and the same input give the same "
+"result whatever the number of OpenMP threads, and the random choices no "
+"longer depend on the C++ standard library, so they are the same on a Mac and"
+" on the HPC. The test suite checks on both Linux and macOS that the results "
+"agree."
+msgstr ""
+"要重复一次运行，把这个数放在脚本前面，例如 `CNETA_SEED=<number> bin/run-cnetml.sh`；直接调用程序时传 "
+"`--seed <number>`。相同的种子和相同的输入，无论 OpenMP 线程数是多少，结果都相同；随机选择也不再依赖 C++ 标准库，所以在 "
+"Mac 和 HPC 上结果一致。测试会在 Linux 和 macOS 上检查结果是否一致。"
+
+#: ../../source/configuration/index.md:111
+msgid "Tool config files: `config/*.cfg`"
+msgstr "工具配置文件：`config/*.cfg`"
+
+#: ../../source/configuration/index.md:113
+msgid ""
+"`cnetmcmc` reads most of its parameters from `config/cnet_mcmc.cfg`, passed "
+"with `--config_file` — see [MCMC configuration and trace files](../file-"
+"formats/index.md#mcmc-configuration-and-trace-files) for its format. `bin"
+"/run-cnetmcmc.sh` stops with an error if the file does not exist, because "
+"`cnetmcmc` itself would silently fall back to its built-in defaults."
+msgstr ""
+"`cnetmcmc` 的大部分参数从 `config/cnet_mcmc.cfg` 读取，通过 `--config_file` 传入，格式见 [MCMC"
+" 配置文件和 trace 文件](../file-formats/index.md#mcmc-configuration-and-trace-"
+"files)。文件不存在时，`bin/run-cnetmcmc.sh` 会报错停止，因为 `cnetmcmc` 本身会不加提示地改用内置默认值。"
+
+#: ../../source/configuration/index.md:120
+msgid ""
+"A value given on the command line overrides the same key in the file. A "
+"parameter the script passes explicitly — for example `--seed` or "
+"`--is_total` — therefore cannot be changed from the config file; change it "
+"in the script."
+msgstr ""
+"命令行上给出的值优先于文件中的同名 key。因此脚本显式传入的参数（例如 `--seed` 或 "
+"`--is_total`）不能通过配置文件修改，要在脚本中改。"
+
+#: ../../source/configuration/index.md:125
+msgid ""
+"`cnets` and `cnetml` don't read a config file yet; they take all options as "
+"command-line flags."
+msgstr "`cnets` 和 `cnetml` 目前还不读取配置文件，所有参数都通过命令行传入。"
+
+#: ../../source/configuration/index.md:129
+msgid ""
+"`.conf` and `.cfg` files look alike but are not interchangeable. A `.cfg` "
+"file is read by the program and accepts `dup_rate = 0.001`; a `.conf` file "
+"is read by the shell, where the same line is an error. Keep the extension "
+"that matches the reader."
+msgstr ""
+"`.conf` 和 `.cfg` 文件看起来相似，但不能互换。`.cfg` 文件由程序读取，可以写 `dup_rate = 0.001`；`.conf`"
+" 文件由 shell 读取，同样一行会报错。请使用与读取方相符的扩展名。"
+
+#: ../../source/configuration/index.md:135
+msgid "Planned"
+msgstr "计划中"
+
+#: ../../source/configuration/index.md:137
+msgid ""
+"More config files are planned: one per tool (for `cnets` and `cnetml`) and "
+"task-specific configurations. This page will describe them as they land."
+msgstr "计划增加更多配置文件：每个工具一个（`cnets` 和 `cnetml`），以及针对特定任务的配置。添加后会在本页说明。"
+

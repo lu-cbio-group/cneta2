@@ -1,111 +1,114 @@
-/* Keep the top-level sidebar sections (User docs / Developer docs) always
-   expanded, instead of sphinx_rtd_theme's default of only expanding the
-   section containing the current page. */
-.wy-menu-vertical li.toctree-l1 > ul {
-    display: block !important;
-}
-
-/* The theme's dim text color for non-top-level entries (#404040) assumes
-   the lighter background it only applies to the "current" page's
-   ancestor chain. With both top-level sections open at once, most l2
-   entries never get that background, so give them a color that reads
-   against the dark sidebar instead. */
-.wy-menu-vertical li.toctree-l2:not(.current) > a {
-    color: #b3b3b3;
-}
-.wy-menu-vertical li.toctree-l2:not(.current) > a:hover {
-    color: #fff;
-    background: #4e4a46;
-}
-
-/* The +/- expand toggle is for pre-expanding a branch without
-   navigating into it; with sections forced open there's nothing left to
-   toggle, so drop it. */
-.wy-menu-vertical li button.toctree-expand {
-    display: none !important;
-}
-
-/* The theme only indents l2 entries past l1 while that branch is
-   "current" (see the color rule above for why) - otherwise every level
-   shares the same left padding and the two top-level headings (User
-   docs / Developer docs) read as just another line in the list. Give
-   l2 its own indent, and put some vertical space between each top-level
-   group, so the three sections (Home / User docs / Developer docs)
-   stay visually distinct from their children. */
-.wy-menu-vertical li.toctree-l1 > ul > li.toctree-l2 > a {
-    padding-left: 2.427em;
-}
-.wy-menu-vertical li.toctree-l1 {
-    margin-top: 0.6em;
-}
-.wy-menu-vertical li.toctree-l1:first-child {
-    margin-top: 0;
-}
-
-/* The theme shows an SVG logo at its intrinsic size (~160 px here), which is
-   too small in the 300 px sidebar for the copy-number blocks to read. */
-.wy-side-nav-search > a img.logo {
-    width: 230px;
-}
-
 /* sphinxcontrib-images leaves its <figcaption> at the default block
    left-alignment, which reads oddly under a centered image. */
 figure.centered-figure figcaption {
     text-align: center;
-    color: #666;
+    color: var(--color-foreground-secondary);
     font-size: 0.9em;
     margin-top: 0.5em;
 }
 
-/* The theme sets margin-top:0 on every heading and margin-bottom:24px via
-   .rst-content, so a heading hugs the section above it and pushes away
-   from its own content below - backwards from how the hierarchy should
-   read. Give subheadings room above (separating sections) and tighten
-   below (keeping them close to their own content). Page titles (h1) are
-   left alone since they're always the first thing on the page. */
-.rst-content h2,
-.rst-content h3,
-.rst-content h4,
-.rst-content h5,
-.rst-content h6 {
-    margin-top: 2em;
-    margin-bottom: 12px;
+/* Sidebar: show the whole page tree instead of Furo's collapsed sections,
+   so the sidebar doubles as a site map, and drop the now-pointless
+   expand/collapse arrows. */
+.sidebar-tree .toctree-checkbox ~ ul {
+    display: block;
+}
+.sidebar-tree .toctree-checkbox ~ label {
+    display: none;
 }
 
-/* "View on GitHub" link (see _templates/layout.html), pinned to the
-   sidebar's bottom-left corner so visitors who land on the docs site
-   directly can still find the repo. .wy-nav-side is itself `position:
-   fixed; width:300px`, so matching those here keeps it aligned without
-   depending on the sidebar's DOM structure. Hidden below the theme's own
-   mobile breakpoint, where the sidebar is off-canvas by default and this
-   would otherwise float over the page content instead. */
-.sidebar-repo-link {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 300px;
-    z-index: 201;
-    box-sizing: border-box;
-    padding: 10px 1.618em;
-    background: #1d2b36;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-.sidebar-repo-link a {
+/* Top-right row: language switch and GitHub link, next to the light/dark
+   toggle (see _templates/header-links.html). Colours use Furo's variables so
+   they follow light/dark mode. */
+.header-links {
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: #cfd8dc;
-    font-size: 0.85em;
+    gap: 0.75rem;
+    margin-right: 0.5rem;
+    font-size: var(--font-size--small);
+}
+
+.lang-switch {
+    display: flex;
+    border: 1px solid var(--color-background-border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.lang-switch a,
+.lang-switch .lang-current {
+    padding: 0.2rem 0.6rem;
     text-decoration: none;
+    line-height: 1.4;
 }
-.sidebar-repo-link a:hover {
-    color: #fff;
+.lang-switch a {
+    color: var(--color-foreground-secondary);
 }
-.sidebar-repo-link svg {
-    flex-shrink: 0;
+.lang-switch a:hover {
+    color: var(--color-foreground-primary);
+    background: var(--color-background-hover);
 }
-@media screen and (max-width: 768px) {
-    .sidebar-repo-link {
-        display: none;
-    }
+.lang-switch .lang-current {
+    color: var(--color-background-primary);
+    background: var(--color-brand-primary);
+    font-weight: 600;
+}
+
+.github-link {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--color-background-border);
+    border-radius: 6px;
+    color: var(--color-foreground-primary);
+    text-decoration: none;
+    line-height: 1.4;
+}
+.github-link:hover {
+    color: var(--color-foreground-primary);
+    background: var(--color-background-hover);
+}
+
+/* The mobile header is narrow: keep just the GitHub icon. */
+.mobile-header .github-link span {
+    display: none;
+}
+
+/* Tables: full content width, left-aligned, compact, light row dividers
+   instead of a full grid. */
+article .table-wrapper {
+    margin: 1rem 0 1.75rem;
+}
+article table.docutils {
+    width: 100%;
+    border: none;
+    border-collapse: collapse;
+    box-shadow: none;
+    font-size: 0.9em;
+}
+article table.docutils th,
+article table.docutils td {
+    padding: 0.45rem 0.75rem;
+    border: none;
+    border-bottom: 1px solid var(--color-background-border);
+    text-align: left;
+    vertical-align: top;
+}
+article table.docutils thead th {
+    background: var(--color-background-secondary);
+    border-bottom: 2px solid var(--color-background-border);
+    font-weight: 600;
+}
+article table.docutils tbody tr:hover {
+    background: var(--color-background-hover);
+}
+article table.docutils td code.literal {
+    white-space: nowrap;
+}
+
+/* Option tables (Option / Short / Default / Values / Description): keep the
+   first four columns on one line so the description gets the remaining
+   width. */
+article table.docutils:has(th:nth-child(5)) td:nth-child(-n+4) {
+    white-space: nowrap;
 }

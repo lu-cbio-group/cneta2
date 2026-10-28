@@ -1,0 +1,684 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/file-formats/index.md:1
+msgid "File formats"
+msgstr "文件格式"
+
+#: ../../source/file-formats/index.md:4
+msgid ""
+"Content below is migrated from the top-level `README.md`, `mcmc.cfg` (now "
+"`config/cnet_mcmc.cfg`), and example output in `example/`. Please review for"
+" accuracy — some sections flag open questions that need confirming against "
+"the current code."
+msgstr ""
+"本页内容迁移自顶层 `README.md`、`mcmc.cfg`（现为 `config/cnet_mcmc.cfg`）和 `example/` "
+"中的示例输出。请核对准确性；有些部分标出了尚待对照当前代码确认的问题。"
+
+#: ../../source/file-formats/index.md:11
+msgid "Copy-number input"
+msgstr "拷贝数输入"
+
+#: ../../source/file-formats/index.md:13
+msgid ""
+"A file containing integer absolute/relative copy numbers for all the patient"
+" samples and/or the normal sample (*-cn.txt.gz or *-haplotype-cn.txt.gz)."
+msgstr "一个文件，包含所有患者样本和/或正常样本的整数绝对/相对拷贝数（*-cn.txt.gz 或 *-haplotype-cn.txt.gz）。"
+
+#: ../../source/file-formats/index.md:15
+msgid ""
+"Either compressed file or uncompressed file is fine. There need to be at "
+"least four columns, separated by space, in this file: sample_ID, chr_ID, "
+"site_ID, CN. Each column is an integer. Note that there should be __no "
+"header names__ in this file."
+msgstr "压缩或不压缩都可以。文件至少需要四列，用空格分隔：sample_ID、chr_ID、site_ID、CN，每列都是整数。注意文件中__不能有表头__。"
+
+#: ../../source/file-formats/index.md:17
+msgid "The sample_ID has to be __ordered from 1 to the number of patient samples__."
+msgstr "sample_ID 必须__从 1 编号到患者样本数__。"
+
+#: ../../source/file-formats/index.md:19
+msgid ""
+"The chr_ID and site_ID together determine a unique site along the genome of "
+"a sample, ordering from 1 to the largest number (1, 2, 3, ...)."
+msgstr "chr_ID 和 site_ID 共同确定样本基因组上唯一的一个 site，从 1 开始编号到最大值（1, 2, 3, ...）。"
+
+#: ../../source/file-formats/index.md:21
+msgid ""
+"The site_ID can be __consecutive numbers__ from 1 to the total number of "
+"sites along the genome, or __consecutive numbers__ from 1 to the total "
+"number of sites along each chromosome of the genome."
+msgstr ""
+"site_ID 可以是全基因组范围内从 1 到 site 总数的__连续编号__，也可以是每条染色体内从 1 到该染色体 site "
+"总数的__连续编号__。"
+
+#: ../../source/file-formats/index.md:23
+msgid ""
+"For __haplotype-specific__ CN, there need to be at least five columns, with "
+"the last two being cnA, cnB."
+msgstr "对 __haplotype-specific__ 拷贝数，至少需要五列，最后两列是 cnA、cnB。"
+
+#: ../../source/file-formats/index.md:25
+msgid ""
+"If the total CN is larger than the specified maximum CN allowed by the "
+"program, the total CN will be automatically decreased to the maximum CN when"
+" the input is total CN and the program will exit when the input is "
+"haplotype-specific CN."
+msgstr "如果总拷贝数超过程序允许的最大拷贝数：输入为总拷贝数时，会自动降到最大拷贝数；输入为 haplotype-specific 拷贝数时，程序会退出。"
+
+#: ../../source/file-formats/index.md:27
+msgid ""
+"When the input copy numbers are relative with normal copy being 0 as those "
+"output by CGHcall, please specify it with option \"--is_rcn 1\"."
+msgstr "输入是相对拷贝数（像 CGHcall 的输出那样，正常拷贝记为 0）时，请指定 \"--is_rcn 1\"。"
+
+#: ../../source/file-formats/index.md:29
+msgid ""
+"When the input copy numbers are haplotype-specific which have been scaled "
+"relative to ploidy or not, please specify it with option \"--is_total 0 "
+"--is_rcn 0\"."
+msgstr "输入是 haplotype-specific 拷贝数（无论是否已按倍性缩放）时，请指定 \"--is_total 0 --is_rcn 0\"。"
+
+#: ../../source/file-formats/index.md:31
+msgid ""
+"When the input copy numbers are in bins of fixed size, please specify it "
+"with option \"--bin 0\" to use original data. By default \"--bin 1\" is used"
+" to get segment-level data by merging consecutive bins with the same copy "
+"number in a sample with change points aligned across all the samples."
+msgstr ""
+"输入拷贝数按固定大小的 bin 给出时，如需使用原始数据，请指定 \"--bin 0\"。默认使用 \"--bin "
+"1\"：在所有样本的变化点对齐的前提下，合并样本中拷贝数相同的相邻 bin，得到 segment 级数据。"
+
+#: ../../source/file-formats/index.md:33
+msgid "Sample timing files"
+msgstr "样本时间文件"
+
+#: ../../source/file-formats/index.md:35
+msgid ""
+"`*-rel-times.txt` (optional input to `cnetml`/`cnetmcmc`; also written by "
+"`cnets` as simulation output) records the sampling time of each tip node."
+msgstr ""
+"`*-rel-times.txt`（`cnetml`/`cnetmcmc` 的可选输入，`cnets` 也会作为模拟结果写出）记录每个 tip "
+"节点的采样时间。"
+
+#: ../../source/file-formats/index.md:39
+msgid "Three space-separated columns, no header:"
+msgstr "三列，空格分隔，无表头："
+
+#: ../../source/file-formats/index.md:3 ../../source/file-formats/index.md:54
+msgid "column"
+msgstr "列"
+
+#: ../../source/file-formats/index.md:3 ../../source/file-formats/index.md:54
+msgid "meaning"
+msgstr "含义"
+
+#: ../../source/file-formats/index.md:3 ../../source/file-formats/index.md:291
+msgid "`sample_ID`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:3
+msgid "ordered from 1 to n (number of patient samples)"
+msgstr "从 1 编号到 n（患者样本数）"
+
+#: ../../source/file-formats/index.md:3
+msgid "`time`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:3
+msgid "time relative to the 1st sample, in years (float)"
+msgstr "相对于第 1 个样本的时间，单位为年（浮点数）"
+
+#: ../../source/file-formats/index.md:3
+msgid "`age`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:3
+msgid "patient age at the time of sampling, in years (integer)"
+msgstr "采样时的患者年龄，单位为年（整数）"
+
+#: ../../source/file-formats/index.md:47
+msgid ""
+"Providing this file lets `cnetml`/`cnetmcmc` use tip-time information when "
+"estimating divergence times and mutation rates (see `--constrained` in "
+"`cnetml`, `--cons` in `cnetmcmc`, and `--tdiff` in `cnets` — see "
+"[Configuration](../configuration/index.md))."
+msgstr ""
+"提供该文件后，`cnetml`/`cnetmcmc` 在估计分化时间和突变速率时可以利用 tip 的时间信息（见 `cnetml` 的 "
+"`--constrained`、`cnetmcmc` 的 `--cons` 和 `cnets` 的 "
+"`--tdiff`，以及[配置](../configuration/index.md)）。"
+
+#: ../../source/file-formats/index.md:52
+msgid "Tree formats"
+msgstr "树文件格式"
+
+#: ../../source/file-formats/index.md:55
+msgid ""
+"Filenames below were checked against `code/cnets.cpp`, `code/cnetml.cpp`, "
+"and each tool's `run-*.sh` — not just taken from `README.md`, which gets "
+"`cnetml`'s naming wrong (see the `cnetml` subsection)."
+msgstr ""
+"下面的文件名对照 `code/cnets.cpp`、`code/cnetml.cpp` 和各工具的 `run-*.sh` 核对过，不是照搬 "
+"`README.md`；README 中 `cnetml` 的文件命名是错的（见 `cnetml` 小节）。"
+
+#: ../../source/file-formats/index.md:60
+msgid "`cnets` (tab-delimited `*-tree.txt`, NEWICK `*-tree.nex` / `*-tree-nmut.nex`)"
+msgstr "`cnets`（制表符分隔的 `*-tree.txt`，NEWICK 格式的 `*-tree.nex` / `*-tree-nmut.nex`）"
+
+#: ../../source/file-formats/index.md:62
+msgid ""
+"Filenames are hardcoded as `<prefix>-tree.txt`, `<prefix>-tree.nex`, "
+"`<prefix>-tree-nmut.nex` — not user-configurable beyond the run's `prefix`."
+msgstr ""
+"文件名在代码中固定为 `<prefix>-tree.txt`、`<prefix>-tree.nex`、`<prefix>-tree-"
+"nmut.nex`，除了运行时的 `prefix` 外不能自定义。"
+
+#: ../../source/file-formats/index.md:66
+msgid ""
+"The tab-delimited file has one row per branch (edge) of the tree, columns "
+"`start`, `end`, `length`, `eid`, `nmut`:"
+msgstr "制表符分隔的文件每行对应树的一条分支（edge），列为 `start`、`end`、`length`、`eid`、`nmut`："
+
+#: ../../source/file-formats/index.md:54
+msgid "`start`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:54
+msgid "parent node ID"
+msgstr "父节点 ID"
+
+#: ../../source/file-formats/index.md:54
+msgid "`end`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:54
+msgid "child node ID"
+msgstr "子节点 ID"
+
+#: ../../source/file-formats/index.md:54
+msgid "`length`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:54
+msgid "branch length, in years"
+msgstr "枝长，单位为年"
+
+#: ../../source/file-formats/index.md:54
+msgid "`eid`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:54
+msgid "edge ID (matches the `edge_ID` column in `*-mut.txt`)"
+msgstr "分支 ID（对应 `*-mut.txt` 中的 `edge_ID` 列）"
+
+#: ../../source/file-formats/index.md:54
+msgid "`nmut`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:54
+msgid "number of mutations simulated on this branch"
+msgstr "该分支上模拟的突变数"
+
+#: ../../source/file-formats/index.md:78
+msgid ""
+"The top-level `README.md` states node IDs run 0..n-1 for samples, n for the "
+"normal sample, n+1 for the root, and n+2..2n+1 for internal nodes. The "
+"example output in `example/sim-data-1-tree.txt` instead uses 1-based sample "
+"IDs (1..4, with 5 as root). Please confirm which convention the current code"
+" actually uses before relying on this."
+msgstr ""
+"顶层 `README.md` 说节点 ID 为：样本 0..n-1，正常样本 n，根 n+1，内部节点 n+2..2n+1。但 `example"
+"/sim-data-1-tree.txt` 中的示例输出用的是从 1 开始的样本 ID（1..4，根为 5）。使用前请确认当前代码实际采用哪种约定。"
+
+#: ../../source/file-formats/index.md:85
+msgid "The two NEWICK files are standard NEXUS-wrapped NEWICK, one tree per file:"
+msgstr "两个 NEWICK 文件是标准的、包在 NEXUS 格式里的 NEWICK，每个文件一棵树："
+
+#: ../../source/file-formats/index.md:88
+msgid "`*-tree.nex`: branch length = calendar time (years)"
+msgstr "`*-tree.nex`：枝长 = 日历时间（年）"
+
+#: ../../source/file-formats/index.md:89
+msgid "`*-tree-nmut.nex`: branch length = expected number of CNAs per site"
+msgstr "`*-tree-nmut.nex`：枝长 = 每个 site 的期望 CNA 数"
+
+#: ../../source/file-formats/index.md:91
+msgid "Example (from `example/sim-data-1-tree.nex`):"
+msgstr "示例（来自 `example/sim-data-1-tree.nex`）："
+
+#: ../../source/file-formats/index.md:100
+msgid "`cnetml` (`<ofile>`, `<ofile>.nex`, `<ofile>.nmut.nex`)"
+msgstr ""
+
+#: ../../source/file-formats/index.md:103
+msgid ""
+"`README.md` (and earlier versions of the `cnetml` User guide page) describe "
+"these as `*-tree.txt` / `*-tree.nex` / `*-tree.nmut.nex`. That's wrong: "
+"`code/cnetml.cpp` has no hardcoded `-tree` suffix anywhere."
+msgstr ""
+"`README.md`（以及 `cnetml` 使用指南页面的早期版本）把这些文件写成 `*-tree.txt` / `*-tree.nex` / "
+"`*-tree.nmut.nex`，这是错的：`code/cnetml.cpp` 中没有任何固定的 `-tree` 后缀。"
+
+#: ../../source/file-formats/index.md:108
+msgid ""
+"`cnetml` writes its reconstructed tree to whatever file you pass with "
+"`-o`/`--ofile` (C++ default: `maxL-tree.txt`), then appends fixed extensions"
+" for the other outputs. `run-cnetml.sh` sets `--ofile` to "
+"`MaxL-<suffix>.txt`, so in practice you'll see e.g. `MaxL-sim1.txt`, `MaxL-"
+"sim1.txt.nex`, `MaxL-sim1.txt.nmut.nex` — not files with `-tree` in the name"
+" at all, unless you choose an `--ofile` value that includes it."
+msgstr ""
+"`cnetml` 把重建的树写到用 `-o`/`--ofile` 指定的文件（C++ 默认值：`maxL-"
+"tree.txt`），其他输出在此基础上加固定扩展名。`run-cnetml.sh` 把 `--ofile` 设为 "
+"`MaxL-<suffix>.txt`，所以实际看到的是 `MaxL-sim1.txt`、`MaxL-sim1.txt.nex`、`MaxL-"
+"sim1.txt.nmut.nex` 这样的文件名；除非 `--ofile` 的值本身含 `-tree`，否则文件名中不会出现 `-tree`。"
+
+#: ../../source/file-formats/index.md:116
+msgid ""
+"`<ofile>`: the tree in the same tab-delimited format as `cnets` (calendar-"
+"time branch lengths)"
+msgstr "`<ofile>`：与 `cnets` 相同的制表符分隔格式的树（枝长为日历时间）"
+
+#: ../../source/file-formats/index.md:118
+msgid "`<ofile>.nex`: NEWICK, calendar-time branch lengths"
+msgstr "`<ofile>.nex`：NEWICK，枝长为日历时间"
+
+#: ../../source/file-formats/index.md:119
+msgid "`<ofile>.nmut.nex`: NEWICK, branch length = number of mutations"
+msgstr "`<ofile>.nmut.nex`：NEWICK，枝长 = 突变数"
+
+#: ../../source/file-formats/index.md:121
+msgid "`cnetml` run reports (`<ofile>.summary.txt`, `<ofile>.edge_rates.txt`)"
+msgstr "`cnetml` 运行报告（`<ofile>.summary.txt`、`<ofile>.edge_rates.txt`）"
+
+#: ../../source/file-formats/index.md:123
+msgid "Written alongside the tree files above; not mentioned in `README.md` at all."
+msgstr "与上面的树文件一起写出；`README.md` 中完全没有提到。"
+
+#: ../../source/file-formats/index.md:126
+msgid "`<ofile>.summary.txt`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:127
+msgid ""
+"`key<TAB>value` lines: `mode`, `model`, `bsr_mode`, `cn_type`, "
+"`constrained`, `estmu`, `estimate_bsr0_first`, `rlc_criterion` (for "
+"`bsr_mode 3`), `raw_logL`, `penalized_score`, `K_shift_edges`, `shift_eids`,"
+" per-event-type reference mutation rates (`dup_rate_reference`, ...), "
+"length-weighted effective rates (`dup_rate_final_global_weighted`, ...), "
+"`n_edges`, `n_leaves`."
+msgstr ""
+"每行为 "
+"`key<TAB>value`：`mode`、`model`、`bsr_mode`、`cn_type`、`constrained`、`estmu`、`estimate_bsr0_first`、`rlc_criterion`（`bsr_mode"
+" 3` "
+"时）、`raw_logL`、`penalized_score`、`K_shift_edges`、`shift_eids`、各事件类型的参考突变速率（`dup_rate_reference`"
+" 等）、按枝长加权的有效速率（`dup_rate_final_global_weighted` 等）、`n_edges`、`n_leaves`。"
+
+#: ../../source/file-formats/index.md:134
+msgid "`<ofile>.edge_rates.txt`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:135
+msgid ""
+"One row per edge. Columns: `eid`, `start`, `end`, `length`, `nmut_expected`,"
+" `dup_expected`, `del_expected`, `chr_gain_expected`, `chr_loss_expected`, "
+"`wgd_expected`, `nmut_observed`, `dup_observed`, `del_observed`, "
+"`chr_gain_observed`, `chr_loss_observed`, `wgd_observed`, `dup_rate`, "
+"`del_rate`, `chr_gain_rate`, `chr_loss_rate`, `wgd_rate`, `total_rate`, "
+"`m_shared`, `m_dup`, `m_del`, `m_chr_gain`, `m_chr_loss`, `m_wgd`, "
+"`is_shift_edge`, `local_clock_id`. The last several columns are only "
+"meaningful with `bsr_mode > 0` (`NA` otherwise)."
+msgstr ""
+"每条分支一行。列：`eid`、`start`、`end`、`length`、`nmut_expected`、`dup_expected`、`del_expected`、`chr_gain_expected`、`chr_loss_expected`、`wgd_expected`、`nmut_observed`、`dup_observed`、`del_observed`、`chr_gain_observed`、`chr_loss_observed`、`wgd_observed`、`dup_rate`、`del_rate`、`chr_gain_rate`、`chr_loss_rate`、`wgd_rate`、`total_rate`、`m_shared`、`m_dup`、`m_del`、`m_chr_gain`、`m_chr_loss`、`m_wgd`、`is_shift_edge`、`local_clock_id`。最后几列只在"
+" `bsr_mode > 0` 时有意义（否则为 `NA`）。"
+
+#: ../../source/file-formats/index.md:145
+msgid "MCMC sampled trees (`*.t`)"
+msgstr "MCMC 采样得到的树（`*.t`）"
+
+#: ../../source/file-formats/index.md:147
+msgid ""
+"Written by `cnetmcmc` in a format similar to MrBayes output — a block of "
+"trees sampled during the chain. Analyze with "
+"[TreeAnnotator](https://beast.community/treeannotator) to get a maximum-"
+"clade-credibility summary tree."
+msgstr ""
+"由 `cnetmcmc` 写出，格式类似 MrBayes 的输出，是链运行过程中采样得到的一组树。用 "
+"[TreeAnnotator](https://beast.community/treeannotator) 分析，得到最大分支可信度汇总树。"
+
+#: ../../source/file-formats/index.md:152
+msgid "Mutation outputs"
+msgstr "突变输出"
+
+#: ../../source/file-formats/index.md:154
+msgid "Simulated mutation list (`*-mut.txt`, from `cnets`)"
+msgstr "模拟的突变列表（`*-mut.txt`，来自 `cnets`）"
+
+#: ../../source/file-formats/index.md:156
+msgid ""
+"One row per simulated mutation event. Columns, in the order the code writes "
+"them (`code/cnets.cpp`, the `*-mut.txt` writer): `sample_ID`, `edge_ID`, "
+"`muttype_ID`, `mut_btime`, `mut_etime`, `chr_haplotype`, `chr`, `seg_ID`."
+msgstr ""
+"每个模拟的突变事件一行。列按代码写出的顺序（`code/cnets.cpp` 中写 `*-mut.txt` "
+"的部分）为：`sample_ID`、`edge_ID`、`muttype_ID`、`mut_btime`、`mut_etime`、`chr_haplotype`、`chr`、`seg_ID`。"
+
+#: ../../source/file-formats/index.md:161
+msgid ""
+"`edge_ID` matches the `eid` column in `*-tree.txt` (see [Tree formats"
+"](#tree-formats)), so mutations can be mapped onto branches."
+msgstr "`edge_ID` 对应 `*-tree.txt` 中的 `eid` 列（见[树文件格式](#tree-formats)），因此可以把突变定位到分支上。"
+
+#: ../../source/file-formats/index.md:164
+msgid "For a chromosome gain/loss event, `seg_ID` is `-1`."
+msgstr "染色体 gain/loss 事件的 `seg_ID` 为 `-1`。"
+
+#: ../../source/file-formats/index.md:165
+msgid "For a whole-genome-doubling event, `chr` is `0` and `seg_ID` is `-1`."
+msgstr "全基因组加倍事件的 `chr` 为 `0`，`seg_ID` 为 `-1`。"
+
+#: ../../source/file-formats/index.md:168
+msgid ""
+"`muttype_ID` isn't enumerated anywhere in the code near the writer; treat "
+"its values as opaque until confirmed (likely the same event-type IDs as "
+"`--cn_type`/`r1`-`r5`)."
+msgstr ""
+"写出这一列的代码附近没有列出 `muttype_ID` 的取值含义；确认之前请不要依赖其具体取值（很可能与 `--cn_type`/`r1`-`r5` "
+"的事件类型 ID 相同）。"
+
+#: ../../source/file-formats/index.md:172
+msgid ""
+"`chr_haplotype` and `chr` **are** resolvable, and don't mean quite what the "
+"column names suggest. Internally each chromosome is stored twice — once per "
+"haplotype copy — as a single 0-based index 0..43 (`genome.hpp`/`genome.cpp`:"
+" `hap_index = chromosome(0..21) + 22 * haplotype(0 or 1)`, since `NUM_CHR = "
+"22`, autosomes only). The mutation struct keeps only this combined index "
+"(`mutation.chr` — there's no separate haplotype field). The writer then "
+"outputs:"
+msgstr ""
+"`chr_haplotype` 和 `chr` **可以**解析出来，但含义和列名不完全一样。程序内部每条染色体按两个 haplotype "
+"各存一份，用一个从 0 开始的索引 0..43 表示（`genome.hpp`/`genome.cpp`：`hap_index = "
+"chromosome(0..21) + 22 * haplotype(0 or 1)`，因为 `NUM_CHR = "
+"22`，只考虑常染色体）。突变结构体只保存这个合并索引（`mutation.chr`，没有单独的 haplotype 字段）。写出时："
+
+#: ../../source/file-formats/index.md:180
+msgid ""
+"`chr_haplotype` = `mutation.chr + 1` (range 1..44) — chromosome *and* "
+"haplotype together, not haplotype alone despite the column name."
+msgstr ""
+"`chr_haplotype` = `mutation.chr + 1`（范围 1..44）：同时编码染色体*和* "
+"haplotype，而不是列名所说的只有 haplotype。"
+
+#: ../../source/file-formats/index.md:182
+msgid ""
+"`chr` = `(mutation.chr + 1) % 22` — recovers the 1-based chromosome number, "
+"**except** chromosome 22 itself wraps to `0` (there's no explicit re-mapping"
+" back to 22)."
+msgstr ""
+"`chr` = `(mutation.chr + 1) % 22`：得到从 1 开始的染色体编号，**但** 22 号染色体本身会变成 "
+"`0`（代码没有把它映射回 22）。"
+
+#: ../../source/file-formats/index.md:186
+msgid ""
+"To recover haplotype separately: `mutation.chr >= 22` (i.e. `chr_haplotype >"
+" 22`) is the second haplotype copy."
+msgstr "要单独得到 haplotype：`mutation.chr >= 22`（即 `chr_haplotype > 22`）表示第二个 haplotype。"
+
+#: ../../source/file-formats/index.md:190
+msgid "Per-branch mutation counts (`*-info.txt`, from `cnets`)"
+msgstr "各分支突变数（`*-info.txt`，来自 `cnets`）"
+
+#: ../../source/file-formats/index.md:192
+msgid ""
+"The first two lines record the seeds that produced the data set: `SEED: "
+"<number>`, and `TREE SEED: <number>` or `TREE SEED: same stream as SEED` "
+"when `--tree_seed` was not given. Then the time of each node and the total "
+"number of mutations simulated on each branch, grouped by the lineages of tip"
+" nodes."
+msgstr ""
+"前两行记录生成该数据集所用的随机种子：`SEED: <number>`，以及 `TREE SEED: <number>`（未指定 "
+"`--tree_seed` 时为 `TREE SEED: same stream as SEED`）。接下来是各节点的时间和各分支上模拟的突变总数，按 "
+"tip 节点的谱系分组。"
+
+#: ../../source/file-formats/index.md:198
+msgid "Simulation edge-rate table (`*-edge_rates.txt`, from `cnets`)"
+msgstr "模拟的分支速率表（`*-edge_rates.txt`，来自 `cnets`）"
+
+#: ../../source/file-formats/index.md:200
+msgid ""
+"Same column layout as `cnetml`'s [`<ofile>.edge_rates.txt`](#tree-formats) —"
+" the true, simulation-time per-branch rates and (for `bsr_mode > 0`) which "
+"branches got a rate shift, rather than `cnetml`'s reconstructed estimates. "
+"Not mentioned in `README.md`."
+msgstr ""
+"列的排列与 `cnetml` 的 [`<ofile>.edge_rates.txt`](#tree-formats) "
+"相同，但记录的是模拟时各分支的真实速率，以及（`bsr_mode > 0` 时）哪些分支发生了速率变化，而不是 `cnetml` "
+"重建的估计值。`README.md` 中没有提到。"
+
+#: ../../source/file-formats/index.md:206
+msgid "Ancestral-state reconstruction outputs (`cnetml` mode 4)"
+msgstr "祖先状态重建输出（`cnetml` mode 4）"
+
+#: ../../source/file-formats/index.md:208
+msgid "Named `<ofile>.<suffix>`, same `<ofile>` as in [Tree formats](#tree-formats)."
+msgstr "文件名为 `<ofile>.<suffix>`，`<ofile>` 与[树文件格式](#tree-formats)中相同。"
+
+#: ../../source/file-formats/index.md:211
+msgid "For models 0-2:"
+msgstr "Model 0-2："
+
+#: ../../source/file-formats/index.md:167
+msgid "file"
+msgstr "文件"
+
+#: ../../source/file-formats/index.md:167
+msgid "contents"
+msgstr "内容"
+
+#: ../../source/file-formats/index.md:167
+msgid "`<ofile>.mrca.cn`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:167
+msgid ""
+"Reconstructed copy numbers for the most recent common ancestor of all tumour"
+" samples. `node_ID chr_ID site_ID CN` (total) or `node_ID chr_ID site_ID cnA"
+" cnB` (haplotype-specific)."
+msgstr ""
+"所有肿瘤样本最近共同祖先的重建拷贝数。`node_ID chr_ID site_ID CN`（总拷贝数）或 `node_ID chr_ID "
+"site_ID cnA cnB`（haplotype-specific）。"
+
+#: ../../source/file-formats/index.md:167
+msgid "`<ofile>.joint.cn`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:167
+msgid "Same, for all internal nodes."
+msgstr "同上，针对所有内部节点。"
+
+#: ../../source/file-formats/index.md:167
+msgid "`<ofile>.mrca.state`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:167
+msgid ""
+"Posterior probability of each possible copy-number state, for each variant "
+"site (a site with at least one atypical copy number across samples), at the "
+"MRCA node: `node_ID site_ID probability_stateID`."
+msgstr ""
+"MRCA 节点上，每个变异 site（至少在一个样本中拷贝数异常的 site）每种可能拷贝数状态的后验概率：`node_ID site_ID "
+"probability_stateID`。"
+
+#: ../../source/file-formats/index.md:167
+msgid "`<ofile>.joint.state`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:167
+msgid ""
+"Possible copy-number state at each variant site, for all internal nodes: "
+"`node_ID site_ID cn_stateID`."
+msgstr "所有内部节点上，每个变异 site 的拷贝数状态：`node_ID site_ID cn_stateID`。"
+
+#: ../../source/file-formats/index.md:220
+msgid ""
+"In `<ofile>.mrca.state`/`<ofile>.joint.state`, `site_ID` is written as "
+"`chromosomeID_siteID`, and the state ID matches the state index of the "
+"Markov-model rate matrix used for reconstruction."
+msgstr ""
+"在 `<ofile>.mrca.state`/`<ofile>.joint.state` 中，`site_ID` 写成 "
+"`chromosomeID_siteID`，状态 ID 对应重建所用 Markov 模型速率矩阵的状态索引。"
+
+#: ../../source/file-formats/index.md:225
+msgid ""
+"Model 3 (independent Markov chains) writes `<ofile>.mrca.cn` the same way, "
+"but splits the MRCA state file by event type instead of one `.mrca.state`: "
+"`<ofile>.mrca.seg.state` (only if segment-level events are in play), "
+"`<ofile>.mrca.chr.state` (chromosome-level), and `<ofile>.mrca.wgd.state` "
+"(whole-genome doubling) — each written only when that event type has a non-"
+"zero state-space dimension. The joint file stays a single "
+"`<ofile>.joint.state`, same format as above. None of this is in `README.md`;"
+" model 3 is still described there as \"in development, at test branch\"."
+msgstr ""
+"Model 3（independent Markov chains）以同样方式写出 `<ofile>.mrca.cn`，但 MRCA 状态文件不是一个 "
+"`.mrca.state`，而是按事件类型拆分：`<ofile>.mrca.seg.state`（仅当涉及 segment "
+"级事件时）、`<ofile>.mrca.chr.state`（染色体级）和 "
+"`<ofile>.mrca.wgd.state`（全基因组加倍），每个文件只在该事件类型的状态空间维度不为零时写出。联合状态文件仍是一个 "
+"`<ofile>.joint.state`，格式同上。这些在 `README.md` 中都没有；那里仍把 model 3 描述为\"开发中，在 test"
+" 分支\"。"
+
+#: ../../source/file-formats/index.md:236
+msgid "MCMC configuration and trace files"
+msgstr "MCMC 配置文件和 trace 文件"
+
+#: ../../source/file-formats/index.md:238
+msgid "Config file (`config/cnet_mcmc.cfg`)"
+msgstr "配置文件（`config/cnet_mcmc.cfg`）"
+
+#: ../../source/file-formats/index.md:240
+msgid ""
+"Plain-text `key=value` pairs, one per line, `#` for comments and blank lines"
+" allowed. Each key is a `cnetmcmc` long option name without the leading "
+"`--`; an unknown key is an error. A value given on the command line "
+"overrides the same key in the file. Passed to `cnetmcmc` with "
+"`--config_file` (see `bin/run-cnetmcmc.sh`). Grouped in the file by purpose:"
+msgstr ""
+"纯文本的 `key=value`，每行一个，`#` 开头为注释，允许空行。每个 key 是 `cnetmcmc` 的长参数名去掉开头的 `--`；未知的"
+" key 会报错。命令行上给出的值优先于文件中的同名 key。用 `--config_file` 传给 `cnetmcmc`（见 `bin/run-"
+"cnetmcmc.sh`）。文件中按用途分组："
+
+#: ../../source/file-formats/index.md:269
+msgid ""
+"...followed by blocks for the true/initial mutation rates, per-rate-type "
+"prior/proposal parameters (`sigma_l*` for the log-normal prior, `sigma_*` "
+"for the proposal, one pair per event type), tree-height parameters, and "
+"branch-length parameters. See `config/cnet_mcmc.cfg` for the full set with "
+"inline comments, and [`cnetmcmc` options](../user-guide/cnetmcmc.md#options)"
+" for what each group controls."
+msgstr ""
+"……后面是真实/初始突变速率、各类速率的先验/proposal 参数（每种事件类型一对：`sigma_l*` 用于 lognormal "
+"先验，`sigma_*` 用于 proposal）、树高参数和枝长参数。完整参数及行内注释见 "
+"`config/cnet_mcmc.cfg`，各组参数的作用见 [`cnetmcmc` 参数](../user-"
+"guide/cnetmcmc.md#options)。"
+
+#: ../../source/file-formats/index.md:277
+msgid "Trace files (output)"
+msgstr "Trace 文件（输出）"
+
+#: ../../source/file-formats/index.md:279
+msgid "MrBayes-compatible:"
+msgstr "与 MrBayes 兼容："
+
+#: ../../source/file-formats/index.md:281
+msgid "`*.p`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:282
+msgid ""
+"Parameter traces. Check convergence with "
+"[Tracer](https://beast.community/tracer) or `util/check_convergence.R` (uses"
+" [RWTY](https://github.com/danlwarren/RWTY))."
+msgstr ""
+"参数 trace。用 [Tracer](https://beast.community/tracer) 或 "
+"`util/check_convergence.R`（基于 "
+"[RWTY](https://github.com/danlwarren/RWTY)）检查收敛。"
+
+#: ../../source/file-formats/index.md:286
+msgid "`*.t`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:287
+msgid "Sampled trees — see [Tree formats](#tree-formats)."
+msgstr "采样得到的树，见[树文件格式](#tree-formats)。"
+
+#: ../../source/file-formats/index.md:289
+msgid "Identifiers and conventions"
+msgstr "标识符与约定"
+
+#: ../../source/file-formats/index.md:292
+msgid ""
+"1-based, ordered from 1 to n (the number of patient samples). Used "
+"consistently in `*-cn.txt.gz`/`*-haplotype-cn.txt.gz` and `*-rel-times.txt`."
+" The normal sample is not counted in n and is identified separately (see the"
+" tree-node-ID warning under [Tree formats](#tree-formats) — the exact "
+"convention needs confirming)."
+msgstr ""
+"从 1 开始，从 1 编号到 n（患者样本数）。在 `*-cn.txt.gz`/`*-haplotype-cn.txt.gz` 和 `*-rel-"
+"times.txt` 中一致使用。正常样本不计入 n，单独标识（见[树文件格式](#tree-formats)中关于树节点 ID "
+"的提醒，具体约定有待确认）。"
+
+#: ../../source/file-formats/index.md:299
+msgid "`chr_ID`, `site_ID`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:300
+msgid ""
+"Both 1-based. Together they identify a unique site on the genome of a "
+"sample. `site_ID` can be numbered either consecutively across the whole "
+"genome, or consecutively within each chromosome — the file itself doesn't "
+"say which, so the two ends of a pipeline (e.g. a preprocessing script and "
+"`cnetml`) must agree on the convention out of band."
+msgstr ""
+"都从 1 开始，两者共同标识样本基因组上唯一的 site。`site_ID` "
+"可以在全基因组范围内连续编号，也可以在每条染色体内连续编号；文件本身不说明是哪一种，所以流程两端（例如预处理脚本和 `cnetml`）需要另外约定好。"
+
+#: ../../source/file-formats/index.md:307
+msgid "`edge_ID` / `eid`"
+msgstr ""
+
+#: ../../source/file-formats/index.md:308
+msgid ""
+"1-based, shared between `*-tree.txt` and `*-mut.txt` to map mutations onto "
+"tree branches."
+msgstr "从 1 开始，`*-tree.txt` 和 `*-mut.txt` 共用，用于把突变定位到树的分支上。"
+
+#: ../../source/file-formats/index.md:311
+msgid "0- vs 1-based coordinates"
+msgstr "从 0 还是从 1 开始编号"
+
+#: ../../source/file-formats/index.md:312
+msgid ""
+"Input files (`*-cn.txt.gz`, `*-rel-times.txt`) are consistently 1-based. "
+"Tree node IDs are where the documentation and an actual example output "
+"disagree — see the warning under [Tree formats](#tree-formats)."
+msgstr ""
+"输入文件（`*-cn.txt.gz`、`*-rel-times.txt`）一律从 1 开始。树节点 ID "
+"是文档和实际示例输出不一致的地方，见[树文件格式](#tree-formats)中的提醒。"
+

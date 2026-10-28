@@ -1,0 +1,323 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/workflows/index.md:1
+msgid "Workflows and data flow"
+msgstr "工作流程与数据流"
+
+#: ../../source/workflows/index.md:3
+msgid "How the tools are chained together, and what data passes between them."
+msgstr "各工具如何衔接，以及它们之间传递哪些数据。"
+
+#: ../../source/workflows/index.md:6
+msgid ""
+"The `cnets` and `cnetml` diagrams below are the reviewed ones — those tools "
+"are published and current priority. The [MCMC workflow](#mcmc-workflow-"
+"cnetmcmc) diagram for `cnetmcmc` is a draft, since that tool isn't "
+"officially released yet."
+msgstr ""
+"下面 `cnets` 和 `cnetml` 的流程图已经审核过，这两个工具已发表，也是当前的重点。`cnetmcmc` 的 [MCMC 工作流程"
+"](#mcmc-workflow-cnetmcmc)图是草稿，因为该工具尚未正式发布。"
+
+#: ../../source/workflows/index.md:12
+msgid "Simulation workflow (`cnets`)"
+msgstr "模拟流程（`cnets`）"
+
+#: ../../source/workflows/index.md:14
+msgid ""
+"`cnets` simulates copy-number evolution along a tree and writes simulated "
+"copy-number profiles, timing information, mutation lists, and tree files."
+msgstr "`cnets` 沿树模拟拷贝数演化，写出模拟的拷贝数谱、时间信息、突变列表和树文件。"
+
+#: ../../source/workflows/index.md:54
+msgid "Maximum Likelihood Inference workflow (`cnetml`)"
+msgstr "最大似然推断流程（`cnetml`）"
+
+#: ../../source/workflows/index.md:56
+msgid ""
+"`cnetml` reads observed copy-number profiles and either searches for a "
+"maximum-likelihood tree, scores a supplied tree, optimizes a supplied "
+"topology, or reconstructs ancestral states."
+msgstr "`cnetml` 读取观测到的拷贝数谱，然后搜索最大似然树、为给定的树计算似然、优化给定的拓扑，或重建祖先状态。"
+
+#: ../../source/workflows/index.md:103
+msgid ""
+"For how the DECOMP likelihood itself is computed once this workflow reaches "
+"\"Build likelihood configuration\", see [Architecture](../developer-"
+"guide/architecture.md)."
+msgstr ""
+"流程到达\"Build likelihood configuration\"之后，DECOMP 似然本身如何计算，见[架构](../developer-"
+"guide/architecture.md)。"
+
+#: ../../source/workflows/index.md:107
+msgid "MCMC workflow (`cnetmcmc`)"
+msgstr "MCMC 工作流程（`cnetmcmc`）"
+
+#: ../../source/workflows/index.md:110
+msgid ""
+"**Draft.** `cnetmcmc` is not yet officially released — current focus is "
+"`cnets` and `cnetml`. This diagram was traced from `code/cnetmcmc.cpp` "
+"(`main`, `run_mcmc`, `run_with_reference_tree`) rather than from a reviewed "
+"design doc, and has not been checked against the running program's actual "
+"behaviour. Treat it as a starting point, not a reference."
+msgstr ""
+"**草稿。** `cnetmcmc` 尚未正式发布，当前重点是 `cnets` 和 `cnetml`。这张图根据 "
+"`code/cnetmcmc.cpp`（`main`、`run_mcmc`、`run_with_reference_tree`）整理，不是来自审核过的设计文档，也没有对照程序的实际运行行为检查过。请把它当作起点，而不是权威参考。"
+
+#: ../../source/workflows/index.md:151
+msgid ""
+"Whether `--rtreefile` is given only decides where the *starting* tree comes "
+"from. Whether the topology is actually held fixed during sampling is a "
+"separate flag, `fix_topology`, used on both paths — this differs from the "
+"summary in the top-level `README.md`, which describes the reference tree "
+"itself as fixing the topology."
+msgstr ""
+"是否提供 `--rtreefile` 只决定*起始*树从哪里来。采样过程中拓扑是否真的固定，由另一个参数 `fix_topology` "
+"控制，两条路径都会用到它。这与顶层 `README.md` 中的概述不同，那里说参考树本身会固定拓扑。"
+
+#: ../../source/workflows/index.md:158
+msgid "Which tool produces what"
+msgstr "各工具产生哪些文件"
+
+#: ../../source/workflows/index.md:150
+msgid "file(s)"
+msgstr "文件"
+
+#: ../../source/workflows/index.md:150
+msgid "produced by"
+msgstr "由谁产生"
+
+#: ../../source/workflows/index.md:150
+msgid "consumed by"
+msgstr "由谁使用"
+
+#: ../../source/workflows/index.md:150
+msgid "status"
+msgstr "性质"
+
+#: ../../source/workflows/index.md:150
+msgid "`*-cn.txt.gz` / `*-haplotype-cn.txt.gz`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "`cnets` (simulated); or preprocessing scripts for real data"
+msgstr "`cnets`（模拟数据）；真实数据由预处理脚本产生"
+
+#: ../../source/workflows/index.md:150
+msgid "`cnetml`, `cnetmcmc`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "required"
+msgstr "必需"
+
+#: ../../source/workflows/index.md:150
+msgid "`*-rcn.txt.gz` / `*-haplotype-rcn.txt.gz`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "`cnets`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "external tools expecting relative copy number"
+msgstr "需要相对拷贝数的外部工具"
+
+#: ../../source/workflows/index.md:150
+msgid "optional"
+msgstr "可选"
+
+#: ../../source/workflows/index.md:150
+msgid "`*-inodes-cn.txt.gz` / `*-inodes-haplotype-cn.txt.gz`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "downstream analysis of internal-node truth"
+msgstr "内部节点真实值的下游分析"
+
+#: ../../source/workflows/index.md:150
+msgid "diagnostic"
+msgstr "诊断用"
+
+#: ../../source/workflows/index.md:150
+msgid "`*-rel-times.txt`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "`cnets` (simulated); or supplied directly for real data"
+msgstr "`cnets`（模拟数据）；真实数据直接提供"
+
+#: ../../source/workflows/index.md:150
+msgid "optional (needed for `estmu`/mutation-rate estimation)"
+msgstr "可选（`estmu`/估计突变速率时需要）"
+
+#: ../../source/workflows/index.md:150
+msgid "`<prefix>-tree.txt`, `<prefix>-tree.nex`, `<prefix>-tree-nmut.nex`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "`cnets` (ground truth)"
+msgstr "`cnets`（真实值）"
+
+#: ../../source/workflows/index.md:150
+msgid ""
+"`cnetml` (as an optional initial tree), `cnetmcmc` (`--file_itree`), "
+"accuracy comparisons"
+msgstr "`cnetml`（作为可选的初始树）、`cnetmcmc`（`--file_itree`）、准确性比较"
+
+#: ../../source/workflows/index.md:150
+msgid "primary output"
+msgstr "主要输出"
+
+#: ../../source/workflows/index.md:150
+msgid "`<ofile>`, `<ofile>.nex`, `<ofile>.nmut.nex`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid ""
+"`cnetml` (reconstructed; `<ofile>` set by `-o`/`--ofile`, **not** `*-tree.*`"
+" — see [File formats](../file-formats/index.md#tree-formats))"
+msgstr ""
+"`cnetml`（重建结果；`<ofile>` 由 `-o`/`--ofile` 指定，**不是** `*-tree.*`，见[文件格式"
+"](../file-formats/index.md#tree-formats)）"
+
+#: ../../source/workflows/index.md:150
+msgid ""
+"tree viewers (e.g. FigTree), downstream analysis, accuracy comparisons "
+"against `cnets`' output"
+msgstr "树查看工具（如 FigTree）、下游分析、与 `cnets` 输出的准确性比较"
+
+#: ../../source/workflows/index.md:150
+msgid "`<ofile>.summary.txt`, `<ofile>.edge_rates.txt`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "`cnetml`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "run bookkeeping, per-branch rate analysis (`bsr_mode > 0`)"
+msgstr "运行记录、各分支速率分析（`bsr_mode > 0`）"
+
+#: ../../source/workflows/index.md:150
+msgid "`*-info.txt`, `*-mut.txt`, `*-edge_rates.txt`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid ""
+"mutation-mapping / accuracy analysis; `*-edge_rates.txt` against `cnetml`'s "
+"reconstructed `<ofile>.edge_rates.txt`"
+msgstr "突变定位/准确性分析；`*-edge_rates.txt` 与 `cnetml` 重建的 `<ofile>.edge_rates.txt` 比较"
+
+#: ../../source/workflows/index.md:150
+msgid "`*-segs.txt`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid ""
+"`cnetml` (written when reading the input copy-number file, named by "
+"`--seg_file`)"
+msgstr "`cnetml`（读取输入拷贝数文件时写出，文件名由 `--seg_file` 指定）"
+
+#: ../../source/workflows/index.md:150
+msgid "intermediate to `cnetml`'s own likelihood computation"
+msgstr "`cnetml` 自身似然计算的中间文件"
+
+#: ../../source/workflows/index.md:150
+msgid "intermediate"
+msgstr "中间文件"
+
+#: ../../source/workflows/index.md:150
+#, python-brace-format
+msgid ""
+"`<ofile>.mrca.cn`, `<ofile>.joint.cn`, and (models 0-2) "
+"`<ofile>.mrca.state`/`<ofile>.joint.state`, or (model 3) "
+"`<ofile>.mrca.{seg,chr,wgd}.state`/`<ofile>.joint.state`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "`cnetml` (mode 4, ancestral-state reconstruction)"
+msgstr "`cnetml`（mode 4，祖先状态重建）"
+
+#: ../../source/workflows/index.md:150
+msgid "downstream analysis of ancestral states"
+msgstr "祖先状态的下游分析"
+
+#: ../../source/workflows/index.md:150
+msgid "primary output (mode 4 only)"
+msgstr "主要输出（仅 mode 4）"
+
+#: ../../source/workflows/index.md:150
+msgid "`config/cnet_mcmc.cfg`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "shipped in `config/`; copy and edit it for your own runs"
+msgstr "随仓库放在 `config/` 中；复制后按自己的运行修改"
+
+#: ../../source/workflows/index.md:150
+msgid "`cnetmcmc` (`--config_file`)"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid "required by `bin/run-cnetmcmc.sh`; optional for `cnetmcmc` itself"
+msgstr "`bin/run-cnetmcmc.sh` 必需；`cnetmcmc` 本身可选"
+
+#: ../../source/workflows/index.md:150
+msgid "`*.p`, `*.t`"
+msgstr ""
+
+#: ../../source/workflows/index.md:150
+msgid ""
+"`cnetmcmc` (via `--trace_param_file`/`--trace_tree_file`; C++ defaults are "
+"`trace-mcmc-params.txt`/`trace-mcmc-trees.txt` — `run-cnetmcmc.sh` is what "
+"gives them `.p`/`.t` extensions)"
+msgstr ""
+"`cnetmcmc`（通过 `--trace_param_file`/`--trace_tree_file`；C++ 默认值为 `trace-mcmc-"
+"params.txt`/`trace-mcmc-trees.txt`，`.p`/`.t` 扩展名是 `run-cnetmcmc.sh` 加的）"
+
+#: ../../source/workflows/index.md:150
+msgid "Tracer / RWTY (`*.p`), TreeAnnotator (`*.t`)"
+msgstr ""
+
+#: ../../source/workflows/index.md:175
+msgid ""
+"See [File formats](../file-formats/index.md) for column definitions of each "
+"file."
+msgstr "每个文件各列的定义见[文件格式](../file-formats/index.md)。"
+
+#: ../../source/workflows/index.md:178
+msgid "Future direction"
+msgstr "后续方向"
+
+#: ../../source/workflows/index.md:180
+msgid "TODO: in-memory exchange via `libcneta`; Nextflow as an orchestration layer."
+msgstr "TODO：通过 `libcneta` 在内存中交换数据；用 Nextflow 编排流程。"
+
+#: ../../source/workflows/index.md:182
+msgid ""
+"A Nextflow pipeline from raw sequencing data, or sequence alignments, or "
+"copy number calls to phylogenetic analysis and downstream analysis (such as "
+"copy number signature attachment to the tree branches)."
+msgstr ""
+"一条 Nextflow 流程：从原始测序数据、序列比对结果或拷贝数检测结果出发，到系统发育分析和下游分析（例如把拷贝数 signature "
+"对应到树的分支上）。"
+

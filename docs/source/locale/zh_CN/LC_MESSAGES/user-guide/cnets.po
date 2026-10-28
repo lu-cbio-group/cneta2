@@ -1,0 +1,236 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, CNETA contributors
+# This file is distributed under the same license as the CNETA package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: CNETA 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-21 12:35+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../source/user-guide/cnets.md:1
+msgid "`cnets`"
+msgstr ""
+
+#: ../../source/user-guide/cnets.md:3
+msgid ""
+"`cnets` simulates copy-number evolution along a phylogenetic (coalescent) "
+"tree of tumour samples from a single patient, and writes the simulated copy-"
+"number profiles, tree, mutations, and timing information needed as input to "
+"`cnetml` / `cnetmcmc`."
+msgstr ""
+"`cnets` 沿单个患者肿瘤样本的系统发育（coalescent）树模拟拷贝数演化，并写出模拟的拷贝数谱、树、突变和时间信息，作为 `cnetml` "
+"/ `cnetmcmc` 的输入。"
+
+#: ../../source/user-guide/cnets.md:9
+msgid ""
+"This page is migrated from the top-level `README.md` and `run-cnets.sh`. "
+"Please review for accuracy and completeness."
+msgstr "本页内容迁移自顶层 `README.md` 和 `run-cnets.sh`，请核对其准确性和完整性。"
+
+#: ../../source/user-guide/cnets.md:13
+msgid "Status"
+msgstr "状态"
+
+#: ../../source/user-guide/cnets.md:15
+msgid ""
+"Mature and published; see the [citation](../index.md) on the front page. "
+"Model 1 (bounded total copy number) is deprecated in favour of model 2 "
+"(haplotype-specific, the default) and model 3 (infinite sites)."
+msgstr ""
+"成熟、已发表；见首页的[引用](../index.md)。Model 1（bounded total copy number）已弃用，改用 model "
+"2（haplotype-specific，默认）和 model 3（infinite sites）。"
+
+#: ../../source/user-guide/cnets.md:19
+msgid "Usage"
+msgstr "用法"
+
+#: ../../source/user-guide/cnets.md:25
+msgid ""
+"`bin/run-cnets.sh` is the maintained example driver — copy and edit it "
+"rather than calling `cnets` directly. It sets the seed, verbosity, tree-"
+"generation parameters, mutation-model parameters, and output directory in "
+"one place."
+msgstr ""
+"`bin/run-cnets.sh` 是持续维护的示例运行脚本，建议复制后修改，而不是直接调用 "
+"`cnets`。随机种子、输出详细程度、树生成参数、突变模型参数和输出目录都集中在这个脚本里设置。"
+
+#: ../../source/user-guide/cnets.md:29
+msgid "Options"
+msgstr "参数"
+
+#: ../../source/user-guide/cnets.md:31
+msgid ""
+"Grouped by purpose; see `run-cnets.sh` for the full set with example values,"
+" and the [options reference](../configuration/options.md#cnets-simulation) "
+"for every option with its default and accepted values."
+msgstr ""
+"按用途分组；完整参数及示例值见 `run-"
+"cnets.sh`，每个参数的默认值和可选值见[参数参考](../configuration/options.md#cnets-simulation)。"
+
+#: ../../source/user-guide/cnets.md:35
+msgid "Tree generation"
+msgstr "树的生成"
+
+#: ../../source/user-guide/cnets.md:36
+msgid ""
+"`--epop` (effective population size, scales branch lengths to years), "
+"`--tdiff` (spreads tip sampling times by random multiples of this value), "
+"`--constrained` (constrain tree height by patient age — `run-cnets.sh` calls"
+" this `cons`, but the actual flag is `--constrained`; `cnetmcmc` is the one "
+"tool where `--cons` is real, see its [Options](cnetmcmc.md#options)), "
+"`--age` (patient age at first sample), `--tree_seed` (draw the trees from a "
+"generator of their own, so that runs which differ only in later settings "
+"such as `--bsr_mode` get the same trees; 0, the default, draws everything "
+"from the one stream seeded by `--seed`)."
+msgstr ""
+"`--epop`（有效群体大小，用于把枝长换算成年），`--tdiff`（按该值的随机倍数拉开各 tip "
+"的采样时间），`--constrained`（用患者年龄约束树高；`run-cnets.sh` 中叫 `cons`，但实际参数名是 "
+"`--constrained`；只有 `cnetmcmc` 真正有 `--cons` "
+"参数，见其[参数](cnetmcmc.md#options)），`--age`（第一次采样时的患者年龄），`--tree_seed`（用单独的随机数生成器生成树，这样只改"
+" `--bsr_mode` 等后续设置的多次运行会得到相同的树；默认 0 表示所有随机数都来自 `--seed` 设定的同一个随机数流）。"
+
+#: ../../source/user-guide/cnets.md:47
+msgid "Mutation model"
+msgstr "突变模型"
+
+#: ../../source/user-guide/cnets.md:48
+msgid ""
+"`--model` (1: bounded total copy number, deprecated; 2: haplotype-specific, "
+"default; 3: infinite sites (Poisson process)), `--cn_max` (maximum copy "
+"number — limited by available heap space), `--method` (0: simulate waiting "
+"times along each branch, the default, supports all event types; 1: simulate "
+"sequences directly at branch ends, supports duplication/deletion only)."
+msgstr ""
+"`--model`（1：bounded total copy number，已弃用；2：haplotype-specific，默认；3：infinite"
+" sites（Poisson "
+"process）），`--cn_max`（最大拷贝数，受可用堆内存限制），`--method`（0：沿每条分支模拟等待时间，默认，支持所有事件类型；1：直接在分支末端模拟序列，只支持"
+" duplication/deletion）。"
+
+#: ../../source/user-guide/cnets.md:55
+msgid "Event rates"
+msgstr "事件速率"
+
+#: ../../source/user-guide/cnets.md:56
+msgid ""
+"`--dup_rate` (r1), `--del_rate` (r2) — site-level duplication/deletion; "
+"`--chr_gain` (r3), `--chr_loss` (r4) — chromosome-level gain/loss; `--wgd` "
+"(r5) — whole-genome doubling. Set any of these to `0` to exclude that event "
+"type from the simulation."
+msgstr ""
+"`--dup_rate`（r1）、`--del_rate`（r2）：site 级 "
+"duplication/deletion；`--chr_gain`（r3）、`--chr_loss`（r4）：染色体级 "
+"gain/loss；`--wgd`（r5）：全基因组加倍。任一速率设为 `0` 即不模拟该类事件。"
+
+#: ../../source/user-guide/cnets.md:62
+msgid ""
+"`cnets` has no `--cn_type` selector — that flag (and the r1-r5 grouping by "
+"`cn_type` value) belongs to `cnetml`/`cnetmcmc`, which use it to pick which "
+"rate categories to *estimate* during tree building. An earlier version of "
+"this page borrowed that description for `cnets` by mistake; `code/cnets.cpp`"
+" has no `cn_type` anywhere. For `cnets`, which event types get simulated is "
+"controlled directly by which of the five rate flags above are non-zero."
+msgstr ""
+"`cnets` 没有 `--cn_type` 参数。这个参数（以及按 `cn_type` 取值对 r1-r5 的分组）属于 "
+"`cnetml`/`cnetmcmc`，用来选择建树时*估计*哪些类别的速率。本页早期版本误把这段说明用在了 `cnets` "
+"上；`code/cnets.cpp` 中根本没有 `cn_type`。对 `cnets` 来说，模拟哪些事件类型直接由上面五个速率参数中哪些不为零决定。"
+
+#: ../../source/user-guide/cnets.md:71
+msgid "Branch-specific rates"
+msgstr "分支特异速率"
+
+#: ../../source/user-guide/cnets.md:72
+msgid ""
+"`--bsr_mode` (0: constant rate on all branches, the default; 1: one shared "
+"multiplier per branch; 2: independent per-branch rate per event type; 3: "
+"random local clock — rates are inherited top-down, changing with probability"
+" `--bsr_p` at each node), `--bsr_dist` (0: log-normal, 1: Gamma — both "
+"parameterised by `--bsr_variance`)."
+msgstr ""
+"`--bsr_mode`（0：所有分支速率相同，默认；1：每条分支一个共享 "
+"multiplier；2：每条分支、每种事件类型各自独立速率；3：random local clock，速率自上而下继承，每个节点以概率 "
+"`--bsr_p` 改变），`--bsr_dist`（0：lognormal，1：Gamma，两者都由 `--bsr_variance` 参数化）。"
+
+#: ../../source/user-guide/cnets.md:78
+msgid "Inputs"
+msgstr "输入"
+
+#: ../../source/user-guide/cnets.md:80
+msgid ""
+"A tree file (`--tree_file`) is optional; without one, a random coalescent "
+"tree is generated with exponential growth. See [File formats](../file-"
+"formats/index.md) for the tree and timing file formats."
+msgstr ""
+"树文件（`--tree_file`）可选；不提供时，按指数增长随机生成 coalescent 树。树文件和时间文件的格式见[文件格式](../file-"
+"formats/index.md)。"
+
+#: ../../source/user-guide/cnets.md:85
+msgid "Outputs"
+msgstr "输出"
+
+#: ../../source/user-guide/cnets.md:87
+msgid "Required"
+msgstr "必有"
+
+#: ../../source/user-guide/cnets.md:88
+msgid ""
+"`*-cn.txt.gz` (total copy number per site/sample), `*-tree.txt` / "
+"`*-tree.nex` (the simulated tree, calendar-time branch lengths), and "
+"`*-tree-nmut.nex` (branch lengths in expected mutations per site), "
+"`*-info.txt` / `*-mut.txt` (per-branch mutation counts and mutation list), "
+"`*-edge_rates.txt` (true per-branch rates used in the simulation — not in "
+"the original README; see [File formats](../file-formats/index.md))."
+msgstr ""
+"`*-cn.txt.gz`（每个 site、每个样本的总拷贝数），`*-tree.txt` / `*-tree.nex`（模拟的树，枝长为日历时间"
+"），`*-tree-nmut.nex`（枝长为每个 site 的期望突变数），`*-info.txt` / "
+"`*-mut.txt`（各分支突变数和突变列表），`*-edge_rates.txt`（模拟中各分支使用的真实速率；原 README "
+"中没有，见[文件格式](../file-formats/index.md)）。"
+
+#: ../../source/user-guide/cnets.md:96
+msgid "Optional"
+msgstr "可选"
+
+#: ../../source/user-guide/cnets.md:97
+msgid ""
+"`*-rel-times.txt` (tip sampling times), `*-haplotype-cn.txt.gz` (haplotype-"
+"specific copy number), `*-rcn.txt.gz` / `*-haplotype-rcn.txt.gz` (relative "
+"copy number), `*-inodes-cn.txt.gz` / `*-inodes-haplotype-cn.txt.gz` "
+"(internal-node copy number, total and haplotype-specific)."
+msgstr ""
+"`*-rel-times.txt`（tip 采样时间），`*-haplotype-cn.txt.gz`（haplotype-specific "
+"拷贝数），`*-rcn.txt.gz` / `*-haplotype-rcn.txt.gz`（相对拷贝数），`*-inodes-cn.txt.gz` /"
+" `*-inodes-haplotype-cn.txt.gz`（内部节点拷贝数，total 和 haplotype-specific）。"
+
+#: ../../source/user-guide/cnets.md:104
+msgid ""
+"The README spells this `*-inode-cn.txt.gz` (singular); the code writes "
+"`*-inodes-cn.txt.gz` (plural). The haplotype-specific variant isn't "
+"mentioned in the README at all."
+msgstr ""
+"README 中写的是 `*-inode-cn.txt.gz`（单数），代码实际写出的是 `*-inodes-cn.txt.gz`（复数）。README"
+" 完全没有提到 haplotype-specific 的版本。"
+
+#: ../../source/user-guide/cnets.md:109
+msgid "Examples"
+msgstr "示例"
+
+#: ../../source/user-guide/cnets.md:115
+msgid ""
+"Edit the parameter block at the top of the script (tree size `Ns`, `cn_max`,"
+" mutation rates `r1`-`r5`, `bsr_mode`, etc.) rather than passing flags by "
+"hand. See [Quick start](../quickstart/index.md) for a walkthrough."
+msgstr ""
+"修改脚本顶部的参数块（树大小 `Ns`、`cn_max`、突变速率 `r1`-`r5`、`bsr_mode` "
+"等），而不是手动传参数。完整示例见[快速上手](../quickstart/index.md)。"
+
