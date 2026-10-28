@@ -150,6 +150,15 @@ msgstr ""
 "gain/loss，最后 duplication/deletion。"
 
 #: ../../source/user-guide/cnetml.md:61
+msgid ""
+"Branch-specific rates (`--bsr_mode` 1-3, with `mode` 3) need model 3: "
+"only its likelihood reads per-branch rates. With any other model `cnetml`"
+" stops with an error rather than silently fitting one rate."
+msgstr ""
+"分支特异速率（`--bsr_mode` 1-3，配合 `mode` 3）需要 model 3：只有它的似然会读取每条分支的速率。使用其他 "
+"model 时，`cnetml` 报错退出，而不是悄悄只拟合一个速率。"
+
+#: ../../source/user-guide/cnetml.md:61
 msgid "Independent Markov chain dimensions (model 3 only)"
 msgstr "Independent Markov chain 的维度（仅 model 3）"
 
@@ -310,21 +319,24 @@ msgstr ""
 " `bsr_mode > 0` 时有意义），`*-segs.txt`（预处理后的拷贝数矩阵，读取输入文件时写出，文件名由 `--seg_file` "
 "指定）。"
 
-#: ../../source/user-guide/cnetml.md:131
+#: ../../source/user-guide/cnetml.md:136
 msgid ""
 "Ancestral-state mode (`mode=4`) additionally writes `<ofile>.mrca.cn` / "
 "`<ofile>.joint.cn` and `<ofile>.mrca.state` / `<ofile>.joint.state` for "
-"models 0-2. Model 3 (independent Markov chains) splits the MRCA state file "
-"by event type instead — `<ofile>.mrca.seg.state` / `.mrca.chr.state` / "
-"`.mrca.wgd.state` — while the joint state file stays a single "
-"`<ofile>.joint.state`. See [File formats](../file-formats/index.md) for "
-"column definitions."
+"models 0-2. Model 3 (independent Markov chains) splits the MRCA state "
+"file by event type instead — `<ofile>.mrca.seg.state` / `.mrca.chr.state`"
+" / `.mrca.wgd.state` — while the joint state file stays a single "
+"`<ofile>.joint.state`. Its `.cn` files also give the WGD, chromosome-"
+"level and site-level changes behind each copy number, and `.mrca.cn` the "
+"probability of the reported copy number. See [File formats](../file-"
+"formats/index.md) for column definitions."
 msgstr ""
-"祖先状态模式（`mode=4`）在 model 0-2 下还会写出 `<ofile>.mrca.cn` / `<ofile>.joint.cn` 和 "
-"`<ofile>.mrca.state` / `<ofile>.joint.state`。Model 3（independent Markov "
-"chains）则把 MRCA 状态文件按事件类型拆分为 `<ofile>.mrca.seg.state` / `.mrca.chr.state` / "
-"`.mrca.wgd.state`，联合状态文件仍是一个 `<ofile>.joint.state`。各列定义见[文件格式](../file-"
-"formats/index.md)。"
+"祖先状态模式（`mode=4`）在 model 0-2 下还会写出 `<ofile>.mrca.cn` / `<ofile>.joint.cn` "
+"和 `<ofile>.mrca.state` / `<ofile>.joint.state`。Model 3（independent Markov"
+" chains）则把 MRCA 状态文件按事件类型拆分为 `<ofile>.mrca.seg.state` / `.mrca.chr.state`"
+" / `.mrca.wgd.state`，联合状态文件仍是一个 `<ofile>.joint.state`。它的 `.cn` "
+"文件还给出构成每个拷贝数的 WGD、染色体级和 site 级变化，`.mrca.cn` 另给出所给拷贝数的概率。各列定义见[文件格式"
+"](../file-formats/index.md)。"
 
 #: ../../source/user-guide/cnetml.md:139
 msgid "Examples"
