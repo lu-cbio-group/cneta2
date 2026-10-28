@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -313,38 +314,79 @@ TEST_CASE("a WGD doubles the baseline before chromosome- and site-level changes"
     REQUIRE(get_cn_from_state_decomp(1, NO_CHANGE_HAPLOTYPE, loss, t) == 3);
 }
 
-TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all three chains", "[state]"){
-    // Haplotype-specific changes on the 3-region tree, with WGD, chromosome-level
-    // and site-level changes. Each chain is enumerated over every state of the
-    // MRCA and of its internal child: the sum gives the marginal posterior at the
-    // MRCA (including the trunk edge from the normal root), the maximum gives the
-    // joint reconstruction. Region 2's chromosome-1 gain is written as possibly
-    // before a WGD (state index times CHANGE_CHR).
+namespace {
+
+// One chain of the model-3 reconstruction: its transition matrices and the
+// states allowed at each region by the observed data
+struct ChainCase {
+    const map<double, double*>* pmats;
+    int n;
+    int root_state;
+    vector<vector<int>> tips;
+};
+
+// Probability of the data under one assignment of states to the internal
+// nodes below the root: transition probabilities on every edge into an
+// internal node or a region. The allowed states at a region are summed for
+// the marginal reconstruction and maximised for the joint one.
+double assignment_value(const evo_tree& t, int ns, const ChainCase& c, const map<int, int>& state, bool max_at_tips){
+    const int root = ns + 1;
+    auto p = [&](int child, int from, int to){ return c.pmats->at(t.edges[t.nodes[child].e_in].length)[from + to * c.n]; };
+    auto parent_state = [&](int k){ int par = t.nodes[k].parent; return par == root ? c.root_state : state.at(par); };
+    double v = 1.0;
+    for(const auto& [k, s] : state) v *= p(k, parent_state(k), s);
+    for(int i = 0; i < ns; i++){
+        double tip = 0.0;
+        for(int s : c.tips[i]){
+            double x = p(i, parent_state(i), s);
+            tip = max_at_tips ? std::max(tip, x) : tip + x;
+        }
+        v *= tip;
+    }
+    return v;
+}
+
+struct BruteForce { vector<double> mrca_post; double joint_best; };
+
+// Enumerate every assignment of states to the internal nodes
+BruteForce brute_force(const evo_tree& t, int ns, const ChainCase& c){
+    vector<int> nodes;
+    for(int k = ns + 2; k <= 2 * ns; k++) nodes.push_back(k);
+    BruteForce r{vector<double>(c.n, 0.0), 0.0};
+    vector<int> digit(nodes.size(), 0);
+    while(true){
+        map<int, int> state;
+        for(size_t j = 0; j < nodes.size(); j++) state[nodes[j]] = digit[j];
+        r.mrca_post[state.at(2 * ns)] += assignment_value(t, ns, c, state, false);
+        r.joint_best = std::max(r.joint_best, assignment_value(t, ns, c, state, true));
+        size_t j = 0;
+        while(j < digit.size() && ++digit[j] == c.n){ digit[j] = 0; j++; }
+        if(j == digit.size()) break;
+    }
+    double total = 0.0;
+    for(double v : r.mrca_post) total += v;
+    for(double& v : r.mrca_post) v /= total;
+    return r;
+}
+
+// Run the marginal and joint reconstructions on data with WGD, chromosome-
+// and site-level changes and compare every output with brute force.
+// chr_obs and site_obs hold the values as stored after parsing: total changes
+// or haplotype-specific state indices, with chromosome changes that may
+// predate a WGD multiplied by CHANGE_CHR.
+void check_three_chains(const std::string& name, evo_tree& t, int ns, int is_total, const vector<int>& num_wgd,
+                        const map<int, vector<int>>& chr_obs, const map<int, vector<vector<int>>>& site_obs){
     const int m = 1;
-    auto idx = [&](int a, int b){ return encode_change_pair(a, b, m); };
     const int none = NO_CHANGE_HAPLOTYPE;
-
-    const vector<int> num_wgd{1, 1, 1};    // all regions doubled, so the MRCA may or may not be
-    const map<int, vector<int>> chr_tip{{1, {idx(1, 0), idx(1, 0), none}}, {2, {none, none, idx(0, -1)}}};
-    const map<int, vector<vector<int>>> site_tip{
-        {1, {{idx(0, -1), none, none}, {idx(1, 0), idx(1, 0), none}, {none, none, idx(-1, 0)}}},
-        {2, {{idx(1, 1), idx(1, 0), none}, {none, idx(0, 1), idx(0, 1)}, {idx(-1, -1), none, none}}}};
-
     map<int, vector<vector<CN_CHANGE>>> vobs;
-    for(const auto& [chr, sites] : site_tip){
+    for(const auto& [chr, sites] : site_obs){
         for(const auto& s : sites){
             vector<CN_CHANGE> obs;
-            for(int i = 0; i < NS; i++){
-                int c = chr_tip.at(chr)[i];
-                if(chr == 1 && i == 1) c *= CHANGE_CHR;
-                obs.push_back(CN_CHANGE{0, num_wgd[i], c, s[i]});
-            }
+            for(int i = 0; i < ns; i++) obs.push_back(CN_CHANGE{0, num_wgd[i], chr_obs.at(chr)[i], s[i]});
             vobs[chr].push_back(obs);
         }
     }
 
-    evo_tree t = read_tree_info(data_path("tiny-tree.txt"), NS);
-    restore_mutation_rates(t, vector<double>{0, 0.01, 0.012, 0.008, 0.01, 0.02});
     vector<int> inodes = get_inodes_bottom_up(t, 0);
     OBS_DECOMP obs_decomp{/*m_max*/ 1, /*max_wgd*/ 1, /*max_chr_change*/ 1, /*max_site_change*/ 1};
     LNL_TYPE lt{};
@@ -353,7 +395,7 @@ TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all thr
     lt.max_wgd = 1;
     lt.max_chr_change_haplotype = m;
     lt.max_site_change_haplotype = m;
-    lt.is_total = 0;
+    lt.is_total = is_total;
     lt.use_repeat = 1;
     lt.cn_type = 4;
     lt.knodes = inodes;
@@ -368,111 +410,124 @@ TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all thr
     PMAT_DECOMP pmat;
     build_transition_matrices(pmat, t, inodes, qmat, dim, 0);
 
-    const int mrca = 2 * NS;
-    const int inner = NS + 2;
-    REQUIRE(t.edges[t.nodes[inner].e_in].start == mrca);
-
-    // posterior (sum) and best states (max) of one chain at the MRCA and its child
-    struct ChainResult { vector<double> post; int best_mrca; int best_inner; };
-    auto solve = [&](const map<double, double*>& pmats, int n, int root_state, const vector<int>& tips){
-        auto p = [&](int child, int from, int to){ return pmats.at(t.edges[t.nodes[child].e_in].length)[from + to * n]; };
-        ChainResult r{vector<double>(n, 0.0), -1, -1};
-        double best = -1, second = -1;
-        for(int a = 0; a < n; a++){
-            for(int b = 0; b < n; b++){
-                double v = p(mrca, root_state, a) * p(inner, a, b);
-                for(int k : {mrca, inner}){
-                    for(int e = 0; e < 2; e++){
-                        int child = t.edges[t.nodes[k].e_ot[e]].end;
-                        if(child < NS) v *= p(child, k == mrca ? a : b, tips[child]);
-                    }
-                }
-                r.post[a] += v;
-                if(v > best){ second = best; best = v; r.best_mrca = a; r.best_inner = b; }
-                else if(v > second){ second = v; }
-            }
-        }
-        REQUIRE(best > second * (1 + 1e-6));    // no tie in the joint optimum
-        double total = 0.0;
-        for(double v : r.post) total += v;
-        for(double& v : r.post) v /= total;
-        return r;
-    };
-
-    ChainResult wgd = solve(pmat.pmats_wgd, dim.dim_wgd, 0, num_wgd);
-    map<int, ChainResult> chr;
-    map<int, vector<ChainResult>> site;
-    for(const auto& [c, tips] : chr_tip) chr.emplace(c, solve(pmat.pmats_chr, dim.dim_chr, none, tips));
-    for(const auto& [c, sites] : site_tip){
-        for(const auto& tips : sites) site[c].push_back(solve(pmat.pmats_seg, dim.dim_seg, none, tips));
-    }
-
-    auto read_probs = [](std::istringstream& ss, int n){
-        vector<double> v(n);
-        for(double& x : v) REQUIRE(ss >> x);
+    // states allowed at a region by an observed value
+    auto states = build_pair_states(m);
+    auto with_total = [&](int change){
+        vector<int> v;
+        for(int s = 0; s < (int)states.size(); s++) if(states[s].first + states[s].second == change) v.push_back(s);
         return v;
     };
+    auto chr_tip = [&](int v){
+        if(!is_total) return vector<int>{v >= CHANGE_CHR ? v / CHANGE_CHR : v};
+        if(v != 0 && v % CHANGE_CHR == 0){    // after a WGD, or a change of twice the size before it
+            vector<int> after = with_total(v / CHANGE_CHR), before = with_total(2 * (v / CHANGE_CHR));
+            after.insert(after.end(), before.begin(), before.end());
+            return after;
+        }
+        return with_total(v);
+    };
+    auto site_tip = [&](int v){ return is_total ? with_total(v) : vector<int>{v}; };
+
+    ChainCase wgd{&pmat.pmats_wgd, dim.dim_wgd, 0, {}};
+    for(int i = 0; i < ns; i++) wgd.tips.push_back({num_wgd[i]});
+    map<int, ChainCase> chr;
+    map<int, vector<ChainCase>> site;
+    for(const auto& [c, obs] : chr_obs){
+        ChainCase cc{&pmat.pmats_chr, dim.dim_chr, none, {}};
+        for(int v : obs) cc.tips.push_back(chr_tip(v));
+        chr.emplace(c, cc);
+    }
+    for(const auto& [c, sites] : site_obs){
+        for(const auto& obs : sites){
+            ChainCase cc{&pmat.pmats_seg, dim.dim_seg, none, {}};
+            for(int v : obs) cc.tips.push_back(site_tip(v));
+            site[c].push_back(cc);
+        }
+    }
+    for(const auto& [c, cc] : chr) for(const auto& tip : cc.tips) REQUIRE(!tip.empty());
+    for(const auto& [c, ccs] : site) for(const auto& cc : ccs) for(const auto& tip : cc.tips) REQUIRE(!tip.empty());
+
+    BruteForce bf_wgd = brute_force(t, ns, wgd);
+    map<int, BruteForce> bf_chr;
+    map<int, vector<BruteForce>> bf_site;
+    for(const auto& [c, cc] : chr) bf_chr.emplace(c, brute_force(t, ns, cc));
+    for(const auto& [c, ccs] : site) for(const auto& cc : ccs) bf_site[c].push_back(brute_force(t, ns, cc));
+
+    // For total copy numbers, the .seg/.chr probability files are by the copy
+    // number of that chain alone (2 + total change)
+    auto as_written = [&](const vector<double>& post, int ncol){
+        if(!is_total) return post;
+        vector<double> v(ncol, 0.0);
+        for(int s = 0; s < (int)post.size(); s++) v.at(2 + states[s].first + states[s].second) += post[s];
+        return v;
+    };
+    auto read_row = [](std::ifstream& f, int nlabel, int& ncol){
+        std::string line, tok;
+        REQUIRE(std::getline(f, line));
+        std::istringstream ss(line);
+        vector<std::string> fields;
+        while(ss >> tok) fields.push_back(tok);
+        ncol = fields.size() - nlabel;
+        vector<double> v;
+        for(int k = nlabel; k < (int)fields.size(); k++) v.push_back(std::stod(fields[k]));
+        return std::make_pair(fields, v);
+    };
     auto require_probs = [](const vector<double>& written, const vector<double>& expected){
+        REQUIRE(written.size() == expected.size());
         for(size_t s = 0; s < expected.size(); s++){
-            INFO("state " << s);
+            INFO("column " << s);
             REQUIRE_THAT(written[s], Catch::Matchers::WithinAbs(expected[s], 2e-6));
         }
     };
 
-    std::string prefix = out_prefix("three_chains");
+    std::string prefix = out_prefix(name);
     reconstruct_marginal_ancestral_state_decomp(t, vobs, inodes, obs_decomp, lt, prefix, 0);
-    std::string line, node, label;
-
+    std::string line;
+    int ncol = 0;
     {
         std::ifstream f(prefix + ".mrca.wgd.state");
         REQUIRE(std::getline(f, line));
-        REQUIRE(std::getline(f, line));
-        std::istringstream ss(line);
-        ss >> node;
-        require_probs(read_probs(ss, dim.dim_wgd), wgd.post);
+        auto [fields, v] = read_row(f, 1, ncol);
+        require_probs(v, bf_wgd.mrca_post);
     }
     {
         std::ifstream f(prefix + ".mrca.chr.state");
         REQUIRE(std::getline(f, line));
-        for(const auto& [c, r] : chr){
+        for(const auto& [c, bf] : bf_chr){
             INFO("chr " << c);
-            REQUIRE(std::getline(f, line));
-            std::istringstream ss(line);
-            ss >> node >> label;
-            REQUIRE(label == std::to_string(c));
-            require_probs(read_probs(ss, dim.dim_chr), r.post);
+            auto [fields, v] = read_row(f, 2, ncol);
+            REQUIRE(fields[1] == std::to_string(c));
+            require_probs(v, as_written(bf.mrca_post, ncol));
         }
     }
     {
         std::ifstream f(prefix + ".mrca.seg.state");
         REQUIRE(std::getline(f, line));
-        for(const auto& [c, rs] : site){
-            for(size_t nc = 0; nc < rs.size(); nc++){
+        for(const auto& [c, bfs] : bf_site){
+            for(size_t nc = 0; nc < bfs.size(); nc++){
                 INFO("chr " << c << " site " << nc + 1);
-                REQUIRE(std::getline(f, line));
-                std::istringstream ss(line);
-                ss >> node >> label;
-                REQUIRE(label == std::to_string(c) + "_" + std::to_string(nc + 1));
-                require_probs(read_probs(ss, dim.dim_seg), rs[nc].post);
+                auto [fields, v] = read_row(f, 2, ncol);
+                REQUIRE(fields[1] == std::to_string(c) + "_" + std::to_string(nc + 1));
+                require_probs(v, as_written(bfs[nc].mrca_post, ncol));
             }
         }
     }
     {
-        // most likely (cnA, cnB) over all combinations of the three chains
-        auto states = build_pair_states(m);
+        // most likely copy number over all combinations of the three chains
         std::ifstream f(prefix + ".mrca.cn");
         REQUIRE(std::getline(f, line));
-        REQUIRE(line == get_cn_call_header(0, true));
-        for(const auto& [c, rs] : site){
-            for(size_t nc = 0; nc < rs.size(); nc++){
+        REQUIRE(line == get_cn_call_header(is_total, true));
+        for(const auto& [c, bfs] : bf_site){
+            for(size_t nc = 0; nc < bfs.size(); nc++){
                 std::map<std::pair<int, int>, double> post_cn;
                 for(int w = 0; w < dim.dim_wgd; w++){
                     for(int a = 0; a < dim.dim_chr; a++){
                         for(int s = 0; s < dim.dim_seg; s++){
                             int base = 1 << w;
-                            std::pair<int, int> cn{std::max(0, base + states[a].first + states[s].first),
-                                                   std::max(0, base + states[a].second + states[s].second)};
-                            post_cn[cn] += wgd.post[w] * chr.at(c).post[a] * rs[nc].post[s];
+                            int cnA = std::max(0, base + states[a].first + states[s].first);
+                            int cnB = std::max(0, base + states[a].second + states[s].second);
+                            std::pair<int, int> key = is_total ? std::make_pair(cnA + cnB, 0) : std::make_pair(cnA, cnB);
+                            post_cn[key] += bf_wgd.mrca_post[w] * bf_chr.at(c).mrca_post[a] * bfs[nc].mrca_post[s];
                         }
                     }
                 }
@@ -481,35 +536,116 @@ TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all thr
                 INFO("chr " << c << " site " << nc + 1);
                 REQUIRE(std::getline(f, line));
                 std::istringstream ss(line);
-                int nd, ch, st, cnA, cnB, w, ca, cb, sa, sb;
+                int nd, ch, st, w;
                 double prob;
-                REQUIRE(ss >> nd >> ch >> st >> cnA >> cnB >> w >> ca >> cb >> sa >> sb >> prob);
-                REQUIRE(std::make_pair(cnA, cnB) == best->first);
+                REQUIRE(ss >> nd >> ch >> st);
+                REQUIRE(nd == 2 * ns + 1);
+                if(is_total){
+                    int cn, cc, sc;
+                    REQUIRE(ss >> cn >> w >> cc >> sc >> prob);
+                    REQUIRE(cn == best->first.first);
+                    REQUIRE(cn == std::max(0, 2 * (1 << w) + cc + sc));
+                }else{
+                    int cnA, cnB, ca, cb, sa, sb;
+                    REQUIRE(ss >> cnA >> cnB >> w >> ca >> cb >> sa >> sb >> prob);
+                    REQUIRE(std::make_pair(cnA, cnB) == best->first);
+                    REQUIRE(cnA == std::max(0, (1 << w) + ca + sa));
+                    REQUIRE(cnB == std::max(0, (1 << w) + cb + sb));
+                }
                 REQUIRE_THAT(prob, Catch::Matchers::WithinAbs(best->second, 2e-6));
-                REQUIRE(cnA == std::max(0, (1 << w) + ca + sa));
-                REQUIRE(cnB == std::max(0, (1 << w) + cb + sb));
             }
         }
     }
 
-    prefix = out_prefix("three_chains_joint");
+    // The joint states written for all internal nodes at a site must reach the
+    // maximum over every assignment, for each chain (ties are allowed)
+    prefix = out_prefix(name + "_joint");
     reconstruct_joint_ancestral_state_decomp(t, vobs, inodes, obs_decomp, lt, prefix, 0);
     std::ifstream f(prefix + ".joint.state");
     REQUIRE(std::getline(f, line));
-    int nrow = 0;
+    map<std::string, map<int, std::array<int, 3>>> joint;    // site, node -> chain states
     while(std::getline(f, line)){
         std::istringstream ss(line);
         int nd, w, a, s;
+        std::string label;
         REQUIRE(ss >> nd >> label >> w >> a >> s);
-        int c = std::stoi(label.substr(0, label.find('_')));
-        int nc = std::stoi(label.substr(label.find('_') + 1)) - 1;
-        INFO("node " << nd << " site " << label);
-        REQUIRE((nd == mrca + 1 || nd == inner + 1));
-        bool at_mrca = nd == mrca + 1;
-        REQUIRE(w == (at_mrca ? wgd.best_mrca : wgd.best_inner));
-        REQUIRE(a == (at_mrca ? chr.at(c).best_mrca : chr.at(c).best_inner));
-        REQUIRE(s == (at_mrca ? site.at(c)[nc].best_mrca : site.at(c)[nc].best_inner));
-        nrow++;
+        joint[label][nd - 1] = {w, a, s};
     }
-    REQUIRE(nrow == 2 * 6);    // two internal nodes, six distinct site patterns
+    int nsite = 0;
+    for(const auto& [c, bfs] : bf_site){
+        for(size_t nc = 0; nc < bfs.size(); nc++){
+            std::string label = std::to_string(c) + "_" + std::to_string(nc + 1);
+            INFO("site " << label);
+            REQUIRE(joint.count(label));
+            const auto& at = joint.at(label);
+            REQUIRE((int)at.size() == ns - 1);
+            map<int, int> sw, sa, ss;
+            for(const auto& [nd, st] : at){ sw[nd] = st[0]; sa[nd] = st[1]; ss[nd] = st[2]; }
+            REQUIRE_THAT(assignment_value(t, ns, wgd, sw, true), Catch::Matchers::WithinRel(bf_wgd.joint_best, 1e-9));
+            REQUIRE_THAT(assignment_value(t, ns, chr.at(c), sa, true), Catch::Matchers::WithinRel(bf_chr.at(c).joint_best, 1e-9));
+            REQUIRE_THAT(assignment_value(t, ns, site.at(c)[nc], ss, true), Catch::Matchers::WithinRel(bfs[nc].joint_best, 1e-9));
+            nsite++;
+        }
+    }
+    REQUIRE(nsite == (int)joint.size());    // every site pattern in the data is distinct
+}
+
+evo_tree five_region_tree(){
+    // regions 1-5, normal 6, root 7, internal nodes 8-11 (11 is the MRCA)
+    auto path = std::filesystem::temp_directory_path() / "cneta_test_state_decomp" / "five-region-tree.txt";
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream out(path);
+    out << "start\tend\tlength\teid\tnmut\n"
+        << "8\t1\t10.0\t1\t0\n" << "8\t2\t11.0\t2\t0\n" << "9\t8\t2.5\t3\t0\n" << "9\t3\t12.0\t4\t0\n"
+        << "10\t9\t3.0\t5\t0\n" << "10\t4\t15.0\t6\t0\n" << "11\t10\t4.0\t7\t0\n" << "11\t5\t20.0\t8\t0\n"
+        << "7\t11\t3.5\t9\t0\n" << "7\t6\t0\t10\t0\n";
+    out.close();
+    return read_tree_info(path.string(), 5);
+}
+
+}  // namespace
+
+TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all three chains", "[state]"){
+    // WGD, chromosome-level and site-level changes. All regions have a WGD, so
+    // whether the MRCA has one is uncertain (WGDs cannot be undone). Some
+    // chromosome changes are stored as possibly predating a WGD; with total
+    // copy numbers, chromosome 1 of region 2 is +1 after or +2 before the WGD,
+    // and its neighbours have +2, so the joint optimum takes the second reading.
+    const vector<double> rates{0, 0.01, 0.012, 0.008, 0.01, 0.02};
+    const int m = 1;
+    auto idx = [&](int a, int b){ return encode_change_pair(a, b, m); };
+    const int none = NO_CHANGE_HAPLOTYPE;
+
+    SECTION("3 regions, haplotype-specific"){
+        evo_tree t = read_tree_info(data_path("tiny-tree.txt"), NS);
+        restore_mutation_rates(t, rates);
+        check_three_chains("chains3_hap", t, NS, 0, {1, 1, 1},
+            {{1, {idx(1, 0), idx(1, 0) * CHANGE_CHR, none}}, {2, {none, none, idx(0, -1)}}},
+            {{1, {{idx(0, -1), none, none}, {idx(1, 0), idx(1, 0), none}, {none, none, idx(-1, 0)}}},
+             {2, {{idx(1, 1), idx(1, 0), none}, {none, idx(0, 1), idx(0, 1)}, {idx(-1, -1), none, none}}}});
+    }
+    SECTION("3 regions, total"){
+        evo_tree t = read_tree_info(data_path("tiny-tree.txt"), NS);
+        restore_mutation_rates(t, rates);
+        check_three_chains("chains3_total", t, NS, 1, {1, 1, 1},
+            {{1, {2, 1 * CHANGE_CHR, 2}}, {2, {0, 0, -1 * CHANGE_CHR}}},
+            {{1, {{-1, 0, 0}, {1, 1, 0}, {0, 0, -1}}},
+             {2, {{2, 1, 0}, {0, 1, 1}, {-2, 0, 0}}}});
+    }
+    SECTION("5 regions, haplotype-specific"){
+        evo_tree t = five_region_tree();
+        restore_mutation_rates(t, rates);
+        check_three_chains("chains5_hap", t, 5, 0, {1, 1, 1, 1, 1},
+            {{1, {idx(1, 0), idx(1, 0) * CHANGE_CHR, idx(1, 0), none, none}}, {2, {none, none, idx(0, -1), idx(0, -1), none}}},
+            {{1, {{idx(0, -1), none, none, none, none}, {idx(1, 0), idx(1, 0), none, none, idx(0, 1)}, {none, none, idx(-1, 0), none, none}}},
+             {2, {{idx(1, 1), idx(1, 0), none, none, none}, {none, idx(0, 1), idx(0, 1), idx(0, 1), none}, {idx(-1, -1), none, none, none, idx(-1, 0)}}}});
+    }
+    SECTION("5 regions, total"){
+        evo_tree t = five_region_tree();
+        restore_mutation_rates(t, rates);
+        check_three_chains("chains5_total", t, 5, 1, {1, 1, 1, 1, 1},
+            {{1, {2, 1 * CHANGE_CHR, 2, 0, 0}}, {2, {0, 0, -1, -1, -1 * CHANGE_CHR}}},
+            {{1, {{-1, 0, 0, 0, 0}, {1, 1, 0, 0, 1}, {0, 0, -1, 0, 0}}},
+             {2, {{2, 1, 0, 0, 0}, {0, 1, 1, 1, 0}, {-2, 0, 0, 0, -1}}}});
+    }
 }
