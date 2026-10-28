@@ -109,6 +109,42 @@ def test_leaving_the_invariant_sites_out_keeps_the_bias_correction(
         expected["mode2_logl"]["tiny-tree.txt"], rel=LOGL_TOLERANCE)
 
 
+@pytest.mark.parametrize("model", [
+    2,
+    pytest.param(3, marks=pytest.mark.xfail(strict=True, reason=(
+        "model 3 scores the two layouts differently: it splits each sample's "
+        "copy numbers into chromosome-level and site-level changes using all "
+        "sites, so a site that is normal in every sample can carry a "
+        "site-level change on a chromosome with an inferred chromosome-level "
+        "change; incl_all 0 drops it as invariant and adds an all-normal "
+        "pattern instead, and sums the chromosome-level terms only over the "
+        "chromosomes that keep a site (-39.72 vs -31.82 on this fixture)"))),
+])
+def test_leaving_the_invariant_sites_out_scores_the_same(model, data_dir,
+                                                         cnetml, run):
+    """incl_all 1 lists every site; incl_all 0 lists the variable ones and
+    adds the likelihood of one all-normal site times the number left out.
+    The two layouts describe the same data, so a given tree must score the
+    same under both."""
+    scores = {}
+    for incl_all in (1, 0):
+        result = run([
+            cnetml,
+            *cli.cnetml_score_args(
+                cn_file=data_dir / "tiny-cn.txt.gz",
+                times_file=data_dir / "tiny-rel-times.txt",
+                tree_file=data_dir / "tiny-tree.txt",
+                **{"-d": model, "--incl_all": incl_all},
+            ),
+        ]).assert_ok()
+        scores[incl_all] = parse_scored_logl(result.stdout)
+
+    assert scores[0] == pytest.approx(scores[1], rel=LOGL_TOLERANCE), (
+        f"model {model}: incl_all 0 scores {scores[0]}, "
+        f"incl_all 1 scores {scores[1]}"
+    )
+
+
 def test_cn_type_is_required(data_dir, cnetml, run):
     """`--cn_type` decides which event types the model considers, and there is
     no right default. It used to have none and no check either: without it the
