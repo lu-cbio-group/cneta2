@@ -106,6 +106,26 @@ def test_cn_type_is_required(data_dir, cnetml, run):
     assert_clean_rejection(result, mentions="cn_type")
 
 
+def test_bsr_mode_is_refused_without_model_3(data_dir, cnetml, run):
+    """Branch-specific rates (--bsr_mode > 0) only enter the likelihood of
+    model 3 (independent Markov chains, -d 3). With the default -d 2 the
+    option used to be accepted and ignored: every rate multiplier stayed at
+    1.0, every shift-edge subset scored the same, and the search reported
+    no shift edges. It must now stop with a message naming both options."""
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--mode": 3, "--optim": 1, "--estmu": 0, "--bsr_mode": 3},
+        ),
+    ])
+
+    assert_clean_rejection(result, mentions="bsr_mode")
+    assert "model" in result.stdout + result.stderr, str(result)
+
+
 def test_true_tree_beats_a_wrong_topology(data_dir, cnetml, run):
     """A cheap sanity check on the science, not just the plumbing.
 
@@ -200,7 +220,11 @@ def test_fixed_tree_with_branch_specific_rates_runs(tmp_path, data_dir, cnetml,
     """Mode 3 with bsr_mode 3 (random local clock) on the tiny fixture: the
     path the researchers use for rate shifts, and the only test that runs
     the shift-edge search. Checks that the run completes and that the
-    summary records the settings. About 0.04 s on the fixture."""
+    summary records the settings. About 0.08 s on the fixture.
+
+    Model 3 (-d 3) is required: only its likelihood reads the per-branch
+    rates. With the suite's default -d 2 the multipliers never moved, and
+    cnetml now refuses that combination."""
     out_file = tmp_path / "fixed.txt"
     run([
         cnetml,
@@ -209,12 +233,13 @@ def test_fixed_tree_with_branch_specific_rates_runs(tmp_path, data_dir, cnetml,
             times_file=data_dir / "tiny-rel-times.txt",
             tree_file=data_dir / "tiny-tree.txt",
             **{"--mode": 3, "-o": out_file, "--optim": 1, "--estmu": 0,
-               "--bsr_mode": 3},
+               "--bsr_mode": 3, "-d": 3},
         ),
     ]).assert_ok()
 
     summary = read_summary(tmp_path / "fixed.txt.summary.txt")
     assert summary["mode"] == "3"
+    assert summary["model"] == "3"
     assert summary["bsr_mode"] == "3"
     assert summary["rlc_criterion"] == "AIC"
     assert float(summary["raw_logL"]) < 0

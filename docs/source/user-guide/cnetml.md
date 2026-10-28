@@ -57,6 +57,10 @@ Model (`--model`/`-d`)
     also be used for reconstruction, but assumes a strict event order:
     WGD, then chromosomal gain/loss, then duplication/deletion.
 
+  Branch-specific rates (`--bsr_mode` 1-3, with `mode` 3) need model 3:
+  only its likelihood reads per-branch rates. With any other model
+  `cnetml` stops with an error rather than silently fitting one rate.
+
 Independent Markov chain dimensions (model 3 only)
 : - `max_wgd` — at most 1; simulations allow at most one WGD per
     sample.
