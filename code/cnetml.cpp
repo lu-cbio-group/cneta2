@@ -1957,15 +1957,16 @@ int main(int argc, char** const argv){
     // a list of nodes to loop over for bottom-up likelihood computation, and the root is last
     vector<int> knodes(Ns, 0);
     // "n" for BIC and AICc in the bsr_mode=3 search (compute_rlc_ic, optimization.hpp):
-    // the number of bins that enter the likelihood. Invariant bins enter either as sites
-    // (is_bin=0 with incl_all=1 keeps every bin, so Nchar already counts them) or through
-    // the correct_bias term that adds their likelihood back when the site list leaves
-    // them out; with neither they are dropped and do not count. The likelihood is the
-    // same under both layouts, so n must be too. [2026-10-27 changed] Decided with the
-    // group: normal sites are part of the likelihood by default, so they count; the
-    // previous rule (n = Nchar) counted them with incl_all=1 only.
-    bool invar_bins_are_sites = (!is_bin && incl_all);
-    int n_sites_for_ic = Nchar + ((!invar_bins_are_sites && correct_bias) ? num_invar_bins : 0);
+    // the number of sites that enter the likelihood. The invariant sites enter either
+    // way: with is_bin=0 and incl_all=1 each is a site of its own, computed separately,
+    // so Nchar already counts them; otherwise the site list leaves them out and the
+    // correct_bias term adds the likelihood of one all-normal site times their number.
+    // With incl_all=0 and correct_bias=0 they are dropped and do not count. The
+    // likelihood is the same under both layouts, so n must be too. [2026-10-27 changed]
+    // Decided with the group: normal sites are part of the likelihood by default, so
+    // they count; the previous rule (n = Nchar) counted them with incl_all=1 only.
+    bool invar_sites_listed = (!is_bin && incl_all);
+    int n_sites_for_ic = Nchar + ((!invar_sites_listed && correct_bias) ? num_invar_bins : 0);
     lnl_type = {model, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype, is_total, cons, max_tobs, age, use_repeat, correct_bias, num_invar_bins, n_sites_for_ic, cn_type, knodes};
     // important variables for independent Markov chains model
     obs_decomp = {m_max, max_wgd_sample, max_chr_change, max_site_change};

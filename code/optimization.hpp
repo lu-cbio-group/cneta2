@@ -431,7 +431,7 @@ inline int rlc_shared_param_count(const evo_tree& rtree, int cons, int n_types_p
 // rlc_penalized_score above. K*n_types_per_edge is the number of free parameters unlocked
 // by the accepted shift edges (see rlc_penalized_score's original comment for why
 // n_types_per_edge must multiply K). n_sites (lnl_type.n_sites_for_ic) is the number of
-// bins that enter the likelihood, used as BIC's sample size. `score` is
+// sites that enter the likelihood, used as BIC's sample size. `score` is
 // "higher is better" (negated IC) for whichever of AIC/BIC opt_type.rlc_criterion selects,
 // so existing comparison code (pick_best_improving, sorting) keeps working unchanged; aic
 // and bic are both always computed so callers can log/report the non-selected criterion
@@ -471,7 +471,7 @@ inline RlcIC compute_rlc_ic(double nlnl, int K, int n_types_per_edge, int n_site
 // knows which n and k the printed AIC, BIC and AICc values rest on.
 inline void print_rlc_ic_setup(const char* search, int n_sites, int n_types_per_edge, int k_shared){
     cout << "[RLC][" << search << "] information criteria: n=" << n_sites
-         << " bins in the likelihood; AIC/BIC count K x " << n_types_per_edge
+         << " sites in the likelihood; AIC/BIC count K x " << n_types_per_edge
          << " shift parameters; AICc also counts the " << k_shared
          << " shared ones (node times, reference rates)" << endl;
 }

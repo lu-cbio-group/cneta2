@@ -182,7 +182,7 @@ TEST_CASE("pick_best_improving decides whether the trunk edge is picked as a shi
 }
 
 TEST_CASE("compute_rlc_ic counts the shared parameters in AICc only", "[optimization]"){
-    // 1000 bins, two rate types per edge, K=2 shift edges and 7 shared parameters
+    // 1000 sites, two rate types per edge, K=2 shift edges and 7 shared parameters
     // (5 node ages + 2 reference rates): AIC and BIC see k = 4, AICc sees k = 11.
     RlcIC ic = compute_rlc_ic(1000.0, 2, 2, 1000, 0, 7);
 
