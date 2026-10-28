@@ -71,8 +71,8 @@ prefix=sim-data-1   # The prefix of input files
 input=$idir/"$prefix"-cn.txt.gz
 # input=$idir/"$prefix"-allele-cn.txt.gz
 if [[ ! -f $input ]]; then
-  echo "Input file $input does not exit!"
-  exit 0
+  echo "Error: input file $input does not exist (run bin/run-cnets.sh first, or set CNETA_OUT)" >&2
+  exit 1
 fi
 seg_file=$idir/"$prefix"-segs.txt
 
@@ -292,8 +292,8 @@ elif [[ $mode -eq 3 ]]; then
   mltree2=$dir/MaxL-"$suffix"-fixt.txt
   echo "Estimating the branch lengths (and mutation rates) of the given tree $mltree"
   if [[ ! -f $mltree ]]; then
-  echo "$mltree does not exist!"
-  exit
+    echo "Error: tree file $mltree does not exist (run mode 0 first, or set fixt_tree=1)" >&2
+    exit 1
   fi
 
   log=$dir/std_cnetml_"$suffix"-mode"$mode"
