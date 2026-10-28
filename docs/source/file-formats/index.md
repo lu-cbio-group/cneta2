@@ -249,6 +249,12 @@ that skips comment lines sees the same leading columns as for models
   top of that baseline. A copy number is the baseline plus both changes,
   e.g. `cn 3 num_wgd 0 chr_change 1 site_change 0`. With total copy
   numbers the changes are summed over the two haplotypes.
+- The chains are independent, so their changes can take one haplotype
+  below zero (e.g. a chromosome-level and a site-level loss on the same
+  haplotype with one copy). Each haplotype's copy number is floored at
+  0. With total copy numbers, where the haplotypes are not shown, such a
+  line has `cn` larger than the baseline plus both changes, e.g.
+  `cn 1 num_wgd 0 chr_change -1 site_change -1`.
 - A chain that is not modelled (its maximum change is 0, or the data
   have no events of that type) is reported as no change.
 - `prob` (`.mrca.cn` only) is the posterior probability of the reported
