@@ -111,6 +111,10 @@ void reconstruct_joint_ancestral_state_decomp(const evo_tree &rtree, const map<i
 
 void initialize_lnl_state_table(LNL_TABLE& lnl_table, STATE_TABLE& state_table, int ntotn, DIM_DECOMP& dim_decomp);
 
+// Copy number of a node from its WGD, chromosome-level and site-level states:
+// total copy number if lnl_type.is_total, else the haplotype-specific state index
+int get_cn_from_state_decomp(int state_wgd, int state_chr, int state_site, const LNL_TYPE& lnl_type);
+
 void set_change_wgd_chr(const vector<CN_CHANGE>& obs, const evo_tree& rtree, vector<int>& sample_num_wgd, vector<int>& change_chr);
 
 void print_cn_mrca(copy_number_change& cn_mrca);

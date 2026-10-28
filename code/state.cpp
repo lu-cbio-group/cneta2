@@ -1369,16 +1369,15 @@ void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_t
   }
 }
 
-// TODO: to check validity and update
+// Haplotype-specific change pair of a chromosome- or site-level state index.
+// Indices follow build_pair_states(), which is also how the rate matrices and
+// the observed tip states are indexed.
 static pair<int, int> decomp_state_to_change_pair(int state, int max_change_haplotype) {
-    if (state == NO_CHANGE_HAPLOTYPE) {
-        return {0, 0};
+    static unordered_map<int, vector<pair<int, int>>> cache;
+    if (!cache.count(max_change_haplotype)) {
+        cache[max_change_haplotype] = build_pair_states(max_change_haplotype);
     }
-
-    int width = max_change_haplotype + 2;
-    int a = state / width + MIN_CHANGE_HAPLOTYPE;
-    int b = state % width + MIN_CHANGE_HAPLOTYPE;
-    return {a, b};
+    return get_pair_from_index(state, cache[max_change_haplotype]);
 }
 
 

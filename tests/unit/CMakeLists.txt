@@ -34,6 +34,7 @@ add_executable(cneta_unit_tests
     test_tree_op.cpp
     test_optimization.cpp
     test_portable_shuffle.cpp
+    test_state_decomp.cpp
 )
 
 target_link_libraries(cneta_unit_tests PRIVATE cneta_core Catch2::Catch2WithMain)
