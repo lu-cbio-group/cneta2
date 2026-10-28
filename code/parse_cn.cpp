@@ -490,7 +490,7 @@ vector<double> read_time_info(const string& filename, const int Ns, int& age, in
 
   if(infile.is_open()){
     string line;
-    while(!getline(infile, line).eof()){
+    while(getline(infile, line)){
       if(line.empty()) continue;
 
       vector<string> split;
@@ -711,7 +711,7 @@ void read_cn(vector<vector<vector<int>>>& s_info, const string& filename, int Ns
     string line;
     int prev_sample = 1;
 
-    while(!getline(infile, line).eof()){
+    while(getline(infile, line)){
       if(line.empty()) continue;
 
       vector<string> split;
