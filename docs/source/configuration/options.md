@@ -145,9 +145,9 @@ the simulation (`cnets` has no `--cn_type` option).
 | `--model` | `-d` | 2 | 0 / 1 / 2 / 3 | 0: Mk (deprecated); 1: one-step bounded, total (deprecated); 2: one-step bounded, haplotype-specific; 3: independent Markov chains (recommended for data with chromosome gain/loss and WGD) |
 | `--constrained` | | 1 | 0 / 1 | Branch-length constraint. 0: none; 1: fixed total time (constrained by age and sampling times) |
 | `--estmu` | `-u` | 0 | 0 / 1 | 0: rates fixed at the input values; 1: estimate a constant mutation rate. Reliable only with `constrained=1` and differing sampling times |
-| `--bsr_mode` | | 0 | 0 / 1 / 2 / 3 | Branch-specific rate inference. 0: constant; 1: one shared multiplier per branch; 2: independent rate per branch and event type; 3: random local clock (ML-RLC) |
+| `--bsr_mode` | | 0 | 0 / 1 / 2 / 3 | Branch-specific rate inference. 0: constant; 1: one shared multiplier per branch; 2: independent rate per branch and event type; 3: random local clock (ML-RLC). Values > 0 require `model=3`; otherwise `cnetml` stops with an error |
 | `--optim` | | 1 | 0 / 1 | Optimiser. 0: Simplex; 1: L-BFGS-B |
-| `--cn_type` | | **no default** | 0–4 | Event types whose rates are estimated. 0: segment level only (dup/del); 1: chromosome gain/loss + WGD; 2: dup/del + WGD; 3: dup/del + chromosome gain/loss; 4: all. **Uninitialised if omitted — always set it explicitly** |
+| `--cn_type` | | **required** | 0–4 | Event types whose rates are estimated. 0: segment level only (dup/del); 1: chromosome gain/loss + WGD; 2: dup/del + WGD; 3: dup/del + chromosome gain/loss; 4: all. Required; `cnetml` stops with an error if it is missing |
 
 ### Copy-number limits (rate-matrix dimensions)
 
@@ -225,7 +225,7 @@ Fixed values when `estmu=0`; starting values when `estmu=1` or
 
 | Option | Short | Default | Values | Description |
 |---|---|---|---|---|
-| `--estimate_bsr0_first` | | 1 | 0 / 1 | 1: calibrate the reference rates with `bsr_mode=0` first, then estimate per-branch multipliers relative to them; 0: skip calibration and estimate the root–LUCA branch's own rate jointly with the per-branch multipliers/shifts |
+| `--estimate_bsr0_first` | | 0 | 0 / 1 | 0: skip calibration and estimate the trunk edge's (root → MRCA) own rate jointly with the per-branch multipliers/shifts; 1: calibrate the reference rates with `bsr_mode=0` first, then estimate per-branch multipliers relative to them |
 | `--rlc_search_method` | | 1 | 0 / 1 / 2 | `bsr_mode=3` only: outer search over shift edges. 0: exhaustive over all subsets (small trees only); 1: stepwise greedy; 2: genetic algorithm (not implemented; exits with an error) |
 | `--rlc_criterion` | | 0 | 0 / 1 | `bsr_mode=3` only: model-selection criterion. 0: AIC; 1: BIC |
 

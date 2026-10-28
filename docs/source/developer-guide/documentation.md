@@ -154,8 +154,8 @@ inline code, links (with the same targets) and emphasis. A link missing
 from a translation fails the strict build.
 
 To add a language, add its code to `TRANSLATIONS` in `docs/Makefile`, a
-build target like `html-zh`, and an entry in
-`_templates/sidebar/lang-switch.html`.
+build target like `html-zh`, and an entry in `site_languages` in
+`_templates/header-links.html`.
 
 ## C++ API pages
 

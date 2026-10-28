@@ -262,8 +262,8 @@ msgstr ""
 #: ../../source/developer-guide/documentation.md:156
 msgid ""
 "To add a language, add its code to `TRANSLATIONS` in `docs/Makefile`, a "
-"build target like `html-zh`, and an entry in `_templates/sidebar/lang-"
-"switch.html`."
+"build target like `html-zh`, and an entry in `site_languages` in "
+"`_templates/header-links.html`."
 msgstr ""
 
 #: ../../source/developer-guide/documentation.md:160

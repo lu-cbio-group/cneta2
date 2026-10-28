@@ -833,10 +833,11 @@ msgstr "0：速率固定为输入值；1：估计（常数）突变速率。需�
 msgid ""
 "Branch-specific rate inference. 0: constant; 1: one shared multiplier per "
 "branch; 2: independent rate per branch and event type; 3: random local clock"
-" (ML-RLC)"
+" (ML-RLC). Values > 0 require `model=3`; otherwise `cnetml` stops with an "
+"error"
 msgstr ""
 "分支特异速率推断。0：常数；1：每条分支一个共享 multiplier；2：每条分支、每种事件类型各自独立速率；3：random local clock"
-"（ML-RLC）"
+"（ML-RLC）。取值 > 0 时必须 `model=3`，否则 `cnetml` 报错退出"
 
 #: ../../source/configuration/options.md
 msgid "`--optim`"
@@ -851,10 +852,6 @@ msgid "`--cn_type`"
 msgstr ""
 
 #: ../../source/configuration/options.md
-msgid "**no default**"
-msgstr "**无默认值**"
-
-#: ../../source/configuration/options.md
 msgid "0–4"
 msgstr ""
 
@@ -862,10 +859,10 @@ msgstr ""
 msgid ""
 "Event types whose rates are estimated. 0: segment level only (dup/del); 1: "
 "chromosome gain/loss + WGD; 2: dup/del + WGD; 3: dup/del + chromosome "
-"gain/loss; 4: all. **Uninitialised if omitted — always set it explicitly**"
+"gain/loss; 4: all. Required; `cnetml` stops with an error if it is missing"
 msgstr ""
 "估计哪些事件类型的速率。0：仅 segment 级（dup/del）；1：染色体 gain/loss + WGD；2：dup/del + "
-"WGD；3：dup/del + 染色体 gain/loss；4：全部。**未传入时变量未初始化，应始终显式指定**"
+"WGD；3：dup/del + 染色体 gain/loss；4：全部。必填；未传入时 `cnetml` 报错退出"
 
 #: ../../source/configuration/options.md:150
 msgid "Copy-number limits (rate-matrix dimensions)"
@@ -1215,12 +1212,13 @@ msgstr ""
 
 #: ../../source/configuration/options.md
 msgid ""
-"1: calibrate the reference rates with `bsr_mode=0` first, then estimate per-"
-"branch multipliers relative to them; 0: skip calibration and estimate the "
-"root–LUCA branch's own rate jointly with the per-branch multipliers/shifts"
+"0: skip calibration and estimate the trunk edge's (root → MRCA) own rate "
+"jointly with the per-branch multipliers/shifts; 1: calibrate the reference "
+"rates with `bsr_mode=0` first, then estimate per-branch multipliers relative"
+" to them"
 msgstr ""
-"1：先按 `bsr_mode=0` 校准参考速率，再估计相对它的各分支 multiplier；0：不校准，把 root–LUCA 分支自身速率与各分支 "
-"multiplier/shift 联合估计"
+"0：不校准，把 trunk edge（root → MRCA）自身速率与各分支 multiplier/shift 联合估计；1：先按 `bsr_mode=0` "
+"校准参考速率，再估计相对它的各分支 multiplier"
 
 #: ../../source/configuration/options.md
 msgid "`--rlc_search_method`"
