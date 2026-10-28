@@ -100,7 +100,10 @@ void write_pattern_all(const map<int, vector<vector<int>>>& vobs);
 
 // Create likelihood vectors and state vectors at the tip node for reconstructing joint ancestral state, for independent chain model
 // L_sk_k (S_sk_k) has one row for each tree node and one column for each possible state
-void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, LNL_TABLE& lnl_table, STATE_TABLE& state_table, const LNL_TYPE& lnl_type, int debug);
+void initialize_asr_table_decomp(const vector<CN_CHANGE>& obs, const evo_tree& rtree, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, LNL_TABLE& lnl_table, STATE_TABLE& state_table, const LNL_TYPE& lnl_type, bool use_edge_rates, int debug);
+
+// Rate-matrix states compatible with an observed copy number change at a tip
+void set_tip_states_decomp(const CN_CHANGE& obs_val, vector<int>& tip_states_chr, vector<int>& tip_states_site, const LNL_TYPE& lnl_type, int debug);
 
 // Rate-matrix states compatible with an observed copy number change at a tip
 void set_tip_states_decomp(const CN_CHANGE& obs_val, vector<int>& tip_states_chr, vector<int>& tip_states_site, const LNL_TYPE& lnl_type, int debug);
@@ -113,15 +116,17 @@ double get_max_children_decomp2(const vector<vector<double>>& L_sk_k, vector<vec
 // Assuming each observed copy number is composed of three type of events.
 // Sum over all possible states for initial and final nodes
 // Allow at most one WGD event along a branch
-void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_table, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, int debug);
+void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_table, const evo_tree& rtree, const vector<int>& knodes, const PMAT_DECOMP& pmat_decomp, const DIM_DECOMP& dim_decomp, bool use_edge_rates, int debug);
 
 
 // Infer the copy number of the MRCA given a tree at a site, assuming independent Markov chains
-double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const vector<int>& knodes, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type_orig, string ofile, int debug);
+// use_edge_rates: build one P matrix per edge from rtree.edge_rates instead of using the global rates
+double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const vector<int>& knodes, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type_orig, bool use_edge_rates, string ofile, int debug);
 
 
 // Infer the copy number of all internal nodes given a tree at a site, assuming independent Markov chains
-void reconstruct_joint_ancestral_state_decomp(const evo_tree &rtree, const map<int, vector<vector<CN_CHANGE>>> &vobs_change, vector<int> &knodes, const OBS_DECOMP &obs_decomp, const LNL_TYPE &lnl_type_orig, string ofile, int debug);
+// use_edge_rates: as in reconstruct_marginal_ancestral_state_decomp
+void reconstruct_joint_ancestral_state_decomp(const evo_tree &rtree, const map<int, vector<vector<CN_CHANGE>>> &vobs_change, vector<int> &knodes, const OBS_DECOMP &obs_decomp, const LNL_TYPE &lnl_type_orig, bool use_edge_rates, string ofile, int debug);
 
 void initialize_lnl_state_table(LNL_TABLE& lnl_table, STATE_TABLE& state_table, int ntotn, DIM_DECOMP& dim_decomp);
 
