@@ -7,6 +7,12 @@
 
 #include <gsl/gsl_multimin.h>
 
+#include <atomic>
+#include <cmath>
+#include <functional>
+#include <ostream>
+#include <string>
+
 #include "lbfgsb/lbfgsb_new.h"
 
 #include "common.hpp"
@@ -15,7 +21,10 @@
 
 // using namespace std;
 
-const double ERROR_X = 1.0e-4;
+// Relative step of the finite-difference gradient, taken in the optimiser's
+// own coordinates (log scale for rates, multipliers and branch lengths; see
+// OPT_TYPE::log_scale). Central differences, so the error is O(step^2).
+const double FD_REL_STEP = 1.0e-4;
 // The minimum mutation rates allowed
 const double MIN_MRATE = 1.0e-20;
 // The maximum mutation rates allowed
@@ -85,7 +94,66 @@ struct OPT_TYPE{
   // global reference rates, estimate only per-edge multipliers relative to that
   // reference.
   bool estimate_bsr0_first = false;
+
+  // L-BFGS-B stopping and restart settings (cnetml --factr, --max_restarts,
+  // --loglh_epsilon; see L_BFGS_B).
+  double factr = 1e7;         // stop when an iteration reduces f by less than factr * machine epsilon, relative to |f|
+  int max_restarts = 2;       // after a relative-reduction stop, restart from the stopping point at most this often
+  double restart_tol = 1e-3;  // a restart that gains less than this in -logL ends the restarts
+  bool print_fits = false;    // print one line per fit: value, iterations, evaluations, stop reason
+  // Set by max_likelihood_BFGS for the current parameter vector: 1 where the
+  // optimiser works on log(x) (rates, multipliers, branch lengths, root age),
+  // 0 where it works on x itself (node-age ratios in (0,1)). 0-based, one
+  // entry per optimised variable. L_BFGS_B reads it.
+  vector<char> log_scale;
+  // Scratch state of the running fit, owned by L_BFGS_B: the bounds in the
+  // internal coordinates (read by optimGradient), the model parameters
+  // rebuilt from the internal point (optimFunc), and the evaluation count.
+  vector<double> lower_internal, upper_internal, x_buffer;
+  long n_evals = 0;
 };
+
+// Coordinates the optimiser works in: log(x) for quantities that span orders
+// of magnitude (rates 1e-20..1, multipliers 1e-3..100, branch lengths and
+// the root age in years), x itself for node-age ratios in (0,1). On one
+// scale a step, the finite-difference step and the stopping tests mean the
+// same relative change for every parameter; on the raw scale a rate of
+// 5e-4 and an age of 60 years shared one step length and one tolerance.
+inline double to_internal(double x, bool log_scale){ return log_scale ? std::log(x) : x; }
+inline double from_internal(double z, bool log_scale){ return log_scale ? std::exp(z) : z; }
+
+// Finite-difference gradient of f at z (0-based arrays of length n), every
+// probe kept inside [l, u]: central where both sides fit, one-sided at a
+// bound. The step is rel_step * max(|z_i|, 1). z is left unchanged.
+// Returns f(z).
+double fd_gradient(const std::function<double(const double*)>& f, int n,
+                   double* z, const double* l, const double* u, double* g,
+                   double rel_step = FD_REL_STEP);
+
+// How one L-BFGS-B fit (with its restarts) ended.
+struct BfgsResult {
+    double fmin = 1e20;      // minimised negative log-likelihood
+    std::string stop;        // the task string L-BFGS-B stopped with
+    int fail = 0;            // 0 converged, 1 iteration limit, 51 warning, 52 error
+    int iterations = 0;      // L-BFGS-B iterations, restarts included
+    long evaluations = 0;    // objective evaluations, gradients included
+    int restarts = 0;        // restarts used (OPT_TYPE::max_restarts)
+};
+
+// Counts over every fit of the program run, for the summary cnetml prints
+// at the end. Atomic because fits run inside OpenMP loops.
+struct OptimStats {
+    std::atomic<long> fits{0};
+    std::atomic<long> stop_gradient{0};    // CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL
+    std::atomic<long> stop_reduction{0};   // CONVERGENCE: REL_REDUCTION_OF_F <= FACTR*EPSMCH
+    std::atomic<long> stop_maxit{0};       // --miter reached
+    std::atomic<long> stop_other{0};       // line-search warning or error
+    std::atomic<long> restarts{0};
+    std::atomic<long> restarts_gained{0};  // restarts that gained more than restart_tol
+    std::atomic<long> evaluations{0};
+};
+OptimStats& optim_stats();
+void print_optim_stats(std::ostream& out);
 
 struct GSL_PARAM{
   evo_tree rtree;
@@ -247,22 +315,17 @@ void update_tree_rates(LNL_TYPE &lnl_type, evo_tree &rtree, double *x, int npara
 double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, double x[]);
 
 
-/**
-	the approximated derivative function
-	@param x the input vector x
-	@param dfx the derivative at x
-	@return the function value at x
-*/
-double derivativeFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int ndim, double x[], double dfx[]);
+// The objective in the optimiser's coordinates: maps the internal point (see
+// OPT_TYPE::log_scale) to the model parameters and calls targetFunk.
+double optimFunc(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int nvar, const double *vars);
 
-double optimFunc(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int nvar, double *vars);
-
+// Its finite-difference gradient (fd_gradient, bounds from opt_type). Returns f(x).
 double optimGradient(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int nvar, double *x, double *dfx);
 
 void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, int m, double *x, double *l, double *u, int *nbd,
 		double *Fmin, int *fail,
 		double factr, double pgtol,
-		int *fncount, int *grcount, int maxit, char *msg,
+		int *fncount, int *grcount, int *niter, int maxit, char *msg,
 		int trace, int nREPORT);
 
 
@@ -272,12 +335,13 @@ void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const ma
  2. double* vars : initial values of the variables
  3. double* lower : lower bounds of the variables
  4. double* upper : upper bounds of the variables
- 5. double pgtol: gradient tolerance
- 5. int maxit : max # of iterations
- @return minimized function value
- After the function is invoked, the values of x will be updated
+ The stopping tests come from opt_type: tolerance (projected gradient),
+ factr (relative reduction), miter (iterations), and max_restarts.
+ The fit runs in the coordinates given by opt_type.log_scale; x, l and u
+ are the model's own values, and x holds the optimised values on return.
+ @return the minimum and how the fit stopped
 */
-double L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, double* x, double* l, double* u);
+BfgsResult L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, double* x, double* l, double* u);
 
 // [2026-07-14] BsrRateSlot moved up next to OPT_TYPE (see near the top of this file) so
 // OPT_TYPE can cache a vector<BsrRateSlot>.
