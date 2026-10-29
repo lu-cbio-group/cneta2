@@ -57,3 +57,7 @@ If you use **cnets** or **cnetml**, please cite:
 - [Lu B, Curtius K, Graham TA, Yang Z, Barnes CP. CNETML: maximum likelihood inference of phylogeny from copy number profiles of multiple samples. Genome Biol 24, 144 (2023).](https://doi.org/10.1186/s13059-023-02983-0)
 
 The cnetml2 paper is currently in preparation; a citation will be added here once it is available.
+
+Once releases are archived on Zenodo, each release will also have a DOI
+for citing the software itself. The citation data lives in `CITATION.cff`;
+the developer guide's page on versions and releases says how to update it.

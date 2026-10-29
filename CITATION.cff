@@ -1,0 +1,42 @@
+# Citation metadata in the Citation File Format (https://citation-file-format.github.io/).
+# `preferred-citation` is the paper to cite for now; GitHub shows it under
+# "Cite this repository". `authors` are the software's authors, whom Zenodo
+# credits when a release is archived. How to update either: the developer
+# guide, "Versions and releases", "Keeping the citation data up to date".
+cff-version: 1.2.0
+type: software
+title: "CNETA: Copy Number Evolutionary Tree Analysis"
+abstract: >-
+  Programs to simulate copy number alterations along a phylogenetic tree
+  (cnets) and to infer the phylogenetic tree, node ages and mutation rates
+  from the copy number profiles of multiple samples of one patient, by
+  maximum likelihood (cnetml) or by MCMC (cnetmcmc).
+authors:
+  - family-names: Lu
+    given-names: Bingxin
+repository-code: "https://github.com/lu-cbio-group/cneta2"
+url: "https://lu-cbio-group.github.io/cneta2/"
+license: GPL-3.0
+message: >-
+  If you use CNETA, please cite the CNETML paper below and this repository.
+preferred-citation:
+  type: article
+  title: "CNETML: maximum likelihood inference of phylogeny from copy number profiles of multiple samples"
+  authors:
+    - family-names: Lu
+      given-names: Bingxin
+    - family-names: Curtius
+      given-names: Kit
+    - family-names: Graham
+      given-names: Trevor A.
+    - family-names: Yang
+      given-names: Ziheng
+    - family-names: Barnes
+      given-names: Chris P.
+      orcid: "https://orcid.org/0000-0002-9459-1395"
+  journal: Genome Biology
+  volume: 24
+  issue: 1
+  start: 144
+  year: 2023
+  doi: 10.1186/s13059-023-02983-0
