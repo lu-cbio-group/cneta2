@@ -38,12 +38,12 @@ links `cneta_core` into the three executables `cnets`, `cnetml`,
 ```bash
 ./build.sh              # no arguments: shows help
 ./build.sh local 4      # configure + build in code/build/, 4 cores
-./build.sh Eureka2 8    # source code/envs/setup_env_Eureka2.sh first, then build
+./build.sh Eureka2 8    # source envs/setup_env_Eureka2.sh first, then build
 ./build.sh clean        # rm -rf code/build/
 ```
 
 For a `target` other than `local`, it sources
-`code/envs/setup_env_<target>.sh` (module loads for that cluster) before
+`envs/setup_env_<target>.sh` (module loads for that cluster) before
 running `cmake -Wno-dev ..` and `make -j<cores>` in `code/build/`. See
 [Installation](../installation/index.md) for the per-platform walkthrough.
 

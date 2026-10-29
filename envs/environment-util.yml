@@ -1,12 +1,12 @@
 # Conda environment for the R and Python scripts in util/.
 #
-#   conda env create -f util/environment.yml
+#   conda env create -f envs/environment-util.yml
 #   conda activate cneta-util
 #   Rscript util/install_cran_packages.R   # only for compare_trees.R / check_convergence.R
 #
 # The same file works on macOS and Linux (workstations, HPC with conda, Windows
 # via WSL/Ubuntu). This covers postprocessing only, not building cnets/cnetml/cnetmcmc;
-# for that see code/environment-mac.yml or code/environment-linux.yml.
+# for that see envs/environment-mac.yml or envs/environment-linux.yml.
 #
 # Quartet (compare_trees.R) and rwty (check_convergence.R) are on CRAN but not
 # on conda; util/install_cran_packages.R installs them into this environment.

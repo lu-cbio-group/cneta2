@@ -11,9 +11,9 @@ for the current architecture and what's still planned.
 
 | File | Environment | What it is for | Who needs it |
 |---|---|---|---|
-| `code/environment-mac.yml` | `cneta-build` | Build and run `cnets` / `cnetml` / `cnetmcmc` on macOS | Everyone on macOS |
-| `code/environment-linux.yml` | `cneta-build` | Build and run `cnets` / `cnetml` / `cnetmcmc` on Linux, HPC with conda, Windows via WSL (Ubuntu) | Everyone on Linux |
-| `util/environment.yml` | `cneta-util` | Plotting and other R/Python scripts in `util/` (same file on macOS and Linux) | Anyone who plots or post-processes results |
+| `envs/environment-mac.yml` | `cneta-build` | Build and run `cnets` / `cnetml` / `cnetmcmc` on macOS | Everyone on macOS |
+| `envs/environment-linux.yml` | `cneta-build` | Build and run `cnets` / `cnetml` / `cnetmcmc` on Linux, HPC with conda, Windows via WSL (Ubuntu) | Everyone on Linux |
+| `envs/environment-util.yml` | `cneta-util` | Plotting and other R/Python scripts in `util/` (same file on macOS and Linux) | Anyone who plots or post-processes results |
 | `docs/environment.yml` | `cneta-docs` | Build the documentation website | Website maintainers only |
 
 You need a conda installation, for example
@@ -23,10 +23,10 @@ You need a conda installation, for example
 
 | System | Steps |
 |---|---|
-| macOS | Install the Xcode Command Line Tools (`xcode-select --install`), then use `code/environment-mac.yml` |
-| Linux workstation | Use `code/environment-linux.yml` |
-| HPC with conda | Use `code/environment-linux.yml` |
-| HPC without conda | `cd code && ./build.sh <cluster> <cores>` with `code/envs/setup_env_<cluster>.sh` (module loads); see the HPC tab below |
+| macOS | Install the Xcode Command Line Tools (`xcode-select --install`), then use `envs/environment-mac.yml` |
+| Linux workstation | Use `envs/environment-linux.yml` |
+| HPC with conda | Use `envs/environment-linux.yml` |
+| HPC without conda | `cd code && ./build.sh <cluster> <cores>` with `envs/setup_env_<cluster>.sh` (module loads); see the HPC tab below |
 | Windows | Install WSL with Ubuntu, then follow the Linux steps inside Ubuntu |
 
 ## Building from source
@@ -45,7 +45,7 @@ Create the build environment and compile for your platform:
 
 ```bash
 xcode-select --install          # once, if not already installed
-conda env create -f code/environment-mac.yml
+conda env create -f envs/environment-mac.yml
 conda activate cneta-build
 cd code && ./build.sh local 4   # 4 = number of cores
 ```
@@ -56,13 +56,13 @@ Works on Apple Silicon and Intel.
 :::{tab-item} Linux / HPC with conda
 
 ```bash
-conda env create -f code/environment-linux.yml
+conda env create -f envs/environment-linux.yml
 conda activate cneta-build
 cd code && ./build.sh local 4   # 4 = number of cores
 ```
 
 Why the compiler and `sysroot` versions are pinned is explained at the top
-of `code/environment-linux.yml`: in short, so the build works and the
+of `envs/environment-linux.yml`: in short, so the build works and the
 programs also run on older clusters (e.g. CentOS 7, RHEL 8).
 :::
 
@@ -76,10 +76,10 @@ inside Ubuntu.
 :::{tab-item} HPC without conda
 
 On most High Performance Clusters dependencies are provided as environment modules.
-The build script, `./build.sh <cluster> <cores>`, sources `code/envs/setup_env_<cluster>.sh`
+The build script, `./build.sh <cluster> <cores>`, sources `envs/setup_env_<cluster>.sh`
 and loads the modules for you automatically; no need to source it yourself first.
 
-Once your `code/envs/setup_env_<cluster>.sh` script exists, you can build the code like so:
+Once your `envs/setup_env_<cluster>.sh` script exists, you can build the code like so:
 
 ```bash
 cd code && ./build.sh Eureka2 <cores>
@@ -94,7 +94,7 @@ Boost/1.85.0
 GSL/2.8
 ```
 
-To add another cluster, add `code/envs/setup_env_<name>.sh` following the
+To add another cluster, add `envs/setup_env_<name>.sh` following the
 same pattern and run `./build.sh <name> <cores>`.
 
 TODO: scheduler-specific notes (queue/partition names, resource-request
@@ -156,7 +156,7 @@ The R and Python scripts in `util/` (see
 environment, the same file on macOS and Linux:
 
 ```bash
-conda env create -f util/environment.yml
+conda env create -f envs/environment-util.yml
 conda activate cneta-util
 Rscript util/install_cran_packages.R   # only needed for compare_trees.R and check_convergence.R
 ```

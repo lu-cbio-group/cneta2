@@ -42,7 +42,7 @@ def test_build_script_shows_help_without_arguments(repo_root, run):
 
 def test_build_script_rejects_an_unknown_target(repo_root, run):
     # Anything that is not 'local' or 'clean' is treated as a cluster name and
-    # must have a matching envs/setup_env_<name>.sh.
+    # must have a matching <repo>/envs/setup_env_<name>.sh.
     result = run(["./build.sh", "NotACluster"], cwd=repo_root / "code")
 
     assert result.returncode != 0, str(result)

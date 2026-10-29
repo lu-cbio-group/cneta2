@@ -42,9 +42,6 @@
 *.bashrc
 *.zshrc
 
-# LBFGSB files
-code/lbfgsb
-
 # example files
 example/
 

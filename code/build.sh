@@ -15,7 +15,7 @@ show_help() {
     echo "                    or a cluster name (e.g., Eureka2)."
     echo ""
     echo "                    Note: Cluster scripts must be located at:"
-    echo "                    ./envs/setup_env_<target>.sh"
+    echo "                    <repo>/envs/setup_env_<target>.sh"
     echo ""
     echo "  cores             (Optional) Number of CPU cores to use."
     echo "                    Defaults to 1 if not specified."
@@ -52,7 +52,8 @@ fi
 
 # 5. Target Selection Logic
 if [ "$1" != "local" ]; then
-    ENV_SCRIPT="envs/setup_env_${1}.sh"
+    # The environment files live in envs/ at the top of the repository.
+    ENV_SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/envs/setup_env_${1}.sh"
     if [ -f "$ENV_SCRIPT" ]; then
         echo "Loading environment from $ENV_SCRIPT..."
         source "$ENV_SCRIPT"
@@ -76,7 +77,7 @@ fi
 echo "Configuring cneta..."
 mkdir -p build
 cd build
-# Inside a conda environment (code/environment-mac.yml or code/environment-linux.yml), look for Boost/GSL/zlib/OpenMP
+# Inside a conda environment (envs/environment-mac.yml or envs/environment-linux.yml), look for Boost/GSL/zlib/OpenMP
 # there first, so libraries installed elsewhere (e.g. Homebrew) are not picked up.
 if [ -n "$CONDA_PREFIX" ]; then
     echo "Using libraries from conda environment $CONDA_PREFIX"

@@ -1,15 +1,15 @@
 # Conda environment for building and running cnets, cnetml and cnetmcmc on Linux
 # (x86_64): workstations, HPC clusters with conda, and Windows via WSL/Ubuntu.
 #
-#   conda env create -f code/environment-linux.yml
+#   conda env create -f envs/environment-linux.yml
 #   conda activate cneta-build
 #   cd code && ./build.sh local 4
 #
-# On macOS use code/environment-mac.yml instead. On an HPC without conda, use
-# code/envs/setup_env_<cluster>.sh (./build.sh <cluster> <cores>).
+# On macOS use envs/environment-mac.yml instead. On an HPC without conda, use
+# envs/setup_env_<cluster>.sh (./build.sh <cluster> <cores>).
 #
 # Plotting and other scripts in util/ need a separate environment:
-# util/environment.yml (the same file on macOS and Linux).
+# envs/environment-util.yml (the same file on macOS and Linux).
 #
 # Why the versions below are pinned:
 #   c-compiler/cxx-compiler <2  version 2 no longer sets CC/CXX/AR on activation,
