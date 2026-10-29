@@ -1615,6 +1615,8 @@ int main(int argc, char** const argv){
     double loglh_epsilon;
     double tolerance;
     int miter;
+    double factr;
+    int max_restarts;
     int speed_nni;
 
     int Ns;   // number of samples
@@ -1755,6 +1757,8 @@ int main(int argc, char** const argv){
     ("nstop,e", po::value<int>(&max_static)->default_value(10), "Stop after this number of times that the tree does not get improved")
     ("tolerance,r", po::value<double>(&tolerance)->default_value(0.01), "tolerance value in maximization methods")
     ("miter,m", po::value<int>(&miter)->default_value(2000), "maximum number of iterations in maximization")
+    ("factr", po::value<double>(&factr)->default_value(1e7), "L-BFGS-B stops when an iteration reduces the negative log-likelihood by less than factr times the machine precision, relative to its value (1e7: about 2e-9; smaller is stricter and slower)")
+    ("max_restarts", po::value<int>(&max_restarts)->default_value(2), "after L-BFGS-B stops on that relative-reduction test, restart it from the stopping point at most this many times; a restart that gains less than loglh_epsilon ends them (0: never restart)")
     ("loglh_epsilon", po::value<double>(&loglh_epsilon)->default_value(0.001), "tolerance value bewteen log likelihood values")
     ("ssize,z", po::value<double>(&ssize)->default_value(0.01), "initial step size used in GSL optimization")
     ("scale_tobs", po::value<double>(&scale_tobs)->default_value(1.0), "scale factor to get lower limit of root age when doing constrained optimization (BFGS) based on maximimum sample time difference.")
@@ -2006,6 +2010,15 @@ int main(int argc, char** const argv){
     opt_type.estimate_bsr0_first = (bool)estimate_bsr0_first;
     opt_type.rlc_raw_logL = std::numeric_limits<double>::quiet_NaN();
     opt_type.rlc_penalized_score = std::numeric_limits<double>::quiet_NaN();
+    opt_type.factr = factr;
+    opt_type.max_restarts = max_restarts;
+    opt_type.restart_tol = loglh_epsilon;
+    opt_type.print_fits = debug > 0;
+    if(optim == BFGS && (mode == 0 || mode == 1 || mode == 3)){
+        cout << "[optim] L-BFGS-B: central differences on log-scaled rates, multipliers and branch lengths"
+             << "; tolerance=" << tolerance << " factr=" << factr << " miter=" << miter
+             << " max_restarts=" << max_restarts << " (restart gain tolerance " << loglh_epsilon << ")" << endl;
+    }
 
     if(bootstrap){
         cout << "\nDoing bootstapping " << endl;
@@ -2158,7 +2171,9 @@ int main(int argc, char** const argv){
 
     gsl_rng_free(r);
 
-    TimePoint t_program_end = now(); 
+    print_optim_stats(cout);
+
+    TimePoint t_program_end = now();
     cout << "[TIME] Total program time: "
          << elapsed_seconds(t_program_start, t_program_end) << " s" << endl;
 }

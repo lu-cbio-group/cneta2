@@ -33,6 +33,7 @@ add_executable(cneta_unit_tests
     test_parse_cn.cpp
     test_tree_op.cpp
     test_optimization.cpp
+    test_optimiser.cpp
     test_portable_shuffle.cpp
 )
 

@@ -33,15 +33,16 @@
       "change is intended. Record a change together with its reason."
     ],
     "_generated": {
-      "date": "2026-10-15",
+      "date": "2026-10-28",
       "platform": "macOS 15 arm64, AppleClang 17.0.0, GSL 2.8, -O3 -ffp-contract=off",
-      "omp_num_threads": 1
+      "omp_num_threads": 1,
+      "note": "hill_climbing re-recorded 2026-10-28 when L-BFGS-B moved to log-scaled parameters and central differences; the simulated digests are unchanged"
     },
     "cnets_ns3_seed12345_cn_sha256": "19efd3cfc37d55e9a7d452ca6ab043b53e61dd85e4772ff6160828a8c337e642",
     "cnets_ns5_seed12345_cn_sha256": "066e9a4940ec2e45a4bcdf9f0f39a1d90cc07d9f53b74ab0430319edee2df202",
     "hill_climbing_ns5_seed12345": {
-      "neg_logl": 73.0621,
-      "clades": [[1, 2], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5, 6], [1, 2, 4, 5], [4, 5]]
+      "neg_logl": 73.1472,
+      "clades": [[1, 2, 3, 4, 5], [1, 2, 3, 4, 5, 6], [1, 3, 4, 5], [1, 4], [1, 4, 5]]
     }
   }
 }

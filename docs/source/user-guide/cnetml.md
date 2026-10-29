@@ -105,6 +105,29 @@ Tree search (`tree_search`)
   - `1` — heuristic/hill-climbing. For at least 5 samples.
   - `2` — exhaustive. Efficient for up to 7 samples.
 
+Optimiser (`--optim 1`, L-BFGS-B, the default)
+: - `tolerance` — stop when the projected gradient is below this value
+    (default 0.01).
+  - `factr` — stop when an iteration reduces the negative log-likelihood
+    by less than `factr` times the machine precision, relative to its
+    value (default 1e7, about 2e-9). Smaller is stricter and slower.
+  - `max_restarts` — after a stop on that relative-reduction test, restart
+    from the stopping point up to this many times (default 2); a restart
+    that gains less than `loglh_epsilon` ends them.
+  - `miter` — maximum iterations per fit (default 2000).
+
+  The optimiser works on the logarithm of every rate, multiplier, branch
+  length and root age, and on the node-age ratios as they are, so one step
+  and one tolerance mean the same relative change for every parameter.
+  The gradient is taken by central differences. At the end of a run
+  `cnetml` prints how many fits stopped on which test; `--verbose 1` adds
+  one line per fit.
+
+  With the defaults a fit can stop a few hundredths of a log-likelihood
+  unit short of its optimum. For final runs, `--tolerance 1e-3 --factr
+  1e5` brings that down to the print precision at about twice the run
+  time again.
+
 Mutation types (`cn_type`)
 : - `0` — segment only.
   - `1` — chromosome+WGD.

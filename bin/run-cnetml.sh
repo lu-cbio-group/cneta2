@@ -124,6 +124,10 @@ correct_bias=1  # Whether or not to correct acquisition bias in likelihood compu
 opt=1   # 1: L-BFGS-B method; 0: simplex method
 tolerance=1e-2
 miter=2000
+# L-BFGS-B stops when an iteration gains less than factr times the machine precision (relative);
+# smaller is stricter and slower. After such a stop it restarts from that point up to max_restarts times.
+factr=1e7
+max_restarts=2
 
 # Bounds on the number of events per haplotype; they set the dimension of the rate matrices.
 # Values below are the program defaults. They must be >= the observed max for the data:
@@ -190,7 +194,7 @@ fi
 
 # Options appended to every cnetml call below, so the main run and
 # its bootstrap replicates always use the same settings
-extra_opts="--is_rcn $is_rcn --max_chr_change_haplotype $max_chr_change_haplotype --max_site_change_haplotype $max_site_change_haplotype --bsr_mode $bsr_mode --rlc_search_method $rlc_search_method --rlc_criterion $rlc_criterion --estimate_bsr0_first $estimate_bsr0_first"
+extra_opts="--is_rcn $is_rcn --max_chr_change_haplotype $max_chr_change_haplotype --max_site_change_haplotype $max_site_change_haplotype --bsr_mode $bsr_mode --rlc_search_method $rlc_search_method --rlc_criterion $rlc_criterion --estimate_bsr0_first $estimate_bsr0_first --factr $factr --max_restarts $max_restarts"
 
 
 ####################### Set output directory and run the program ###############

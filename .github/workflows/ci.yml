@@ -147,7 +147,10 @@ jobs:
   # Leak checking is off: the programs free little before they exit, and
   # leaks are not what this job is for. Built at -O1, which the sanitizers
   # recommend and which keeps the test suite to about two minutes (at -O0
-  # it takes six).
+  # it takes six). The tests marked `slow` are left out: the five-sample
+  # exhaustive search takes about a minute at -O3 on four threads and more
+  # than the test runner's 600-second limit under the sanitizers, and the
+  # tiny-fixture searches exercise the same code. The main job runs them.
   sanitizers:
     name: ubuntu-latest, sanitizers
     runs-on: ubuntu-latest
@@ -197,5 +200,5 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install -r tests/requirements.txt
 
-      - name: End-to-end tests (pytest)
-        run: pytest tests -v -m "not build"
+      - name: End-to-end tests (pytest, without the slow tests)
+        run: pytest tests -v -m "not build and not slow"

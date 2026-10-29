@@ -1439,55 +1439,79 @@ double targetFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, co
 
 
 
-/**
-	the approximated derivative function
-	@param x variables to estimate 
-	@param dfx the derivative at x
-	@return the function value at x
-*/
-double derivativeFunk(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int ndim, double x[], double dfx[]){
-    int debug = 0;
-
-    double *h = new double[ndim + 1];
-    double temp;
-    int dim;
-
-    double fx = targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, x);
-
-	for(dim = 1; dim <= ndim; dim++){
-        temp = x[dim];
-        h[dim] = ERROR_X * fabs(temp);
-        if(h[dim] == 0.0) h[dim] = ERROR_X;
-        x[dim] = temp + h[dim];
-        h[dim] = x[dim] - temp;
-
-        dfx[dim] = (targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, x));
-        x[dim] = temp;
-	}
-
-	for(dim = 1; dim <= ndim; dim++){
-        dfx[dim] = (dfx[dim] - fx) / h[dim];
-        if(debug){
-            cout << "dfx[dim] " << dfx[dim] << endl;
+double fd_gradient(const std::function<double(const double*)>& f, int n,
+                   double* z, const double* l, const double* u, double* g,
+                   double rel_step){
+    double fz = f(z);
+    for(int i = 0; i < n; i++){
+        double zi = z[i];
+        double h = rel_step * std::max(std::fabs(zi), 1.0);
+        bool up_ok = zi + h <= u[i];
+        bool down_ok = zi - h >= l[i];
+        if(up_ok && down_ok){
+            z[i] = zi + h;
+            double fp = f(z);
+            z[i] = zi - h;
+            double fm = f(z);
+            g[i] = (fp - fm) / (2 * h);
+        }else if(up_ok){
+            z[i] = zi + h;
+            g[i] = (f(z) - fz) / h;
+        }else if(down_ok){
+            z[i] = zi - h;
+            g[i] = (fz - f(z)) / h;
+        }else if(u[i] > l[i]){
+            // the box is narrower than the step: use its two ends
+            z[i] = u[i];
+            double fp = f(z);
+            z[i] = l[i];
+            double fm = f(z);
+            g[i] = (fp - fm) / (u[i] - l[i]);
+        }else{
+            g[i] = 0.0;   // a fixed variable
         }
+        z[i] = zi;
     }
-
-    delete [] h;
-
-    // restore rtree (including edge_rates for bsr_mode>0) to the state at x,
-    // so callers see a consistent tree after gradient computation
-    targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, x);
-
-	return fx;
+    return fz;
 }
 
 
-double optimFunc(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int nvar, double *vars){
-    return targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, vars-1);
+double optimFunc(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int nvar, const double *vars){
+    // targetFunk reads x[1..nvar]; the model's values come from the internal
+    // point through opt_type.log_scale (all zero when the scale is the raw one).
+    vector<double>& x = opt_type.x_buffer;
+    if((int)x.size() < nvar + 1) x.resize(nvar + 1, 0.0);
+    bool scaled = (int)opt_type.log_scale.size() == nvar;
+    for(int i = 0; i < nvar; i++){
+        x[i + 1] = scaled ? from_internal(vars[i], opt_type.log_scale[i]) : vars[i];
+    }
+    opt_type.n_evals++;
+    return targetFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, x.data());
 }
 
 double optimGradient(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int nvar, double *x, double *dfx){
-    return derivativeFunk(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nvar, x - 1, dfx - 1);
+    auto f = [&](const double* z){
+        return optimFunc(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, nvar, z);
+    };
+    return fd_gradient(f, nvar, x, opt_type.lower_internal.data(), opt_type.upper_internal.data(), dfx);
+}
+
+
+OptimStats& optim_stats(){
+    static OptimStats stats;
+    return stats;
+}
+
+void print_optim_stats(std::ostream& out){
+    const OptimStats& s = optim_stats();
+    if(s.fits == 0) return;
+    out << "[optim] L-BFGS-B fits: " << s.fits
+        << "; stopped on the gradient test: " << s.stop_gradient
+        << ", on the relative-reduction test: " << s.stop_reduction
+        << ", at the iteration limit: " << s.stop_maxit
+        << ", other: " << s.stop_other
+        << "; restarts: " << s.restarts << " (" << s.restarts_gained << " gained more than the tolerance)"
+        << "; objective evaluations: " << s.evaluations << endl;
 }
 
 
@@ -1495,7 +1519,7 @@ double optimGradient(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs,
 void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, int m, double *x, double *l, double *u, int *nbd,
 		double *Fmin, int *fail,
 		double factr, double pgtol,
-		int *fncount, int *grcount, int maxit, char *msg,
+		int *fncount, int *grcount, int *niter, int maxit, char *msg,
 		int trace, int nREPORT){
 	char task[60];
 	double f, *g, dsave[29], *wa;
@@ -1508,6 +1532,7 @@ void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const ma
 	if(n == 0){ /* not handled in setulb */
 		*fncount = 1;
 		*grcount = 0;
+		*niter = 0;
 
     *Fmin = optimFunc(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, n, u);
 		strcpy(msg, "NOTHING TO DO");
@@ -1571,6 +1596,7 @@ void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const ma
 
 	*Fmin = f;
 	*fncount = *grcount = isave[33];
+	*niter = iter;
 	if(trace){
 		cout << "final value " << *Fmin << endl;
 		if(iter < maxit && *fail == 0)
@@ -1597,34 +1623,26 @@ void lbfgsb(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const ma
  @return minimized function value
  After the function is invoked, the values of x will be updated
 */
-double L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, double* x, double* l, double* u){
+BfgsResult L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const set<vector<int>>& comps, LNL_TYPE& lnl_type, OPT_TYPE& opt_type, int n, double* x, double* l, double* u){
   int debug = 0;
 
-  int i;
-  double Fmin;
-  int fail;
-  int fncount;
-  int grcount;
+  BfgsResult result;
   char msg[100];
 
   int m = 10;          // number of BFGS updates retained in the "L-BFGS-B" method. It defaults to 5.
 
-  int *nbd;           // 0: unbounded; 1: lower bounded; 2: both lower & upper; 3: upper bounded
-  nbd = new int[n];
-  for(i = 0; i < n; i++) nbd[i] = 2;
+  vector<int> nbd(n, 2);   // 0: unbounded; 1: lower bounded; 2: both lower & upper; 3: upper bounded
 
-  double factr = 1e+7; // control the convergence of the "L-BFGS-B" method.
-  // Convergence occurs when the reduction in the object is within this factor
-  // of the machine tolerance.
-  // Default is 1e7, that is a tolerance of about 1e-8
-
+  // The three stopping tests. The relative-reduction test fires when one
+  // iteration reduces f by less than factr * epsilon relative to |f|: at
+  // the default 1e7 that is about 2e-9, i.e. 4e-6 at f = 2000. The
+  // projected-gradient test (pgtol, --tolerance) is the real convergence
+  // test; the first one says "little progress in this step", which with a
+  // poorly conditioned problem happens well before the optimum, hence the
+  // restarts below.
+  double factr = opt_type.factr;
   double pgtol = opt_type.tolerance;
-  double maxit = opt_type.miter;
-
-  //	double pgtol = 0;   // helps control the convergence of the "L-BFGS-B" method.
-  //    pgtol = 0.0;
-  // It is a tolerance on the projected gradient in the current search direction.
-  // Default is zero, when the check is suppressed
+  int maxit = opt_type.miter;
 
   int trace = 0;      // non-negative integer.
   if(debug)
@@ -1635,33 +1653,75 @@ double L_BFGS_B(evo_tree& rtree, const map<int, vector<vector<int>>>& vobs, cons
   int nREPORT = 10;   // The frequency of reports for the "L-BFGS-B" methods if "trace" is positive.
   // Defaults to every 10 iterations.
 
-  /*#ifdef USE_OLD_PARAM
-  lbfgsb(n, m, x, l, u, nbd, &Fmin, fn, gr1, &fail, ex,
-  	factr, pgtol, &fncount, &grcount, maxit, msg, trace, nREPORT);
-  #else*/
+  // Work in the internal coordinates (log scale where opt_type.log_scale
+  // says so). L-BFGS-B projects its starting point onto the box; do that
+  // first so the logarithm is always defined.
+  if((int)opt_type.log_scale.size() != n) opt_type.log_scale.assign(n, 0);
+  vector<double> z(n), lz(n), uz(n);
+  for(int i = 0; i < n; i++){
+      double xi = std::min(std::max(x[i], l[i]), u[i]);
+      z[i]  = to_internal(xi, opt_type.log_scale[i]);
+      lz[i] = to_internal(l[i], opt_type.log_scale[i]);
+      uz[i] = to_internal(u[i], opt_type.log_scale[i]);
+  }
+  opt_type.lower_internal = lz;
+  opt_type.upper_internal = uz;
 
-  // cout << "initial values in bfgs: ";
-  // for(int mi = 0; mi < 3; mi++){
-  //     cout << "\t" << x[mi];
-  // }
-  // cout << "\n";
-  //
-  // cout << "upper bound in bfgs: ";
-  // for(int mi = 0; mi < 3; mi++){
-  //     cout << "\t" << u[mi];
-  // }
-  // cout << "\n";
+  OptimStats& stats = optim_stats();
+  long evals_at_start = opt_type.n_evals;
+  double f_before = MAX_NLNL;
 
-  lbfgsb(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, n, m, x, l, u, nbd, &Fmin, &fail, factr, pgtol, &fncount, &grcount, maxit, msg, trace, nREPORT);
-  //#endif
+  for(int attempt = 0; ; attempt++){
+      double Fmin = MAX_NLNL;
+      int fail = 0, fncount = 0, grcount = 0, niter = 0;
+      lbfgsb(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, n, m, z.data(), lz.data(), uz.data(), nbd.data(), &Fmin, &fail, factr, pgtol, &fncount, &grcount, &niter, maxit, msg, trace, nREPORT);
+      result.fmin = Fmin;
+      result.stop = msg;
+      result.fail = fail;
+      result.iterations += niter;
 
-  if(fail == 51 || fail == 52){
-      cout << msg << endl;
+      if(attempt > 0){
+          result.restarts++;
+          stats.restarts++;
+          if(f_before - Fmin > opt_type.restart_tol){
+              stats.restarts_gained++;
+          }else{
+              break;   // the restart gained nothing: converged in practice
+          }
+      }
+      // A restart clears the L-BFGS memory, so the next steps are steepest
+      // descent again from the stopping point. Worth it only after a
+      // "little progress" stop or a line-search warning, never after the
+      // gradient test or the iteration limit.
+      bool stalled = (fail == 0 && result.stop.rfind("CONVERGENCE: REL_REDUCTION", 0) == 0) || fail == 51;
+      if(!stalled || attempt >= opt_type.max_restarts) break;
+      f_before = Fmin;
   }
 
-  delete[] nbd;
+  for(int i = 0; i < n; i++) x[i] = from_internal(z[i], opt_type.log_scale[i]);
+  result.evaluations = opt_type.n_evals - evals_at_start;
 
-  return Fmin;
+  stats.fits++;
+  if(result.fail == 1) stats.stop_maxit++;
+  else if(result.fail != 0) stats.stop_other++;
+  else if(result.stop.rfind("CONVERGENCE: NORM", 0) == 0) stats.stop_gradient++;
+  else stats.stop_reduction++;
+  stats.evaluations += result.evaluations;
+
+  if(opt_type.print_fits){
+      #pragma omp critical(optim_print_fit)
+      {
+          cout << "[optim] fit: nlnl=" << std::setprecision(10) << result.fmin << std::setprecision(6)
+               << " n=" << n << " iterations=" << result.iterations
+               << " evaluations=" << result.evaluations << " restarts=" << result.restarts
+               << " stop=\"" << result.stop << "\"" << endl;
+      }
+  }
+  if(result.fail == 51 || result.fail == 52){
+      cout << result.stop << endl;
+  }
+
+  return result;
 }
 
 void set_param(int offset, double value, int nparams_est, double* variables, double* lower_bound, double* upper_bound){
@@ -2004,8 +2064,22 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
         }
     }
 
+    // Which parameters the optimiser handles on a log scale (see
+    // OPT_TYPE::log_scale): everything except the node-age ratios of a
+    // constrained tree, which already live in (0,1). 0-based over
+    // variables[1..ndim].
+    opt_type.log_scale.assign(ndim, 1);
+    if(cons){
+        if(opt_one_branch){
+            opt_type.log_scale[0] = 0;                                   // one ratio
+        }else{
+            for(int i = 1; i < nparams_est; i++) opt_type.log_scale[i] = 0;   // ratios; entry 0 is the root age
+        }
+    }
+
     // variables contains the parameters to estimate(branch length, mutation rate)
-    min_nlnl = L_BFGS_B(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, ndim, variables + 1, lower_bound + 1, upper_bound + 1);
+    BfgsResult fit = L_BFGS_B(rtree, vobs, vobs_change, obs_decomp, comps, lnl_type, opt_type, ndim, variables + 1, lower_bound + 1, upper_bound + 1);
+    min_nlnl = fit.fmin;
 
     // ensure rtree (branch lengths, edge_rates) reflects the final optimised variables,
     // since the last internal gradient call may have left rtree at a perturbed point
@@ -3006,13 +3080,16 @@ void exhaustive_search_shift_edges(
         return shifts;
     };
 
+    // Ten significant digits: the fits agree to about 1e-3 now, which six
+    // digits (0.01 at these values) could not show.
     auto print_combo = [&](const char* label, long long mask){
         vector<int> shifts = mask_to_shifts(mask);
         cout << "[RLC][exhaustive] " << label << ": K=" << shifts.size() << " shift_eids=[ ";
         for(int s : shifts) cout << s << " ";
-        cout << "] nlnl=" << subset_nlnls[mask]
+        cout << std::setprecision(10)
+             << "] nlnl=" << subset_nlnls[mask]
              << " AIC=" << subset_aics[mask] << " BIC=" << subset_bics[mask]
-             << " AICc=" << subset_aiccs[mask] << endl;
+             << " AICc=" << subset_aiccs[mask] << std::setprecision(6) << endl;
     };
 
     // Always-on diagnostic (independent of the general debug flag), same convention as
@@ -3052,9 +3129,10 @@ void exhaustive_search_shift_edges(
     cout << "[RLC][exhaustive] final (criterion=" << (criterion == 0 ? "AIC" : "BIC")
          << "): K=" << K << " shift_eids=[ ";
     for(int s : opt_type.rlc_shift_eids) cout << s << " ";
-    cout << "] raw_logL=" << raw_logL
+    cout << std::setprecision(10)
+         << "] raw_logL=" << raw_logL
          << " AIC=" << final_ic.aic << " BIC=" << final_ic.bic << " AICc=" << final_ic.aicc
-         << " score=" << penalized_score
+         << " score=" << penalized_score << std::setprecision(6)
          << " (evaluated " << n_subsets << " subsets)" << endl;
 }
 
