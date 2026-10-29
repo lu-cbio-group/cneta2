@@ -25,12 +25,12 @@ Everything is installed with conda:
 
 | File | Environment | What it is for |
 |---|---|---|
-| `code/environment-mac.yml` | `cneta-build` | Build and run the programs on macOS |
-| `code/environment-linux.yml` | `cneta-build` | Build and run the programs on Linux, HPC with conda, Windows via WSL |
-| `util/environment.yml` | `cneta-util` | Optional: plotting and other scripts in `util/` |
+| `envs/environment-mac.yml` | `cneta-build` | Build and run the programs on macOS |
+| `envs/environment-linux.yml` | `cneta-build` | Build and run the programs on Linux, HPC with conda, Windows via WSL |
+| `envs/environment-util.yml` | `cneta-util` | Optional: plotting and other scripts in `util/` |
 
 ```bash
-conda env create -f code/environment-mac.yml     # or code/environment-linux.yml
+conda env create -f envs/environment-mac.yml     # or envs/environment-linux.yml
 conda activate cneta-build
 cd code && ./build.sh local 4                     # programs are written to bin/
 ```

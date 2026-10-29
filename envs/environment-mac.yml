@@ -1,18 +1,18 @@
 # Conda environment for building and running cnets, cnetml and cnetmcmc on macOS
 # (Apple Silicon and Intel).
 #
-#   conda env create -f code/environment-mac.yml
+#   conda env create -f envs/environment-mac.yml
 #   conda activate cneta-build
 #   cd code && ./build.sh local 4
 #
 # The Xcode Command Line Tools must be installed (xcode-select --install).
 #
 # On Linux (workstations, HPC with conda, Windows via WSL/Ubuntu) use
-# code/environment-linux.yml instead. On an HPC without conda, use
-# code/envs/setup_env_<cluster>.sh (./build.sh <cluster> <cores>).
+# envs/environment-linux.yml instead. On an HPC without conda, use
+# envs/setup_env_<cluster>.sh (./build.sh <cluster> <cores>).
 #
 # Plotting and other scripts in util/ need a separate environment:
-# util/environment.yml (the same file on macOS and Linux).
+# envs/environment-util.yml (the same file on macOS and Linux).
 name: cneta-build
 
 channels:

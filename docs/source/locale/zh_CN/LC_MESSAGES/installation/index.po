@@ -58,7 +58,7 @@ msgid "Who needs it"
 msgstr "谁需要"
 
 #: ../../source/installation/index.md
-msgid "`code/environment-mac.yml`"
+msgid "`envs/environment-mac.yml`"
 msgstr ""
 
 #: ../../source/installation/index.md
@@ -74,7 +74,7 @@ msgid "Everyone on macOS"
 msgstr "所有 macOS 用户"
 
 #: ../../source/installation/index.md
-msgid "`code/environment-linux.yml`"
+msgid "`envs/environment-linux.yml`"
 msgstr ""
 
 #: ../../source/installation/index.md
@@ -90,7 +90,7 @@ msgid "Everyone on Linux"
 msgstr "所有 Linux 用户"
 
 #: ../../source/installation/index.md
-msgid "`util/environment.yml`"
+msgid "`envs/environment-util.yml`"
 msgstr ""
 
 #: ../../source/installation/index.md
@@ -146,9 +146,9 @@ msgstr ""
 #: ../../source/installation/index.md
 msgid ""
 "Install the Xcode Command Line Tools (`xcode-select --install`), then use "
-"`code/environment-mac.yml`"
+"`envs/environment-mac.yml`"
 msgstr ""
-"安装 Xcode Command Line Tools（`xcode-select --install`），然后使用 `code"
+"安装 Xcode Command Line Tools（`xcode-select --install`），然后使用 `envs"
 "/environment-mac.yml`"
 
 #: ../../source/installation/index.md
@@ -156,8 +156,8 @@ msgid "Linux workstation"
 msgstr "Linux 工作站"
 
 #: ../../source/installation/index.md
-msgid "Use `code/environment-linux.yml`"
-msgstr "使用 `code/environment-linux.yml`"
+msgid "Use `envs/environment-linux.yml`"
+msgstr "使用 `envs/environment-linux.yml`"
 
 #: ../../source/installation/index.md
 msgid "HPC with conda"
@@ -170,10 +170,10 @@ msgstr "没有 conda 的 HPC"
 #: ../../source/installation/index.md
 msgid ""
 "`cd code && ./build.sh <cluster> <cores>` with "
-"`code/envs/setup_env_<cluster>.sh` (module loads); see the HPC tab below"
+"`envs/setup_env_<cluster>.sh` (module loads); see the HPC tab below"
 msgstr ""
 "`cd code && ./build.sh <cluster> <cores>`，配合 "
-"`code/envs/setup_env_<cluster>.sh`（加载模块）；见下方 HPC 标签页"
+"`envs/setup_env_<cluster>.sh`（加载模块）；见下方 HPC 标签页"
 
 #: ../../source/installation/index.md
 msgid "Windows"
@@ -206,10 +206,10 @@ msgstr "Linux / 有 conda 的 HPC"
 #: ../../source/installation/index.md:65
 msgid ""
 "Why the compiler and `sysroot` versions are pinned is explained at the top "
-"of `code/environment-linux.yml`: in short, so the build works and the "
+"of `envs/environment-linux.yml`: in short, so the build works and the "
 "programs also run on older clusters (e.g. CentOS 7, RHEL 8)."
 msgstr ""
-"编译器和 `sysroot` 版本为什么要固定，在 `code/environment-linux.yml` "
+"编译器和 `sysroot` 版本为什么要固定，在 `envs/environment-linux.yml` "
 "开头有说明：简单说，是为了能顺利构建，并且编出的程序在较旧的集群（例如 CentOS 7、RHEL 8）上也能运行。"
 
 #: ../../source/installation/index.md
@@ -229,17 +229,17 @@ msgstr ""
 msgid ""
 "On most High Performance Clusters dependencies are provided as environment "
 "modules. The build script, `./build.sh <cluster> <cores>`, sources "
-"`code/envs/setup_env_<cluster>.sh` and loads the modules for you "
+"`envs/setup_env_<cluster>.sh` and loads the modules for you "
 "automatically; no need to source it yourself first."
 msgstr ""
 "大多数高性能计算集群以环境模块的形式提供依赖。构建脚本 `./build.sh <cluster> <cores>` 会自动 source "
-"`code/envs/setup_env_<cluster>.sh` 并加载模块，不需要事先手动 source。"
+"`envs/setup_env_<cluster>.sh` 并加载模块，不需要事先手动 source。"
 
 #: ../../source/installation/index.md:83
 msgid ""
-"Once your `code/envs/setup_env_<cluster>.sh` script exists, you can build "
+"Once your `envs/setup_env_<cluster>.sh` script exists, you can build "
 "the code like so:"
-msgstr "有了 `code/envs/setup_env_<cluster>.sh` 脚本后，可以这样构建："
+msgstr "有了 `envs/setup_env_<cluster>.sh` 脚本后，可以这样构建："
 
 #: ../../source/installation/index.md:89
 msgid ""
@@ -249,10 +249,10 @@ msgstr "这里以 Surrey 的本地 CPU 集群 Eureka2 为例，脚本加载以�
 
 #: ../../source/installation/index.md:98
 msgid ""
-"To add another cluster, add `code/envs/setup_env_<name>.sh` following the "
+"To add another cluster, add `envs/setup_env_<name>.sh` following the "
 "same pattern and run `./build.sh <name> <cores>`."
 msgstr ""
-"要添加其他集群，按同样的格式新建 `code/envs/setup_env_<name>.sh`，然后运行 `./build.sh <name> "
+"要添加其他集群，按同样的格式新建 `envs/setup_env_<name>.sh`，然后运行 `./build.sh <name> "
 "<cores>`。"
 
 #: ../../source/installation/index.md:101
