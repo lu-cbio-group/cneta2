@@ -87,6 +87,64 @@ def test_scoring_is_reproducible(data_dir, cnetml, run):
     assert scores[0] == scores[1]
 
 
+def test_leaving_the_invariant_sites_out_keeps_the_bias_correction(
+        data_dir, cnetml, run, expected):
+    """With incl_all 0 the site list holds only the variable sites, and the
+    likelihood of one all-normal site times the number left out is added
+    back (correct_bias). --correct_bias 0 used to switch that off, which
+    dropped the invariant sites from the likelihood and gave a higher score.
+    It is now overridden with a note, so the score is the reference one."""
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--incl_all": 0, "--correct_bias": 0},
+        ),
+    ]).assert_ok()
+
+    assert "using correct_bias 1" in result.stdout
+    assert parse_scored_logl(result.stdout) == pytest.approx(
+        expected["mode2_logl"]["tiny-tree.txt"], rel=LOGL_TOLERANCE)
+
+
+@pytest.mark.parametrize("model", [
+    2,
+    pytest.param(3, marks=pytest.mark.xfail(strict=True, reason=(
+        "model 3 scores the two layouts differently: it splits each sample's "
+        "copy numbers into chromosome-level and site-level changes using all "
+        "sites, so a site that is normal in every sample can carry a "
+        "site-level change on a chromosome with an inferred chromosome-level "
+        "change; incl_all 0 drops it as invariant and adds an all-normal "
+        "pattern instead, and sums the chromosome-level terms only over the "
+        "chromosomes that keep a site (-39.72 vs -31.82 on this fixture)"))),
+])
+def test_leaving_the_invariant_sites_out_scores_the_same(model, data_dir,
+                                                         cnetml, run):
+    """incl_all 1 lists every site; incl_all 0 lists the variable ones and
+    adds the likelihood of one all-normal site times the number left out.
+    The two layouts describe the same data, so a given tree must score the
+    same under both."""
+    scores = {}
+    for incl_all in (1, 0):
+        result = run([
+            cnetml,
+            *cli.cnetml_score_args(
+                cn_file=data_dir / "tiny-cn.txt.gz",
+                times_file=data_dir / "tiny-rel-times.txt",
+                tree_file=data_dir / "tiny-tree.txt",
+                **{"-d": model, "--incl_all": incl_all},
+            ),
+        ]).assert_ok()
+        scores[incl_all] = parse_scored_logl(result.stdout)
+
+    assert scores[0] == pytest.approx(scores[1], rel=LOGL_TOLERANCE), (
+        f"model {model}: incl_all 0 scores {scores[0]}, "
+        f"incl_all 1 scores {scores[1]}"
+    )
+
+
 def test_cn_type_is_required(data_dir, cnetml, run):
     """`--cn_type` decides which event types the model considers, and there is
     no right default. It used to have none and no check either: without it the
@@ -246,6 +304,37 @@ def test_fixed_tree_with_branch_specific_rates_runs(tmp_path, data_dir, cnetml,
     assert (tmp_path / "fixed.txt.edge_rates.txt").is_file(), (
         "mode 3 with bsr_mode 3 wrote no edge-rate table"
     )
+
+
+@pytest.mark.parametrize("incl_all", [1, 0])
+def test_shift_edge_search_states_its_parameter_count(incl_all, tmp_path, data_dir,
+                                                      cnetml, run):
+    """The shift-edge search prints what its information criteria rest on:
+    the number of sites behind BIC's sample size, the shift parameters per
+    edge, and the shared parameters that only AICc includes. On the tiny
+    fixture (3 regions, age-constrained tree, segment-level rates) that is
+    3 node-age parameters plus 2 reference rates, so 5 shared ones.
+
+    The sample size is the number of sites in the likelihood, whatever the
+    input layout: all 50 sites with incl_all 1, or the 9 variable sites
+    plus the 41 invariant ones that the bias correction adds back with
+    incl_all 0. Both must report n=50."""
+    out_file = tmp_path / "fixed.txt"
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(
+            cn_file=data_dir / "tiny-cn.txt.gz",
+            times_file=data_dir / "tiny-rel-times.txt",
+            tree_file=data_dir / "tiny-tree.txt",
+            **{"--mode": 3, "-o": out_file, "--optim": 1, "--estmu": 0,
+               "--bsr_mode": 3, "-d": 3, "--incl_all": incl_all},
+        ),
+    ])
+    result.assert_ok()
+
+    assert "information criteria: n=50 sites in the likelihood" in result.stdout
+    assert "AIC/BIC count K x 2 shift parameters" in result.stdout
+    assert "AICc also counts the 5 shared ones" in result.stdout
 
 
 def test_tree_search_writes_edge_rates(tmp_path, tiny_sim: Simulation,

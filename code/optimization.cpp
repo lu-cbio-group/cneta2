@@ -1751,11 +1751,8 @@ void max_likelihood_BFGS(evo_tree& rtree, const map<int, vector<vector<int>>>& v
       }
       nparams_est = 1;
     }else{
-      if(!cons){  // only estimate internal branches
-          nparams_est = 2 * rtree.nleaf - 3;
-      }else{    // estimate internal branches and mutation rate
-          nparams_est = rtree.nleaf - 1;
-      }
+      // internal branch lengths without the age constraint, node ages with it
+      nparams_est = n_tree_params_est(rtree, cons);
     }
 
     // build active edge list for variable rate (excludes the normal-sample edge)
@@ -2187,6 +2184,9 @@ void stepwise_search_shift_edges(
     // cn_type=ALL); the penalty must scale by this, not just by the number of edges.
     // See compute_rlc_ic in optimization.hpp.
     const int n_types_per_edge = (int)get_bsr_rate_slots(rtree, lnl_type.cn_type).size();
+    // parameters fitted in every candidate; only AICc counts them (see compute_rlc_ic)
+    const int k_shared = rlc_shared_param_count(rtree, lnl_type.cons, n_types_per_edge);
+    print_rlc_ic_setup("stepwise", n_sites, n_types_per_edge, k_shared);
 
     // full candidate pool = all optimizable edges (excludes normal-sample edge)
     // [2026-08-12 changed] estimate_bsr0_first=false: also exclude the trunk edge
@@ -2202,7 +2202,7 @@ void stepwise_search_shift_edges(
     double cur_nlnl = MAX_NLNL;
     max_likelihood_BFGS(cur_tree, vobs, vobs_change, obs_decomp, comps,
                         lnl_type, cur_opt, cur_nlnl, debug);
-    RlcIC cur_ic = compute_rlc_ic(cur_nlnl, 0, n_types_per_edge, n_sites, criterion);
+    RlcIC cur_ic = compute_rlc_ic(cur_nlnl, 0, n_types_per_edge, n_sites, criterion, k_shared);
     double cur_score = cur_ic.score;
 
     if(debug)
@@ -2365,7 +2365,7 @@ void stepwise_search_shift_edges(
             max_likelihood_BFGS(cand_tree, vobs, vobs_change, obs_decomp, comps,
                                 cand_lnl_type, cand_opt, cand_nlnl, 0);
 
-            RlcIC cand_ic = compute_rlc_ic(cand_nlnl, (int)cand_shifts.size(), n_types_per_edge, n_sites, criterion);
+            RlcIC cand_ic = compute_rlc_ic(cand_nlnl, (int)cand_shifts.size(), n_types_per_edge, n_sites, criterion, k_shared);
             double cand_score = cand_ic.score;
 
             // Each thread writes only to its own index.
@@ -2486,7 +2486,7 @@ void stepwise_search_shift_edges(
             max_likelihood_BFGS(try_tree, vobs, vobs_change, obs_decomp, comps,
                                 try_lnl_type, try_opt, try_nlnl, 0);
 
-            RlcIC try_ic = compute_rlc_ic(try_nlnl, (int)try_shifts.size(), n_types_per_edge, n_sites, criterion);
+            RlcIC try_ic = compute_rlc_ic(try_nlnl, (int)try_shifts.size(), n_types_per_edge, n_sites, criterion, k_shared);
             double try_score = try_ic.score;
 
             remove_evaluated[k] = 1;
@@ -2577,7 +2577,7 @@ void stepwise_search_shift_edges(
     opt_type.rlc_shift_eids = cur_opt.rlc_shift_eids;
 
     int K = (int)opt_type.rlc_shift_eids.size();
-    RlcIC final_ic = compute_rlc_ic(cur_nlnl, K, n_types_per_edge, n_sites, criterion);
+    RlcIC final_ic = compute_rlc_ic(cur_nlnl, K, n_types_per_edge, n_sites, criterion, k_shared);
     double raw_logL        = final_ic.raw_logL;
     double penalized_score = final_ic.score;
 
@@ -2636,6 +2636,9 @@ void genetic_search_shift_edges(
     const int criterion = opt_type.rlc_criterion;  // 0=AIC, 1=BIC (see compute_rlc_ic)
     const int n_sites = lnl_type.n_sites_for_ic;
     const int n_types_per_edge = (int)get_bsr_rate_slots(rtree, lnl_type.cn_type).size();
+    // parameters fitted in every candidate; only AICc counts them (see compute_rlc_ic)
+    const int k_shared = rlc_shared_param_count(rtree, lnl_type.cons, n_types_per_edge);
+    print_rlc_ic_setup("GA", n_sites, n_types_per_edge, k_shared);
 
     // Cache keyed by the raw gene pattern (e.g. "0010100..."), shared across the whole
     // search: the same shift-edge combination can easily reappear across generations
@@ -2686,7 +2689,7 @@ void genetic_search_shift_edges(
         max_likelihood_BFGS(cand_tree, vobs, vobs_change, obs_decomp, comps,
                             cand_lnl_type, cand_opt, cand_nlnl, 0);
 
-        RlcIC cand_ic = compute_rlc_ic(cand_nlnl, (int)shift_eids.size(), n_types_per_edge, n_sites, criterion);
+        RlcIC cand_ic = compute_rlc_ic(cand_nlnl, (int)shift_eids.size(), n_types_per_edge, n_sites, criterion, k_shared);
         indiv.nlnl  = cand_nlnl;
         indiv.score = cand_ic.score;
         indiv.aic   = cand_ic.aic;
@@ -2872,7 +2875,7 @@ void genetic_search_shift_edges(
                         lnl_type, opt_type, final_nlnl, debug);
 
     int K = (int)best_shift_eids.size();
-    RlcIC final_ic = compute_rlc_ic(final_nlnl, K, n_types_per_edge, n_sites, criterion);
+    RlcIC final_ic = compute_rlc_ic(final_nlnl, K, n_types_per_edge, n_sites, criterion, k_shared);
     double raw_logL        = final_ic.raw_logL;
     double penalized_score = final_ic.score;
 
@@ -2916,6 +2919,9 @@ void exhaustive_search_shift_edges(
     const int criterion = opt_type.rlc_criterion;  // 0=AIC, 1=BIC (see compute_rlc_ic)
     const int n_sites = lnl_type.n_sites_for_ic;
     const int n_types_per_edge = (int)get_bsr_rate_slots(rtree, lnl_type.cn_type).size();
+    // parameters fitted in every candidate; only AICc counts them (see compute_rlc_ic)
+    const int k_shared = rlc_shared_param_count(rtree, lnl_type.cons, n_types_per_edge);
+    print_rlc_ic_setup("exhaustive", n_sites, n_types_per_edge, k_shared);
 
     // [2026-08-12 changed] estimate_bsr0_first=false: also exclude the trunk edge
     // from the shift-edge candidate pool -- its rate is mu0 itself, never a shift off
@@ -2960,7 +2966,7 @@ void exhaustive_search_shift_edges(
         max_likelihood_BFGS(cand_tree, vobs, vobs_change, obs_decomp, comps,
                             cand_lnl_type, cand_opt, cand_nlnl, 0);
 
-        RlcIC ic = compute_rlc_ic(cand_nlnl, (int)shift_eids.size(), n_types_per_edge, n_sites, criterion);
+        RlcIC ic = compute_rlc_ic(cand_nlnl, (int)shift_eids.size(), n_types_per_edge, n_sites, criterion, k_shared);
         subset_nlnls[mask]  = cand_nlnl;
         subset_aics[mask]   = ic.aic;
         subset_bics[mask]   = ic.bic;
@@ -3031,7 +3037,7 @@ void exhaustive_search_shift_edges(
                         lnl_type, opt_type, final_nlnl, debug);
 
     int K = (int)best_shift_eids.size();
-    RlcIC final_ic = compute_rlc_ic(final_nlnl, K, n_types_per_edge, n_sites, criterion);
+    RlcIC final_ic = compute_rlc_ic(final_nlnl, K, n_types_per_edge, n_sites, criterion, k_shared);
     double raw_logL        = final_ic.raw_logL;
     double penalized_score = final_ic.score;
 

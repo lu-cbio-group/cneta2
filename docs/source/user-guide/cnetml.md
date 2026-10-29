@@ -77,6 +77,29 @@ Independent Markov chain dimensions (model 3 only)
   `Rscript util/check_site_pattern.R -c sim1-cn.txt -t sim1-patterns.txt`
   to help pick values for real data.
 
+Shift-edge search (`--bsr_mode 3`, with `mode` 3)
+: - `rlc_search_method` — `0` exhaustive (every subset of the candidate
+    branches, small trees only), `1` stepwise (default), `2` genetic
+    algorithm.
+  - `rlc_criterion` — `0` AIC (default) or `1` BIC decides which set of
+    shift edges is kept.
+  - `estimate_bsr0_first` — `0` (default) fits the trunk's own rates
+    jointly with the multipliers; `1` calibrates them first and holds
+    them fixed.
+
+  AIC and BIC count the parameters the shift edges add, K times the
+  number of rate types; the node ages and reference rates fitted in
+  every candidate add the same constant to each and are left out. The
+  AICc in the log counts every fitted parameter and is for information
+  only. BIC's sample size is the number of sites in the likelihood. The
+  invariant sites are always in it: with `incl_all 1` (the default) each
+  is a site of its own; with `incl_all 0` the likelihood of one all-normal
+  site is multiplied by their number (the bias correction). `correct_bias`
+  follows `incl_all` (0 with `incl_all 1`, 1 with `incl_all 0`); a
+  `--correct_bias 0` given with `incl_all 0` is overridden with a note,
+  since it would drop the invariant sites. The search prints these counts
+  at its start.
+
 Tree search (`tree_search`)
 : - `0` — genetic algorithm. Slow, deprecated.
   - `1` — heuristic/hill-climbing. For at least 5 samples.
