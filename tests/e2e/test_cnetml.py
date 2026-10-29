@@ -412,3 +412,37 @@ def test_sample_count_larger_than_the_file_is_rejected(data_dir, cnetml, run):
 
     assert_clean_rejection(result, mentions=str(cn_file))
     assert f"sample {cli.NS + 2} has no rows" in result.stdout + result.stderr, str(result)
+
+
+@pytest.mark.parametrize("which", ["cn", "times", "tree"])
+def test_a_file_without_a_final_newline_scores_the_same(tmp_path, data_dir,
+                                                        cnetml, run, expected,
+                                                        which):
+    """The readers looped on `.eof()`, which drops a last line that has no
+    newline after it: the last sample's time, the last edge of a tree, or
+    the last site of the last sample read. The score must not depend on
+    whether a file ends with a newline."""
+    inputs = {
+        "cn": data_dir / "tiny-cn.txt.gz",
+        "times": data_dir / "tiny-rel-times.txt",
+        "tree": data_dir / "tiny-tree.txt",
+    }
+    source = inputs[which]
+    copy = tmp_path / source.name
+    if which == "cn":
+        with gzip.open(source, "rt") as handle:
+            _write_gz(copy, handle.read().rstrip("\n"))
+    else:
+        copy.write_text(source.read_text().rstrip("\n"))
+    inputs[which] = copy
+
+    result = run([
+        cnetml,
+        *cli.cnetml_score_args(cn_file=inputs["cn"], times_file=inputs["times"],
+                               tree_file=inputs["tree"]),
+    ]).assert_ok()
+
+    assert parse_scored_logl(result.stdout) == pytest.approx(
+        expected["mode2_logl"]["tiny-tree.txt"], rel=LOGL_TOLERANCE), (
+        f"the score changed when {source.name} lost its final newline"
+    )
