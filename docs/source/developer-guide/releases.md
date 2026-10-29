@@ -35,6 +35,9 @@ reproducible across later bug-fix releases.
   `-dirty` means the build had uncommitted changes; don't publish results
   from such a build. The commit is read when CMake configures; `build.sh`
   configures every time.
+- **`CITATION.cff`** at the repository root names the software's authors
+  and the paper to cite; GitHub shows it as "Cite this repository". It
+  carries no version number, so a release does not touch it.
 - **Git tags** `vX.Y.Z` mark the commit of each release, and a **GitHub
   Release** made from the tag carries the list of changes. There is no
   changelog file to maintain: GitHub writes the list from the titles of
@@ -75,7 +78,6 @@ of the version string tells later builds apart.
 ## Recommended next steps (not set up yet)
 
 - **Zenodo**: connect the GitHub repository, so that every release is
-  archived and gets a DOI, plus one DOI for "all versions".
-- **`CITATION.cff`** at the repository root, listing the authors: GitHub
-  then shows a "Cite this repository" button.
+  archived and gets a DOI, plus one DOI for "all versions". Zenodo takes
+  the author list from `CITATION.cff`.
 - **A CI check** that a pushed `vX.Y.Z` tag matches `VERSION`.

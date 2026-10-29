@@ -37,6 +37,16 @@ cd code && ./build.sh local 4                     # programs are written to bin/
 
 HPC without conda, Windows, plotting and tests: see the [installation guide](https://lu-cbio-group.github.io/cneta2/en/installation/index.html).
 
+## Citation
+
+If you use CNETA, please cite the CNETML paper: Lu B, Curtius K, Graham TA,
+Yang Z, Barnes CP. CNETML: maximum likelihood inference of phylogeny from
+copy number profiles of multiple samples. *Genome Biology* 24, 144 (2023).
+https://doi.org/10.1186/s13059-023-02983-0
+
+`CITATION.cff` holds the same reference in machine-readable form; GitHub
+shows it under "Cite this repository".
+
 
 ## Overview
 <p align="center">
