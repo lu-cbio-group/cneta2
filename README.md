@@ -44,8 +44,9 @@ Yang Z, Barnes CP. CNETML: maximum likelihood inference of phylogeny from
 copy number profiles of multiple samples. *Genome Biology* 24, 144 (2023).
 https://doi.org/10.1186/s13059-023-02983-0
 
-`CITATION.cff` holds the same reference in machine-readable form; GitHub
-shows it under "Cite this repository".
+`CITATION.cff` holds the same reference in machine-readable form, which
+GitHub shows under "Cite this repository", and separately the list of the
+software's authors, which Zenodo uses when a release is archived.
 
 
 ## Overview

@@ -79,5 +79,6 @@ of the version string tells later builds apart.
 
 - **Zenodo**: connect the GitHub repository, so that every release is
   archived and gets a DOI, plus one DOI for "all versions". Zenodo takes
-  the author list from `CITATION.cff`.
+  the software's authors from `authors` in `CITATION.cff`, which is a
+  separate list from the paper's authors.
 - **A CI check** that a pushed `vX.Y.Z` tag matches `VERSION`.

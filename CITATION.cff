@@ -1,6 +1,8 @@
 # Citation metadata in the Citation File Format (https://citation-file-format.github.io/).
-# GitHub shows it as "Cite this repository"; Zenodo reads the author list from it
-# when a release is archived. Keep the author list in step with the group.
+# Two separate lists: `authors` are the people who wrote the software, whom
+# Zenodo credits when a release is archived; `preferred-citation` is the paper,
+# with its own authors, which GitHub shows under "Cite this repository".
+# Add a line under `authors` for each new contributor.
 cff-version: 1.2.0
 type: software
 title: "CNETA: Copy Number Evolutionary Tree Analysis"
