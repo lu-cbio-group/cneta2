@@ -861,7 +861,7 @@ double compute_chr_likelihood(
         fill_table();
     }
 
-    double chr_logL = log(lnl_table_chr[rtree.nleaf][NO_CHANGE_HAPLOTYPE]);   // likelihood for no change on chromosome, which is the same for all sites on the chromosome
+    double chr_logL = log(lnl_table_chr[rtree.nleaf][NO_CHANGE_HAPLOTYPE]) + get_lnl_log_scale(lnl_table_chr);   // likelihood for no change on chromosome, which is the same for all sites on the chromosome
 
     if(debug) cout << "log likelihood for no change on chromosome " << nchr << " is: " << chr_logL << endl;
 
@@ -1070,7 +1070,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
             get_likelihood_wgd(lnl_table_wgd, rtree, knodes, pmat_decomp, dim_decomp, debug);
         }
 
-        double wgd_logL = log(lnl_table_wgd[rtree.nleaf][0]);
+        double wgd_logL = log(lnl_table_wgd[rtree.nleaf][0]) + get_lnl_log_scale(lnl_table_wgd);
         logL += wgd_logL;   // likelihood for WGD is the same for all sites, so only compute once
 
         assert(lnl_table_wgd.size() > nid);  // sanity check, the likelihood table should have the same number of nodes as the tree
