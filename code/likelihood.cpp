@@ -707,7 +707,8 @@ void initialize_lnl_table_chr(vector<vector<double>>& lnl_table_chr, const evo_t
 
     assert(dim_decomp.dim_chr > 0);
 
-    lnl_table_chr.resize(2 * Ns + 1, vector<double>(dim_decomp.dim_chr, 0.0));
+    lnl_table_chr.resize(2 * Ns + 2, vector<double>(dim_decomp.dim_chr, 0.0));   // nodes, then the log scale row
+    lnl_table_chr.back().assign(dim_decomp.dim_chr, 0.0);
     lnl_table_chr[Ns][NO_CHANGE_HAPLOTYPE] = 1.0;  // no chr gain/loss for haplotype-specific case in normal sample
 
     for(int i = 0; i < Ns; ++i){
@@ -844,6 +845,7 @@ void get_likelihood_per_chr(vector<vector<double>>& lnl_table_chr, const evo_tre
                 lnl_table_chr[k][sk] = lnl_chr;                      
             }     
         }
+        rescale_node_lnl(lnl_table_chr, k);
   }
   
   if(debug > 0){
@@ -868,7 +870,8 @@ void initialize_lnl_table_wgd(vector<vector<double>>& lnl_table_wgd, const evo_t
 
     assert(dim_decomp.dim_wgd > 0);         // number of WGD states  
 
-    lnl_table_wgd.resize(2 * Ns + 1, vector<double>(dim_decomp.dim_wgd, 0.0));
+    lnl_table_wgd.resize(2 * Ns + 2, vector<double>(dim_decomp.dim_wgd, 0.0));   // nodes, then the log scale row
+    lnl_table_wgd.back().assign(dim_decomp.dim_wgd, 0.0);
     // for the normal cell 
     lnl_table_wgd[Ns][0] = 1.0;   // no WGD 
 
@@ -968,6 +971,7 @@ void get_likelihood_wgd(vector<vector<double>>& lnl_table_wgd, const evo_tree& r
                 // cout << "WGD " << i << ": " << sk << " likelihood=" << lnl_wgd << endl;
             }      
         }
+        rescale_node_lnl(lnl_table_wgd, k);
   }
   
   if(debug > 0){
@@ -992,7 +996,8 @@ void initialize_lnl_table_site(vector<vector<double>>& lnl_table_seg, const evo_
     // number of site duplication/deletion states, 16 for max CN 6 or 25 for max CN 8
     assert(dim_decomp.dim_seg > 0);
 
-    lnl_table_seg.resize(2 * Ns + 1, vector<double>(dim_decomp.dim_seg, 0.0));
+    lnl_table_seg.resize(2 * Ns + 2, vector<double>(dim_decomp.dim_seg, 0.0));   // nodes, then the log scale row
+    lnl_table_seg.back().assign(dim_decomp.dim_seg, 0.0);
     lnl_table_seg[Ns][NO_CHANGE_HAPLOTYPE] = 1.0;  // no site gain/loss for haplotype-specific case
 
     for(int i = 0; i < Ns; ++i){       
@@ -1384,12 +1389,38 @@ void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo
                 }  
             }        
         }
+        rescale_node_lnl(lnl_table_seg, k);
   }
   
   if(debug > 0){
     cout << "The likelihood tables for site changes:" << endl;
     print_tree_lnl(rtree, lnl_table_seg, dim_decomp.dim_seg);
   }
+}
+
+
+/**
+ * @brief Rescale the conditional likelihoods of node k when they become very small.
+ * Dividing by a power of two is exact, so values are unchanged apart from the scale;
+ * its log is added to the scale row and restored by extract_tree_lnl_change.
+ * Tables of small trees never reach the threshold and stay as before.
+ */
+void rescale_node_lnl(vector<vector<double>>& lnl_table, int k){
+    vector<double>& row = lnl_table[k];
+    double max_val = *max_element(row.begin(), row.end());
+    if(max_val <= 0.0 || max_val >= LNL_RESCALE_THRESHOLD) return;
+
+    int exp2 = 0;
+    frexp(max_val, &exp2);   // max_val = m * 2^exp2 with 0.5 <= m < 1
+    for(double& v : row){
+        v = ldexp(v, -exp2);
+    }
+    lnl_table.back()[0] += exp2 * M_LN2;
+}
+
+
+double get_lnl_log_scale(const vector<vector<double>>& lnl_table){
+    return lnl_table.back()[0];
 }
 
 
@@ -1410,7 +1441,7 @@ double extract_tree_lnl_change(const vector<vector<double>>& lnl_table, int num_
 
         double prob_seg = lnl_table[num_leaves][normal_state]; 
         if (prob_seg > 0.0) {
-            log_lnl += log(prob_seg);
+            log_lnl += log(prob_seg) + get_lnl_log_scale(lnl_table);
         } else {
             if (debug) cout << "Zero likelihood at root: segment change" << endl;
         } 
@@ -1614,6 +1645,7 @@ void get_likelihood_wgd_variable(vector<vector<double>>& lnl_table_wgd, const ev
                                       * compute_child_likelihood_wgd(nj, sk, lnl_table_wgd, pblj_wgd, dim_decomp, debug);
             }
         }
+        rescale_node_lnl(lnl_table_wgd, k);
     }
 }
 
@@ -1642,6 +1674,7 @@ void get_likelihood_per_chr_variable(vector<vector<double>>& lnl_table_chr, cons
                                       * compute_child_likelihood_chr(nj, sk, lnl_table_chr, pblj_chr, dim_decomp, debug);
             }
         }
+        rescale_node_lnl(lnl_table_chr, k);
     }
 }
 
@@ -1668,6 +1701,7 @@ void get_likelihood_site_change_variable(vector<vector<double>>& lnl_table_seg, 
                 lnl_table_seg[k][sk] = get_prob_children_change(lnl_table_seg, rtree, sk, pbli_seg, pblj_seg, dim_decomp, ni, nj, debug);
             }
         }
+        rescale_node_lnl(lnl_table_seg, k);
     }
 }
 

@@ -245,6 +245,9 @@ struct LNL_TYPE{
 const double LARGE_LNL = -1e9;
 const double SMALL_LNL = -1e20;
 const double MAX_NLNL = 1e20;
+// In the model-3 likelihood tables, a node's conditional likelihoods are rescaled by a power of two
+// when their largest value falls below this, so that trees with many tips do not underflow to 0
+const double LNL_RESCALE_THRESHOLD = 0x1p-500;
 
 
 /****************** common functions *******************/
@@ -442,6 +445,11 @@ double get_likelihood_change(evo_tree& rtree, const map<int, vector<vector<CN_CH
 double get_likelihood_change_variable_rate(evo_tree& rtree, const map<int, vector<vector<CN_CHANGE>>>& vobs_change, const OBS_DECOMP& obs_decomp, const LNL_TYPE& lnl_type, int debug);
 
 double extract_tree_lnl_change(const vector<vector<double>>& lnl_table, int num_leaves, int normal_state, int debug);  
+
+// The last row of a model-3 likelihood table (one row after the nodes) holds, in its first entry,
+// the log of the scale factors applied by rescale_node_lnl
+void rescale_node_lnl(vector<vector<double>>& lnl_table, int k);
+double get_lnl_log_scale(const vector<vector<double>>& lnl_table);
 
 
 
