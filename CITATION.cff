@@ -1,8 +1,8 @@
 # Citation metadata in the Citation File Format (https://citation-file-format.github.io/).
-# Two separate lists: `authors` are the people who wrote the software, whom
-# Zenodo credits when a release is archived; `preferred-citation` is the paper,
-# with its own authors, which GitHub shows under "Cite this repository".
-# Add a line under `authors` for each new contributor.
+# `preferred-citation` is the paper to cite for now; GitHub shows it under
+# "Cite this repository". `authors` are the software's authors, whom Zenodo
+# credits when a release is archived. How to update either: the developer
+# guide, "Versions and releases", "Keeping the citation data up to date".
 cff-version: 1.2.0
 type: software
 title: "CNETA: Copy Number Evolutionary Tree Analysis"
