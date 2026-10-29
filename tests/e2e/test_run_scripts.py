@@ -102,6 +102,20 @@ def test_run_cnetml_after_cnets(repo_root, scripts_dir, script_env, run):
     assert "version:\t" in log.read_text(), f"cnetml did not run\n{result}"
 
 
+def test_run_cnetml_stops_when_its_input_is_missing(repo_root, scripts_dir,
+                                                    script_env, run):
+    """Without run-cnets.sh first there is no input file. The script used to
+    say so and exit 0, which a pipeline reads as success. It must exit
+    non-zero, name the file, and not start the run."""
+    outdir, env = script_env
+
+    result = run([scripts_dir / "run-cnetml.sh"], cwd=repo_root, env=env)
+
+    assert result.returncode != 0, str(result)
+    assert str(outdir / "sim-data-1-cn.txt.gz") in result.stderr, str(result)
+    assert "Start running cnetml" not in result.stdout, str(result)
+
+
 @pytest.mark.xfail(
     reason="run-cnetmcmc.sh ships with an inconsistent configuration: it "
            "passes is_total=1 with <prefix>-cn.txt.gz (4 columns), but "

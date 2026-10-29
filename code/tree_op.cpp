@@ -1334,7 +1334,7 @@ evo_tree read_tree_info(const string& filename, const int Ns, int debug){
   ifstream infile(filename.c_str());
   if(infile.is_open()){
     std::string line;
-    while(!getline(infile, line).eof()){
+    while(getline(infile, line)){
       if(line.empty()) continue;
 
       std::vector<std::string> split;
