@@ -73,7 +73,7 @@ of the version string tells later builds apart.
   `-N-g<commit>` part and no `-dirty`.
 - Report the CNETA version and the seeds. Both are in the output files and
   the logs; the run scripts also keep `seed-history.txt`.
-- Cite the CNETML paper (README, "Citation"). Once the repository is
+- Cite the CNETML paper (README, "Version and citation"). Once the repository is
   connected to Zenodo, each GitHub Release gets a DOI, so the software
   release can be cited as well.
 
@@ -83,14 +83,15 @@ of the version string tells later builds apart.
 
 - **`preferred-citation`** is the paper users are asked to cite; GitHub
   shows it under "Cite this repository". When a new paper is published,
-  replace this block (title, authors, journal, volume, pages, year, DOI)
-  and the reference in the README's "Citation" section.
+  replace this block (title, authors, journal, volume, pages, year, DOI),
+  the reference in the README ("Version and citation") and the one on the
+  documentation front page (`docs/source/index.md`).
 - **`authors`** are the people who wrote the software. Zenodo credits them
   when a release is archived; it does not read the paper's authors. When
   someone joins the development, add a line with their name (and ORCID,
   if they have one).
 - **Once Zenodo is connected**, add the "all versions" DOI as `doi:` in
-  `CITATION.cff` and in the README's "Citation" section, so the software
+  `CITATION.cff` and in the README ("Version and citation"), so the software
   itself can be cited; each release's own DOI comes from Zenodo.
 
 ## Recommended next steps (not set up yet)

@@ -37,17 +37,6 @@ cd code && ./build.sh local 4                     # programs are written to bin/
 
 HPC without conda, Windows, plotting and tests: see the [installation guide](https://lu-cbio-group.github.io/cneta2/en/installation/index.html).
 
-## Citation
-
-For now, please cite the CNETML paper: Lu B, Curtius K, Graham TA,
-Yang Z, Barnes CP. CNETML: maximum likelihood inference of phylogeny from
-copy number profiles of multiple samples. *Genome Biology* 24, 144 (2023).
-https://doi.org/10.1186/s13059-023-02983-0
-
-Once releases are archived on Zenodo, each release will also have a DOI
-for citing the software itself. The citation data lives in `CITATION.cff`;
-the developer guide's page on versions and releases says how to update it.
-
 
 ## Overview
 <p align="center">
@@ -68,3 +57,7 @@ If you use **cnets** or **cnetml**, please cite:
 - [Lu B, Curtius K, Graham TA, Yang Z, Barnes CP. CNETML: maximum likelihood inference of phylogeny from copy number profiles of multiple samples. Genome Biol 24, 144 (2023).](https://doi.org/10.1186/s13059-023-02983-0)
 
 The cnetml2 paper is currently in preparation; a citation will be added here once it is available.
+
+Once releases are archived on Zenodo, each release will also have a DOI
+for citing the software itself. The citation data lives in `CITATION.cff`;
+the developer guide's page on versions and releases says how to update it.
