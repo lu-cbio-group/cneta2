@@ -446,3 +446,27 @@ def test_a_file_without_a_final_newline_scores_the_same(tmp_path, data_dir,
         expected["mode2_logl"]["tiny-tree.txt"], rel=LOGL_TOLERANCE), (
         f"the score changed when {source.name} lost its final newline"
     )
+
+
+def test_more_wgds_than_max_wgd_is_rejected(tmp_path, data_dir, cnetml, run):
+    """Tumour samples with a mean copy number above 6 count as two WGDs, but the
+    model-3 WGD chain has only --max_wgd + 1 states (default 1). cnetml used to
+    write the tip state past the end of the WGD table (a crash or silently
+    wrong results); it must stop and point to --max_wgd. With --max_wgd 2 the
+    same data run."""
+    rows = []
+    for line in (data_dir / "tiny-cn.txt").read_text().splitlines():
+        sample, chrom, site, cn = line.split()
+        if int(sample) <= cli.NS:
+            cn = str(int(cn) + 5)    # mean copy number about 7
+        rows.append("\t".join([sample, chrom, site, cn]))
+    cn_file = _write_gz(tmp_path / "two-wgd-cn.txt.gz", "\n".join(rows) + "\n")
+    args = dict(cn_file=cn_file, times_file=data_dir / "tiny-rel-times.txt",
+                tree_file=data_dir / "tiny-tree.txt")
+    model3 = {"-d": 3, "--cn_type": 2, "--cn_max": 10, "--wgd_rate": 0.01}
+
+    result = run([cnetml, *cli.cnetml_score_args(**args, **model3)])
+    assert_clean_rejection(result, mentions="--max_wgd")
+
+    result = run([cnetml, *cli.cnetml_score_args(**args, **model3, **{"--max_wgd": 2})])
+    assert result.returncode == 0, str(result)

@@ -154,7 +154,7 @@ the simulation (`cnets` has no `--cn_type` option).
 | Option | Short | Default | Values | Description |
 |---|---|---|---|---|
 | `--cn_max` | | 4 | positive integer | Maximum copy number allowed by the bounded models |
-| `--max_wgd` | | 1 | ≥ 0 | Maximum number of WGDs (WGD rate-matrix dimension, model 3) |
+| `--max_wgd` | | 1 | ≥ 0 | Maximum number of WGDs (WGD rate-matrix dimension, model 3). `cnetml` stops with an error if a sample has more (from its mean copy number or `--meta_file`) |
 | `--max_chr_change_haplotype` | | 1 | ≥ 0 | Maximum chromosome gains/losses per haplotype (model 3) |
 | `--max_site_change_haplotype` | | 2 | ≥ 0 | Maximum site duplications/deletions per haplotype (model 3). Too low gives an incorrect likelihood; too high slows computation |
 | `--m_max` | | 1 | ≥ 0 | Maximum segment copies before chromosome-level events (currently unused; set to 0 when `cn_type=2`) |
