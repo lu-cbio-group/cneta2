@@ -37,6 +37,7 @@ add_executable(cneta_unit_tests
     test_portable_shuffle.cpp
     test_state_decomp.cpp
     test_state.cpp
+    test_likelihood_scale.cpp
 )
 
 target_link_libraries(cneta_unit_tests PRIVATE cneta_core Catch2::Catch2WithMain)
