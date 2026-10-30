@@ -7,6 +7,7 @@
 // numbers are wrong even when the reconstructed states are right.
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include <array>
@@ -143,7 +144,7 @@ TEST_CASE("marginal MRCA probabilities are the exact posterior", "[state]"){
     };
 
     std::string prefix = out_prefix("marginal");
-    reconstruct_marginal_ancestral_state_decomp(t, in.vobs_change, in.inodes, in.obs_decomp, in.lnl_type, prefix, 0);
+    reconstruct_marginal_ancestral_state_decomp(t, in.vobs_change, in.inodes, in.obs_decomp, in.lnl_type, false, prefix, 0);
 
     std::ifstream fin(prefix + ".mrca.seg.state");
     std::string line;
@@ -300,14 +301,26 @@ TEST_CASE("a WGD doubles the baseline before chromosome- and site-level changes"
 
 namespace {
 
-// One chain of the model-3 reconstruction: its transition matrices and the
-// states allowed at each region by the observed data
+// One chain of the model-3 reconstruction: the transition matrix of the edge
+// into each node and the states allowed at each region by the observed data
 struct ChainCase {
-    const map<double, double*>* pmats;
+    map<int, const double*> edge_pmat;
     int n;
     int root_state;
     vector<vector<int>> tips;
 };
+
+// Transition matrix of the edge into every non-root node: shared by branch
+// length with constant rates, one per edge with branch-specific rates
+map<int, const double*> edge_pmats(const evo_tree& t, const map<double, double*>& by_blen, const map<int, double*>& by_eid, bool edge_rates){
+    map<int, const double*> out;
+    for(size_t k = 0; k < t.nodes.size(); k++){
+        if((int)k == t.nleaf) continue;    // root
+        int eid = t.nodes[k].e_in;
+        out[k] = edge_rates ? by_eid.at(eid) : by_blen.at(t.edges[eid].length);
+    }
+    return out;
+}
 
 // Probability of the data under one assignment of states to the internal
 // nodes below the root: transition probabilities on every edge into an
@@ -315,7 +328,7 @@ struct ChainCase {
 // the marginal reconstruction and maximised for the joint one.
 double assignment_value(const evo_tree& t, int ns, const ChainCase& c, const map<int, int>& state, bool max_at_tips){
     const int root = ns + 1;
-    auto p = [&](int child, int from, int to){ return c.pmats->at(t.edges[t.nodes[child].e_in].length)[from + to * c.n]; };
+    auto p = [&](int child, int from, int to){ return c.edge_pmat.at(child)[from + to * c.n]; };
     auto parent_state = [&](int k){ int par = t.nodes[k].parent; return par == root ? c.root_state : state.at(par); };
     double v = 1.0;
     for(const auto& [k, s] : state) v *= p(k, parent_state(k), s);
@@ -358,7 +371,7 @@ BruteForce brute_force(const evo_tree& t, int ns, const ChainCase& c){
 // chr_obs and site_obs hold the values as stored after parsing: total changes
 // or haplotype-specific state indices, with chromosome changes that may
 // predate a WGD multiplied by CHANGE_CHR.
-void check_three_chains(const std::string& name, evo_tree& t, int ns, int is_total, const vector<int>& num_wgd,
+void check_three_chains(const std::string& name, evo_tree& t, int ns, int is_total, bool edge_rates, const vector<int>& num_wgd,
                         const map<int, vector<int>>& chr_obs, const map<int, vector<vector<int>>>& site_obs){
     const int m = 1;
     const int none = NO_CHANGE_HAPLOTYPE;
@@ -389,10 +402,24 @@ void check_three_chains(const std::string& name, evo_tree& t, int ns, int is_tot
     REQUIRE(dim.dim_wgd == 2);
     REQUIRE(dim.dim_chr == 9);
     REQUIRE(dim.dim_seg == 9);
-    QMAT_DECOMP qmat;
-    build_rate_matrices(qmat, t, dim, lt, 0);
     PMAT_DECOMP pmat;
-    build_transition_matrices(pmat, t, inodes, qmat, dim, 0);
+    if(edge_rates){
+        // a different multiplier for every edge and event type
+        t.init_edge_rates(RateSet(0, t.dup_rate, t.del_rate, t.chr_gain_rate, t.chr_loss_rate, t.wgd_rate));
+        for(size_t eid = 0; eid < t.edge_rates.size(); eid++){
+            RateSet& r = t.edge_rates[eid];
+            r.dup *= 0.3 + 0.5 * eid;
+            r.del *= 2.0 - 0.15 * eid;
+            r.chr_gain *= 0.5 + 0.4 * eid;
+            r.chr_loss *= 1.8 - 0.12 * eid;
+            r.wgd *= eid % 2 ? 3.0 : 0.4;
+        }
+        build_transition_matrices_variable(pmat, t, dim, lt, 0);
+    }else{
+        QMAT_DECOMP qmat;
+        build_rate_matrices(qmat, t, dim, lt, 0);
+        build_transition_matrices(pmat, t, inodes, qmat, dim, 0);
+    }
 
     // states allowed at a region by an observed value
     auto states = build_pair_states(m);
@@ -412,18 +439,18 @@ void check_three_chains(const std::string& name, evo_tree& t, int ns, int is_tot
     };
     auto site_tip = [&](int v){ return is_total ? with_total(v) : vector<int>{v}; };
 
-    ChainCase wgd{&pmat.pmats_wgd, dim.dim_wgd, 0, {}};
+    ChainCase wgd{edge_pmats(t, pmat.pmats_wgd, pmat.pmats_wgd_var, edge_rates), dim.dim_wgd, 0, {}};
     for(int i = 0; i < ns; i++) wgd.tips.push_back({num_wgd[i]});
     map<int, ChainCase> chr;
     map<int, vector<ChainCase>> site;
     for(const auto& [c, obs] : chr_obs){
-        ChainCase cc{&pmat.pmats_chr, dim.dim_chr, none, {}};
+        ChainCase cc{edge_pmats(t, pmat.pmats_chr, pmat.pmats_chr_var, edge_rates), dim.dim_chr, none, {}};
         for(int v : obs) cc.tips.push_back(chr_tip(v));
         chr.emplace(c, cc);
     }
     for(const auto& [c, sites] : site_obs){
         for(const auto& obs : sites){
-            ChainCase cc{&pmat.pmats_seg, dim.dim_seg, none, {}};
+            ChainCase cc{edge_pmats(t, pmat.pmats_seg, pmat.pmats_seg_var, edge_rates), dim.dim_seg, none, {}};
             for(int v : obs) cc.tips.push_back(site_tip(v));
             site[c].push_back(cc);
         }
@@ -465,7 +492,7 @@ void check_three_chains(const std::string& name, evo_tree& t, int ns, int is_tot
     };
 
     std::string prefix = out_prefix(name);
-    reconstruct_marginal_ancestral_state_decomp(t, vobs, inodes, obs_decomp, lt, prefix, 0);
+    reconstruct_marginal_ancestral_state_decomp(t, vobs, inodes, obs_decomp, lt, edge_rates, prefix, 0);
     std::string line;
     int ncol = 0;
     {
@@ -544,7 +571,7 @@ void check_three_chains(const std::string& name, evo_tree& t, int ns, int is_tot
     // The joint states written for all internal nodes at a site must reach the
     // maximum over every assignment, for each chain (ties are allowed)
     prefix = out_prefix(name + "_joint");
-    reconstruct_joint_ancestral_state_decomp(t, vobs, inodes, obs_decomp, lt, prefix, 0);
+    reconstruct_joint_ancestral_state_decomp(t, vobs, inodes, obs_decomp, lt, edge_rates, prefix, 0);
     std::ifstream f(prefix + ".joint.state");
     REQUIRE(std::getline(f, line));
     map<std::string, map<int, std::array<int, 3>>> joint;    // site, node -> chain states
@@ -590,6 +617,7 @@ evo_tree five_region_tree(){
 }  // namespace
 
 TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all three chains", "[state]"){
+    // Run with constant rates and with a different rate on every edge.
     // WGD, chromosome-level and site-level changes. All regions have a WGD, so
     // whether the MRCA has one is uncertain (WGDs cannot be undone). Some
     // chromosome changes are stored as possibly predating a WGD; with total
@@ -600,10 +628,14 @@ TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all thr
     auto idx = [&](int a, int b){ return encode_change_pair(a, b, m); };
     const int none = NO_CHANGE_HAPLOTYPE;
 
+    const bool edge_rates = GENERATE(false, true);
+    INFO((edge_rates ? "per-edge rates" : "constant rates"));
+    const std::string tag = edge_rates ? "_edge" : "";
+
     SECTION("3 regions, haplotype-specific"){
         evo_tree t = read_tree_info(data_path("tiny-tree.txt"), NS);
         restore_mutation_rates(t, rates);
-        check_three_chains("chains3_hap", t, NS, 0, {1, 1, 1},
+        check_three_chains("chains3_hap" + tag, t, NS, 0, edge_rates, {1, 1, 1},
             {{1, {idx(1, 0), idx(1, 0) * CHANGE_CHR, none}}, {2, {none, none, idx(0, -1)}}},
             {{1, {{idx(0, -1), none, none}, {idx(1, 0), idx(1, 0), none}, {none, none, idx(-1, 0)}}},
              {2, {{idx(1, 1), idx(1, 0), none}, {none, idx(0, 1), idx(0, 1)}, {idx(-1, -1), none, none}}}});
@@ -611,7 +643,7 @@ TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all thr
     SECTION("3 regions, total"){
         evo_tree t = read_tree_info(data_path("tiny-tree.txt"), NS);
         restore_mutation_rates(t, rates);
-        check_three_chains("chains3_total", t, NS, 1, {1, 1, 1},
+        check_three_chains("chains3_total" + tag, t, NS, 1, edge_rates, {1, 1, 1},
             {{1, {2, 1 * CHANGE_CHR, 2}}, {2, {0, 0, -1 * CHANGE_CHR}}},
             {{1, {{-1, 0, 0}, {1, 1, 0}, {0, 0, -1}}},
              {2, {{2, 1, 0}, {0, 1, 1}, {-2, 0, 0}}}});
@@ -619,7 +651,7 @@ TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all thr
     SECTION("5 regions, haplotype-specific"){
         evo_tree t = five_region_tree();
         restore_mutation_rates(t, rates);
-        check_three_chains("chains5_hap", t, 5, 0, {1, 1, 1, 1, 1},
+        check_three_chains("chains5_hap" + tag, t, 5, 0, edge_rates, {1, 1, 1, 1, 1},
             {{1, {idx(1, 0), idx(1, 0) * CHANGE_CHR, idx(1, 0), none, none}}, {2, {none, none, idx(0, -1), idx(0, -1), none}}},
             {{1, {{idx(0, -1), none, none, none, none}, {idx(1, 0), idx(1, 0), none, none, idx(0, 1)}, {none, none, idx(-1, 0), none, none}}},
              {2, {{idx(1, 1), idx(1, 0), none, none, none}, {none, idx(0, 1), idx(0, 1), idx(0, 1), none}, {idx(-1, -1), none, none, none, idx(-1, 0)}}}});
@@ -627,7 +659,7 @@ TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all thr
     SECTION("5 regions, total"){
         evo_tree t = five_region_tree();
         restore_mutation_rates(t, rates);
-        check_three_chains("chains5_total", t, 5, 1, {1, 1, 1, 1, 1},
+        check_three_chains("chains5_total" + tag, t, 5, 1, edge_rates, {1, 1, 1, 1, 1},
             {{1, {2, 1 * CHANGE_CHR, 2, 0, 0}}, {2, {0, 0, -1, -1, -1 * CHANGE_CHR}}},
             {{1, {{-1, 0, 0, 0, 0}, {1, 1, 0, 0, 1}, {0, 0, -1, 0, 0}}},
              {2, {{2, 1, 0, 0, 0}, {0, 1, 1, 1, 0}, {-2, 0, 0, 0, -1}}}});

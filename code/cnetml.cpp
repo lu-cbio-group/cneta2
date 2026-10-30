@@ -1686,6 +1686,7 @@ int main(int argc, char** const argv){
     string data_file, time_file, meta_file, ofile, tree_file, dir_itrees, seg_file;
     int is_bin, incl_all, is_rcn;
     int infer_marginal_state, infer_joint_state;
+    string edge_rate_file;
     // double min_asr;
 
     namespace po = boost::program_options;
@@ -1739,6 +1740,7 @@ int main(int argc, char** const argv){
     // options related to inferring ancestry state
     ("infer_marginal_state", po::value<int>(&infer_marginal_state)->default_value(1), "whether or not to infer marginal ancestral state of MRCA")
     ("infer_joint_state", po::value<int>(&infer_joint_state)->default_value(1), "whether or not to infer joint ancestral state of all internal nodes")
+    ("edge_rate_file", po::value<string>(&edge_rate_file)->default_value(""), "mode 4 only: per-edge rate table (the .edge_rates.txt written by cnetml or the -edge_rates.txt written by cnets) used to infer ancestral states under branch-specific rates; requires model 3 (-d 3). Empty: all edges use the global rates")
     // ("min_asr", po::value<double>(&min_asr)->default_value(0.5), "minimum posterior probability to determine the best ancestral state")
 
     ("init_tree", po::value<int>(&init_tree)->default_value(0), "method of building inital tree (0: Random coalescence tree, 1: Maximum parsimony tree)")
@@ -1833,6 +1835,15 @@ int main(int argc, char** const argv){
     // [2026-07-21 added]
     if(rlc_criterion != 0 && rlc_criterion != 1){
         cerr << "Error: unknown rlc_criterion=" << rlc_criterion << " (0: AIC, 1: BIC)." << endl;
+        exit(EXIT_FAILURE);
+    }
+    if(edge_rate_file != "" && mode != 4){
+        cerr << "Error: edge_rate_file is only used with mode=4 (ancestral state reconstruction)." << endl;
+        exit(EXIT_FAILURE);
+    }
+    // only the independent-chain likelihood reads per-edge rates
+    if(edge_rate_file != "" && model != DECOMP){
+        cerr << "Error: edge_rate_file requires model 3 (-d 3); model=" << model << " uses the same rates on all edges." << endl;
         exit(EXIT_FAILURE);
     }
 
@@ -2134,6 +2145,39 @@ int main(int argc, char** const argv){
 
         evo_tree tree = get_tree_from_file(tree_file, Ns, rates, max_tobs, age, cons);
 
+        if(edge_rate_file != ""){
+            cout << "Reading branch-specific rates from " << edge_rate_file << endl;
+            tree.read_edge_rates(edge_rate_file);
+
+            // A rate that is zero on every edge freezes that chain. cnetml writes 1e-20
+            // for event types it does not model, so treat tiny values as zero here.
+            const double ZERO_RATE = 1e-15;
+            auto all_zero = [&](double RateSet::* field){
+                for(const auto& rs : tree.edge_rates){
+                    if(rs.*field > ZERO_RATE) return false;
+                }
+                return true;
+            };
+            vector<pair<string, double RateSet::*>> used_rates;
+            if(obs_decomp.max_site_change > 0){
+                used_rates.push_back({"dup_rate", &RateSet::dup});
+                used_rates.push_back({"del_rate", &RateSet::del});
+            }
+            if(obs_decomp.max_chr_change > 0){
+                used_rates.push_back({"chr_gain_rate", &RateSet::chr_gain});
+                used_rates.push_back({"chr_loss_rate", &RateSet::chr_loss});
+            }
+            if(obs_decomp.max_wgd > 0){
+                used_rates.push_back({"wgd_rate", &RateSet::wgd});
+            }
+            for(const auto& [name, field] : used_rates){
+                if(all_zero(field)){
+                    cout << "Warning: " << name << " is zero on every edge in " << edge_rate_file
+                         << ", but the data contain this type of change." << endl;
+                }
+            }
+        }
+
         if(!incl_all){
             incl_all = 1;
             cout << "All the sites are included in likelihood computation" << endl;
@@ -2146,7 +2190,7 @@ int main(int argc, char** const argv){
             cout << "\nInferring marginal ancestral states" << endl;
             double lnl = 0.0;
             if(model == DECOMP){
-               lnl = reconstruct_marginal_ancestral_state_decomp(tree, vobs_change, inodes, obs_decomp, lnl_type, ofile, debug);
+               lnl = reconstruct_marginal_ancestral_state_decomp(tree, vobs_change, inodes, obs_decomp, lnl_type, edge_rate_file != "", ofile, debug);
             }else{
             //    assert(model == BOUNDA);
                lnl = reconstruct_marginal_ancestral_state(tree, vobs, inodes, model, cn_max, use_repeat, is_total, ofile);
@@ -2157,7 +2201,7 @@ int main(int argc, char** const argv){
         if(infer_joint_state){
             cout << "\nInferring joint ancestral states" << endl;
             if(model == DECOMP){
-               reconstruct_joint_ancestral_state_decomp(tree, vobs_change, inodes, obs_decomp, lnl_type, ofile, debug);
+               reconstruct_joint_ancestral_state_decomp(tree, vobs_change, inodes, obs_decomp, lnl_type, edge_rate_file != "", ofile, debug);
             }else{
             //    assert(model == BOUNDA);
                reconstruct_joint_ancestral_state(tree, vobs, inodes, model, cn_max, use_repeat, is_total, m_max, ofile);

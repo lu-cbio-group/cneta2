@@ -33,6 +33,8 @@ bin/cnetml [options]
 - `3` — Optimize branch lengths (and rates) for a given topology. Add
   `-b 1` to bootstrap.
 - `4` — Infer marginal and joint ancestral states for a given tree.
+  With `-d 3`, `--edge_rate_file` uses a different rate on each branch;
+  see [Ancestral states with branch-specific rates](#ancestral-states-with-branch-specific-rates).
 
 Modes 1-3 are mainly used to validate the likelihood computation, per the
 original README.
@@ -188,6 +190,54 @@ a single `<ofile>.joint.state`. Its `.cn` files also give the WGD,
 chromosome-level and site-level changes behind each copy number, and
 `.mrca.cn` the probability of the reported copy number. See
 [File formats](../file-formats/index.md) for column definitions.
+
+## Ancestral states with branch-specific rates
+By default, mode 4 uses the same rates (`--dup_rate`, `--del_rate`, …) on
+every branch. If the rates were estimated per branch (`--bsr_mode 1`, `2`
+or `3` in mode 3), the reconstruction can use those rates instead. This
+takes two runs:
+
+```bash
+# 1. Estimate per-branch rates on the tree.
+#    Writes the fitted tree <ofile> and <ofile>.edge_rates.txt.
+bin/cnetml --mode 3 -d 3 --bsr_mode 3 --optim 1 --estmu 0 \
+    --tree_file input-tree.txt -o fit.txt [data options]
+
+# 2. Reconstruct ancestral states with those rates.
+bin/cnetml --mode 4 -d 3 --tree_file fit.txt \
+    --edge_rate_file fit.txt.edge_rates.txt -o asr [data options]
+```
+
+In step 2, give the tree written by step 1, not the input tree. Step 1
+re-estimates the branch lengths, and the rate table records the lengths it
+was fitted with. For simulated data, the true tree (`*-tree.txt`) and the
+true rates (`*-edge_rates.txt`) from `cnets` can also be used together.
+
+`--edge_rate_file`
+: - Only with `--mode 4` and `-d 3`. Any other combination stops with an
+    error, because only the independent Markov chain model reads per-branch
+    rates.
+  - Reads the `.edge_rates.txt` written by `cnetml` or the
+    `-edge_rates.txt` written by `cnets`. Columns are found by name:
+    `start`, `end`, `length`, `dup_rate`, `del_rate`, `chr_gain_rate`,
+    `chr_loss_rate` and `wgd_rate`. Other columns are ignored.
+  - Each row is matched to a branch by its start and end node. cnetml stops
+    if a branch is missing or repeated, a node pair is not in the tree, a
+    rate is negative or not a number, or a `length` differs from the
+    tree's branch length. The length check catches a rate table paired
+    with the wrong tree. It cannot catch a table fitted to a different
+    dataset on the same tree, so keep the tree and the rate table from the
+    same run.
+  - If the data contain an event type whose rate is zero on every branch
+    of the table, cnetml prints a warning and continues. That chain then
+    cannot change along any branch.
+  - When a rate table is given, the global rate options (`--dup_rate`,
+    `--del_rate`, …) do not affect the reconstruction.
+
+The log likelihood that mode 4 prints is computed without the
+acquisition-bias correction, and mode 4 always uses all sites
+(`incl_all=1`). It equals the log likelihood from step 1 only when step 1
+also ran with `--incl_all 1`.
 
 ## Examples
 ```bash
