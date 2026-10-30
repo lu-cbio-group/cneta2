@@ -136,7 +136,10 @@ Worth knowing before trusting a green run:
   scoring (2) are tested.
 - Branch-specific rates (`--bsr_mode`) and the random-local-clock search are
   untested.
-- Bootstrapping, ancestral state reconstruction, and the `util/` R scripts
-  have no tests.
+- Bootstrapping and the `util/` R scripts have no tests. Ancestral state
+  reconstruction is tested only for model 3, by unit tests in
+  `unit/test_state_decomp.cpp` that compare its output with brute-force
+  enumeration on the 3-region tree; models 0-2 and `cnetml --mode 4`
+  end to end are untested.
 - The regression anchor covers one dataset. It will catch a change in the
   likelihood; it will not localise it.

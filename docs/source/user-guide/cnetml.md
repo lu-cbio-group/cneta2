@@ -184,7 +184,9 @@ Ancestral-state mode (`mode=4`) additionally writes `<ofile>.mrca.cn` /
 models 0-2. Model 3 (independent Markov chains) splits the MRCA state
 file by event type instead — `<ofile>.mrca.seg.state` /
 `.mrca.chr.state` / `.mrca.wgd.state` — while the joint state file stays
-a single `<ofile>.joint.state`. See
+a single `<ofile>.joint.state`. Its `.cn` files also give the WGD,
+chromosome-level and site-level changes behind each copy number, and
+`.mrca.cn` the probability of the reported copy number. See
 [File formats](../file-formats/index.md) for column definitions.
 
 ## Examples
