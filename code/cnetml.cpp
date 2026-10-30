@@ -1971,6 +1971,13 @@ int main(int argc, char** const argv){
         cout << "\tmaximum number of chromosome gain/loss events on one chromosome is " << max_chr_change << endl;
         cout << "\tmaximum number of site duplication/deletion events is " << max_site_change << endl;
         // cout << "\tmaximum number of site duplication/deletion change before chromosome gain/loss is " << m_max << endl;
+
+        // the WGD chain has max_wgd + 1 states, so a sample with more WGDs has no tip state
+        if(max_wgd_sample > max_wgd){
+            cerr << "A sample has " << max_wgd_sample << " WGDs (from its mean copy number, or from --meta_file), more than --max_wgd "
+                 << max_wgd << " allows. Rerun with --max_wgd " << max_wgd_sample << "." << endl;
+            exit(EXIT_FAILURE);
+        }
     }
     
     if(model == MK)   mu = 1 / Nchar;

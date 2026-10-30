@@ -154,8 +154,14 @@ msgid "Independent Markov chain dimensions (model 3 only)"
 msgstr "Independent Markov chain 的维度（仅 model 3）"
 
 #: ../../source/user-guide/cnetml.md:62
-msgid "`max_wgd` — at most 1; simulations allow at most one WGD per sample."
-msgstr "`max_wgd`：最多为 1；模拟中每个样本最多一次 WGD。"
+msgid ""
+"`max_wgd` — default 1. If a sample looks like it has more WGDs (mean copy"
+" number above 6, or a count in `--meta_file`), cnetml stops and asks for "
+"a larger value. cnets can simulate two WGDs in one sample. Values above 1"
+" are not covered by the tests."
+msgstr ""
+"`max_wgd`：默认为 1。如果某个样本看起来有更多次 WGD（平均拷贝数大于 6，或 `--meta_file` "
+"中给出的次数），cnetml 会报错退出并提示调大这个值。cnets 可能模拟出一个样本有两次 WGD。大于 1 的取值没有测试覆盖。"
 
 #: ../../source/user-guide/cnetml.md:64
 msgid ""

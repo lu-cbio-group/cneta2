@@ -877,8 +877,13 @@ msgid "`--max_wgd`"
 msgstr ""
 
 #: ../../source/configuration/options.md
-msgid "Maximum number of WGDs (WGD rate-matrix dimension, model 3)"
-msgstr "允许的最大 WGD 次数（WGD 速率矩阵维度，model 3）"
+msgid ""
+"Maximum number of WGDs (WGD rate-matrix dimension, model 3). `cnetml` "
+"stops with an error if a sample has more (from its mean copy number or "
+"`--meta_file`)"
+msgstr ""
+"允许的最大 WGD 次数（WGD 速率矩阵维度，model 3）。如果某个样本的 WGD 次数更多（由平均拷贝数推断或来自 "
+"`--meta_file`），`cnetml` 报错退出"
 
 #: ../../source/configuration/options.md
 msgid "`--max_chr_change_haplotype`"
