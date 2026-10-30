@@ -1368,6 +1368,8 @@ void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_t
 // Haplotype-specific change pair of a chromosome- or site-level state index.
 // Indices follow build_pair_states(), which is also how the rate matrices and
 // the observed tip states are indexed.
+// Note: Model 3 is serial only; this static cache is not thread-safe for parallel use.
+// If Model 3 is ever called from a parallel region, build the pair list per call instead.
 static pair<int, int> decomp_state_to_change_pair(int state, int max_change_haplotype) {
     static unordered_map<int, vector<pair<int, int>>> cache;
     if (!cache.count(max_change_haplotype)) {
