@@ -239,31 +239,29 @@ that skips comment lines sees the same leading columns as for models
 0-2:
 
 ```text
-#node  chr  site  cn  num_wgd  chr_change  site_change  [prob]                                                      (total)
-#node  chr  site  cnA cnB  num_wgd  chr_change_A  chr_change_B  site_change_A  site_change_B  [prob]                (haplotype-specific)
+#node  chr  site  num_wgd  chr_change  site_change  [prob]                                       (total)
+#node  chr  site  num_wgd  chr_change_A  chr_change_B  site_change_A  site_change_B  [prob]     (haplotype-specific)
 ```
 
 - `num_wgd` is the number of WGDs; each one doubles the baseline of one
   copy per haplotype. `chr_change` and `site_change` are the copies
   gained (positive) or lost (negative) at chromosome and site level, on
-  top of that baseline. A copy number is the baseline plus both changes,
-  e.g. `cn 3 num_wgd 0 chr_change 1 site_change 0`. With total copy
-  numbers the changes are summed over the two haplotypes.
+  top of that baseline. With total copy numbers the changes are summed
+  over the two haplotypes.
+- The chains are independent. Each chain's state is reported as its most
+  likely value given the posterior distribution. A copy number is not
+  computed here because it depends on the order of events (WGD relative
+  to chromosome and site changes), which cannot be uniquely determined
+  from independent chain posteriors alone. Users can compute copy numbers
+  if needed using the reported chain changes and the assumed event order.
 - The chains are independent, so their changes can take one haplotype
   below zero (e.g. a chromosome-level and a site-level loss on the same
   haplotype with one copy). Each haplotype's copy number is floored at
-  0. With total copy numbers, where the haplotypes are not shown, such a
-  line has `cn` larger than the baseline plus both changes, e.g.
-  `cn 1 num_wgd 0 chr_change -1 site_change -1`.
+  0.
 - A chain that is not modelled (its maximum change is 0, or the data
   have no events of that type) is reported as no change.
-- `prob` (`.mrca.cn` only) is the posterior probability of the reported
-  copy number, summed over every combination of chain states giving it.
-  The chains are independent, so a combination has the product of the
-  chain probabilities. Several combinations can give the same copy
-  number, so the reported copy number is not always the one built from
-  each chain's most likely state; the chain changes on the line are the
-  most likely combination giving it.
+- `prob` (`.mrca.cn` only) is the posterior probability of the most
+  likely chain state (currently the highest posterior among the chains).
 - In the `.mrca.*.state` files, `probability_k` is the probability of
   state `k`: for total copy numbers, the copy number `k` from that chain
   alone (`k = 2` is no change); for haplotype-specific copy numbers, the

@@ -28,14 +28,14 @@ struct STATE_TABLE{
 };
 
 
-// Copy number reconstructed at one node and site under model 3, with the
-// haplotype-specific changes of each chain that give it
+// Haplotype-specific changes of each chain reconstructed at one node and site under model 3.
+// Copy number is not computed here because it depends on the order of events,
+// which cannot be uniquely determined from independent chain posteriors.
 struct CN_CALL{
     int num_wgd = 0;
     pair<int, int> chr_change{0, 0};
     pair<int, int> site_change{0, 0};
-    pair<int, int> cn{1, 1};    // cnA, cnB
-    double prob = 0.0;          // posterior probability of the copy number (marginal only)
+    double prob = 0.0;          // posterior probability of the most likely chain state (marginal only)
 };
 
 

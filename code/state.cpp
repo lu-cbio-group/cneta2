@@ -1461,25 +1461,33 @@ map<pair<int, int>, double> get_allele_cn_posterior_decomp(const vector<double>&
 
 
 CN_CALL get_most_likely_cn_call_decomp(const vector<double>& post_wgd, const vector<double>& post_chr, const vector<double>& post_site, const LNL_TYPE& lnl_type) {
-    // probability of each reported copy number (total, or cnA and cnB), and
-    // the most likely combination of chain changes giving it
-    map<pair<int, int>, double> post_cn;
-    map<pair<int, int>, pair<double, CN_CALL>> best_combination;
-    for_each_chain_combination(post_wgd, post_chr, post_site, lnl_type,
-        [&](int w, pair<int, int> c, pair<int, int> s, double p) {
-            pair<int, int> cn = allele_cn_from_changes(w, c, s);
-            pair<int, int> key = lnl_type.is_total ? pair<int, int>{cn.first + cn.second, 0} : cn;
-            post_cn[key] += p;
-            auto it = best_combination.find(key);
-            if (it == best_combination.end() || p > it->second.first) {
-                best_combination[key] = {p, CN_CALL{w, c, s, cn, 0.0}};
-            }
-        });
-
-    auto best = max_element(post_cn.begin(), post_cn.end(),
-                            [](const auto& a, const auto& b) { return a.second < b.second; });
-    CN_CALL call = best_combination.at(best->first).second;
-    call.prob = best->second;
+    // Report the most likely state for each chain independently.
+    // Copy number calculation is not attempted here because the order of events
+    // (WGD, chromosome changes, site changes) affects the final result, and we cannot
+    // determine the order from independent chain posteriors alone.
+    CN_CALL call;
+    
+    // Get the most likely state for the WGD chain
+    if (!post_wgd.empty()) {
+        auto max_it = max_element(post_wgd.begin(), post_wgd.end());
+        call.num_wgd = (int)distance(post_wgd.begin(), max_it);
+        call.prob = *max_it;  // Use the highest posterior probability among chains
+    }
+    
+    // Get the most likely state for the chromosome change chain
+    if (!post_chr.empty()) {
+        auto max_it = max_element(post_chr.begin(), post_chr.end());
+        int chr_state = (int)distance(post_chr.begin(), max_it);
+        call.chr_change = decomp_state_to_change_pair(chr_state, lnl_type.max_chr_change_haplotype);
+    }
+    
+    // Get the most likely state for the site change chain
+    if (!post_site.empty()) {
+        auto max_it = max_element(post_site.begin(), post_site.end());
+        int site_state = (int)distance(post_site.begin(), max_it);
+        call.site_change = decomp_state_to_change_pair(site_state, lnl_type.max_site_change_haplotype);
+    }
+    
     return call;
 }
 
@@ -1491,14 +1499,16 @@ static CN_CALL get_cn_call_from_states_decomp(const CN_CHANGE& state, const LNL_
     call.num_wgd = dim_decomp.dim_wgd > 0 ? state.num_wgd : 0;
     if (dim_decomp.dim_chr > 0) call.chr_change = decomp_state_to_change_pair(state.cn_change_chr, lnl_type.max_chr_change_haplotype);
     if (dim_decomp.dim_seg > 0) call.site_change = decomp_state_to_change_pair(state.cn_change_site, lnl_type.max_site_change_haplotype);
-    call.cn = allele_cn_from_changes(call.num_wgd, call.chr_change, call.site_change);
     return call;
 }
 
 
 string get_cn_call_header(int is_total, bool with_prob) {
-    string header = is_total ? "#node\tchr\tsite\tcn\tnum_wgd\tchr_change\tsite_change"
-                             : "#node\tchr\tsite\tcnA\tcnB\tnum_wgd\tchr_change_A\tchr_change_B\tsite_change_A\tsite_change_B";
+    // Output only the chain states (num_wgd, chr_change, site_change), not computed copy numbers.
+    // The copy number depends on the order of events, which cannot be uniquely determined
+    // from independent chain posteriors alone.
+    string header = is_total ? "#node\tchr\tsite\tnum_wgd\tchr_change\tsite_change"
+                             : "#node\tchr\tsite\tnum_wgd\tchr_change_A\tchr_change_B\tsite_change_A\tsite_change_B";
     if (with_prob) header += "\tprob";
     return header;
 }
@@ -1506,13 +1516,12 @@ string get_cn_call_header(int is_total, bool with_prob) {
 
 string get_cn_call_line(int nid, int nchr, int nc, const CN_CALL& call, int is_total, bool with_prob) {
     string line = to_string(nid + 1) + "\t" + to_string(nchr) + "\t" + to_string(nc + 1) + "\t";
+    line += to_string(call.num_wgd) + "\t";
     if (is_total) {
-        line += to_string(call.cn.first + call.cn.second) + "\t" + to_string(call.num_wgd) + "\t"
-              + to_string(call.chr_change.first + call.chr_change.second) + "\t"
+        line += to_string(call.chr_change.first + call.chr_change.second) + "\t"
               + to_string(call.site_change.first + call.site_change.second);
     } else {
-        line += to_string(call.cn.first) + "\t" + to_string(call.cn.second) + "\t" + to_string(call.num_wgd) + "\t"
-              + to_string(call.chr_change.first) + "\t" + to_string(call.chr_change.second) + "\t"
+        line += to_string(call.chr_change.first) + "\t" + to_string(call.chr_change.second) + "\t"
               + to_string(call.site_change.first) + "\t" + to_string(call.site_change.second);
     }
     if (with_prob) line += "\t" + to_string(call.prob);
