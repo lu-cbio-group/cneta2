@@ -470,3 +470,21 @@ def test_more_wgds_than_max_wgd_is_rejected(tmp_path, data_dir, cnetml, run):
 
     result = run([cnetml, *cli.cnetml_score_args(**args, **model3, **{"--max_wgd": 2})])
     assert result.returncode == 0, str(result)
+
+
+def test_wgd_in_data_warns_when_cn_type_has_no_wgd(tmp_path, data_dir, cnetml, run):
+    """--cn_type 3 builds no WGD chain, so a sample that looks like it has WGDs
+    is fitted without them. cnetml runs, but says so."""
+    rows = []
+    for line in (data_dir / "tiny-cn.txt").read_text().splitlines():
+        sample, chrom, site, cn = line.split()
+        if int(sample) <= cli.NS:
+            cn = str(int(cn) + 5)    # mean copy number about 7
+        rows.append("\t".join([sample, chrom, site, cn]))
+    cn_file = _write_gz(tmp_path / "two-wgd-cn.txt.gz", "\n".join(rows) + "\n")
+    args = dict(cn_file=cn_file, times_file=data_dir / "tiny-rel-times.txt",
+                tree_file=data_dir / "tiny-tree.txt")
+
+    result = run([cnetml, *cli.cnetml_score_args(**args, **{"-d": 3, "--cn_type": 3, "--cn_max": 10})])
+    assert result.returncode == 0, str(result)
+    assert "does not model WGD" in result.stdout
