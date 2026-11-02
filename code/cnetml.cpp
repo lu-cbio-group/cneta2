@@ -2180,7 +2180,8 @@ int main(int argc, char** const argv){
 
         if(!incl_all){
             incl_all = 1;
-            cout << "All the sites are included in likelihood computation" << endl;
+            // the input has already been read, so this does not add the invariant sites back
+            cout << "Mode 4 uses the sites that were read (variable sites only with --incl_all 0), with no separate term for invariant sites" << endl;
         }
 
         // only internal nodes

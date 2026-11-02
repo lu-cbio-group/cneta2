@@ -235,9 +235,10 @@ true rates (`*-edge_rates.txt`) from `cnets` can also be used together.
     `--del_rate`, …) do not affect the reconstruction.
 
 The log likelihood that mode 4 prints is computed without the
-acquisition-bias correction, and mode 4 always uses all sites
-(`incl_all=1`). It equals the log likelihood from step 1 only when step 1
-also ran with `--incl_all 1`.
+acquisition-bias correction, over the sites that were read, with no
+separate term for invariant sites. With `--incl_all 0` only the variable
+sites are read, so mode 4 reconstructs on those alone. The log likelihood
+equals the one from step 1 only when both steps ran with `--incl_all 1`.
 
 ## Examples
 ```bash
