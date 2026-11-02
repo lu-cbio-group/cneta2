@@ -707,7 +707,7 @@ void initialize_lnl_table_chr(vector<vector<double>>& lnl_table_chr, const evo_t
 
     assert(dim_decomp.dim_chr > 0);
 
-    lnl_table_chr.resize(2 * Ns + 2, vector<double>(dim_decomp.dim_chr, 0.0));   // nodes, then the log scale row
+    lnl_table_chr.resize(2 * Ns + 2, vector<double>(dim_decomp.dim_chr, 0.0));   // one row per node, plus a last row whose [0] holds the accumulated log scale (see rescale_node_lnl)
     lnl_table_chr.back().assign(dim_decomp.dim_chr, 0.0);
     lnl_table_chr[Ns][NO_CHANGE_HAPLOTYPE] = 1.0;  // no chr gain/loss for haplotype-specific case in normal sample
 
@@ -870,7 +870,7 @@ void initialize_lnl_table_wgd(vector<vector<double>>& lnl_table_wgd, const evo_t
 
     assert(dim_decomp.dim_wgd > 0);         // number of WGD states  
 
-    lnl_table_wgd.resize(2 * Ns + 2, vector<double>(dim_decomp.dim_wgd, 0.0));   // nodes, then the log scale row
+    lnl_table_wgd.resize(2 * Ns + 2, vector<double>(dim_decomp.dim_wgd, 0.0));   // one row per node, plus a last row whose [0] holds the accumulated log scale (see rescale_node_lnl)
     lnl_table_wgd.back().assign(dim_decomp.dim_wgd, 0.0);
     // for the normal cell 
     lnl_table_wgd[Ns][0] = 1.0;   // no WGD 
@@ -996,7 +996,7 @@ void initialize_lnl_table_site(vector<vector<double>>& lnl_table_seg, const evo_
     // number of site duplication/deletion states, 16 for max CN 6 or 25 for max CN 8
     assert(dim_decomp.dim_seg > 0);
 
-    lnl_table_seg.resize(2 * Ns + 2, vector<double>(dim_decomp.dim_seg, 0.0));   // nodes, then the log scale row
+    lnl_table_seg.resize(2 * Ns + 2, vector<double>(dim_decomp.dim_seg, 0.0));   // one row per node, plus a last row whose [0] holds the accumulated log scale (see rescale_node_lnl)
     lnl_table_seg.back().assign(dim_decomp.dim_seg, 0.0);
     lnl_table_seg[Ns][NO_CHANGE_HAPLOTYPE] = 1.0;  // no site gain/loss for haplotype-specific case
 
