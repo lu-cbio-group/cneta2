@@ -1382,6 +1382,12 @@ void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_t
                 double* pmat = get_edge_pmat(pmat_decomp.pmats_wgd, pmat_decomp.pmats_wgd_var, rtree, k, use_edge_rates);
                 lnl_table.lnl_table_wgd[k][sp] = get_max_prob_children(lnl_table.lnl_table_wgd, state_table.state_table_wgd, rtree, pmat, k, dim_decomp.dim_wgd, sp, ni, nj, blen, DECOMP, debug);
             }
+
+            // keep large trees from underflowing to 0; the parent's choice of state does not
+            // depend on a common factor in a child's row, and the values are not reported
+            rescale_lnl_row(lnl_table.lnl_table_seg[k]);
+            rescale_lnl_row(lnl_table.lnl_table_chr[k]);
+            rescale_lnl_row(lnl_table.lnl_table_wgd[k]);
         }
   }
   if(debug){

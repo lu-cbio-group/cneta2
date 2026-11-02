@@ -1405,17 +1405,22 @@ void get_likelihood_site_change(vector<vector<double>>& lnl_table_seg, const evo
  * its log is added to the scale row and restored by extract_tree_lnl_change.
  * Tables of small trees never reach the threshold and stay as before.
  */
-void rescale_node_lnl(vector<vector<double>>& lnl_table, int k){
-    vector<double>& row = lnl_table[k];
+int rescale_lnl_row(vector<double>& row){
+    if(row.empty()) return 0;
     double max_val = *max_element(row.begin(), row.end());
-    if(max_val <= 0.0 || max_val >= LNL_RESCALE_THRESHOLD) return;
+    if(max_val <= 0.0 || max_val >= LNL_RESCALE_THRESHOLD) return 0;
 
     int exp2 = 0;
     frexp(max_val, &exp2);   // max_val = m * 2^exp2 with 0.5 <= m < 1
     for(double& v : row){
         v = ldexp(v, -exp2);
     }
-    lnl_table.back()[0] += exp2 * M_LN2;
+    return exp2;
+}
+
+
+void rescale_node_lnl(vector<vector<double>>& lnl_table, int k){
+    lnl_table.back()[0] += rescale_lnl_row(lnl_table[k]) * M_LN2;
 }
 
 

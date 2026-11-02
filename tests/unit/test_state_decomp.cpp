@@ -657,3 +657,101 @@ TEST_CASE("model-3 MRCA posteriors and joint states match brute force on all thr
              {2, {{2, 1, 0, 0, 0}, {0, 1, 1, 1, 0}, {-2, 0, 0, 0, -1}}}});
     }
 }
+
+TEST_CASE("model-3 joint states stay optimal on a tree large enough to underflow", "[state]"){
+    // A caterpillar tree of 150 regions whose sites alternate between a gain on
+    // haplotype A and a loss on haplotype B. Every region needs its own change,
+    // so the best assignment has a probability of about 1e-400, below the
+    // smallest double. The joint states written must still reach the maximum,
+    // computed here in log space.
+    const int ns = 150;
+    const int m = 1;
+    auto path = std::filesystem::temp_directory_path() / "cneta_test_state_decomp" / "caterpillar-tree.txt";
+    std::filesystem::create_directories(path.parent_path());
+    {
+        // regions 1..ns, normal ns+1, root ns+2, internal nodes ns+3..2ns+1 (2ns+1 is the MRCA)
+        std::ofstream out(path);
+        out << "start\tend\tlength\teid\tnmut\n";
+        int eid = 1;
+        out << ns + 3 << "\t1\t1.0\t" << eid++ << "\t0\n" << ns + 3 << "\t2\t1.0\t" << eid++ << "\t0\n";
+        for(int k = ns + 4; k <= 2 * ns + 1; k++){
+            out << k << "\t" << k - 1 << "\t1.0\t" << eid++ << "\t0\n";
+            out << k << "\t" << k - ns - 1 << "\t1.0\t" << eid++ << "\t0\n";
+        }
+        out << ns + 2 << "\t" << 2 * ns + 1 << "\t1.0\t" << eid++ << "\t0\n";
+        out << ns + 2 << "\t" << ns + 1 << "\t0\t" << eid++ << "\t0\n";
+    }
+    evo_tree t = read_tree_info(path.string(), ns);
+    restore_mutation_rates(t, vector<double>{0, 0.001, 0.001, 0, 0, 0});
+
+    vector<int> tips;
+    vector<CN_CHANGE> obs;
+    for(int i = 0; i < ns; i++){
+        tips.push_back(i % 2 ? encode_change_pair(0, -1, m) : encode_change_pair(1, 0, m));
+        obs.push_back(CN_CHANGE{0, 0, NO_CHANGE_HAPLOTYPE, tips.back()});
+    }
+    map<int, vector<vector<CN_CHANGE>>> vobs{{1, {obs}}};
+
+    vector<int> inodes = get_inodes_bottom_up(t, 0);
+    OBS_DECOMP obs_decomp{/*m_max*/ 1, /*max_wgd*/ 0, /*max_chr_change*/ 0, /*max_site_change*/ 1};
+    LNL_TYPE lt{};
+    lt.model = DECOMP;
+    lt.cn_max = 8;
+    lt.max_wgd = 1;
+    lt.max_chr_change_haplotype = m;
+    lt.max_site_change_haplotype = m;
+    lt.is_total = 0;
+    lt.use_repeat = 1;
+    lt.cn_type = 4;
+    lt.knodes = inodes;
+
+    DIM_DECOMP dim;
+    set_pmat_decomp_dim(obs_decomp, dim, lt, 0);
+    REQUIRE(dim.dim_seg == 9);
+    QMAT_DECOMP qmat;
+    build_rate_matrices(qmat, t, dim, lt, 0);
+    PMAT_DECOMP pmat;
+    build_transition_matrices(pmat, t, inodes, qmat, dim, 0);
+    const int n = dim.dim_seg;
+    map<int, const double*> pm = edge_pmats(t, pmat.pmats_seg, pmat.pmats_seg_var, false);
+    auto logp = [&](int child, int from, int to){ return std::log(pm.at(child)[from + to * n]); };
+
+    // log-space maximum over all assignments: v[k][a] is the best log value of
+    // the subtree below node k given state a at its parent
+    map<int, vector<double>> v;
+    for(int i = 0; i < ns; i++){
+        v[i].resize(n);
+        for(int a = 0; a < n; a++) v[i][a] = logp(i, a, tips[i]);
+    }
+    for(int k = ns + 2; k <= 2 * ns; k++){
+        int c1 = t.edges[t.nodes[k].e_ot[0]].end, c2 = t.edges[t.nodes[k].e_ot[1]].end;
+        v[k].assign(n, -INFINITY);
+        for(int a = 0; a < n; a++)
+            for(int s = 0; s < n; s++) v[k][a] = std::max(v[k][a], logp(k, a, s) + v[c1][s] + v[c2][s]);
+    }
+    const double best = v[2 * ns][NO_CHANGE_HAPLOTYPE];
+    REQUIRE(best < std::log(std::numeric_limits<double>::min()));
+
+    std::string prefix = out_prefix("caterpillar_joint");
+    reconstruct_joint_ancestral_state_decomp(t, vobs, inodes, obs_decomp, lt, false, prefix, 0);
+    std::ifstream f(prefix + ".joint.state");
+    std::string line;
+    REQUIRE(std::getline(f, line));
+    map<int, int> state;
+    while(std::getline(f, line)){
+        std::istringstream ss(line);
+        int nd, w, a, s;
+        std::string label;
+        REQUIRE(ss >> nd >> label >> w >> a >> s);
+        state[nd - 1] = s;
+    }
+    REQUIRE((int)state.size() == ns - 1);
+
+    double value = 0.0;
+    for(const auto& [k, s] : state){
+        int par = t.nodes[k].parent;
+        value += logp(k, par == ns + 1 ? NO_CHANGE_HAPLOTYPE : state.at(par), s);
+    }
+    for(int i = 0; i < ns; i++) value += logp(i, state.at(t.nodes[i].parent), tips[i]);
+    REQUIRE_THAT(value, Catch::Matchers::WithinRel(best, 1e-9));
+}

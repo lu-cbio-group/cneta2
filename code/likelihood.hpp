@@ -446,6 +446,9 @@ double get_likelihood_change_variable_rate(evo_tree& rtree, const map<int, vecto
 
 double extract_tree_lnl_change(const vector<vector<double>>& lnl_table, int num_leaves, int normal_state, int debug);  
 
+// Divide a row by 2^k so that its largest value is in [0.5, 1), if that value is below
+// LNL_RESCALE_THRESHOLD and above 0; returns k (0 if the row is left unchanged)
+int rescale_lnl_row(vector<double>& row);
 // The last row of a model-3 likelihood table (one row after the nodes) holds, in its first entry,
 // the log of the scale factors applied by rescale_node_lnl
 void rescale_node_lnl(vector<vector<double>>& lnl_table, int k);
