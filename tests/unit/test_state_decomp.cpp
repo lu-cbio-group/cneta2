@@ -497,26 +497,17 @@ void check_three_chains(const std::string& name, evo_tree& t, int ns, int is_tot
         }
     }
     {
-        // most likely copy number over all combinations of the three chains
+        // most likely state of each chain on its own; prob is the highest of the three
         std::ifstream f(prefix + ".mrca.cn");
         REQUIRE(std::getline(f, line));
         REQUIRE(line == get_cn_call_header(is_total, true));
+        auto argmax = [](const vector<double>& v){ return (int)(std::max_element(v.begin(), v.end()) - v.begin()); };
+        int bw = argmax(bf_wgd.mrca_post);
         for(const auto& [c, bfs] : bf_site){
+            int ba = argmax(bf_chr.at(c).mrca_post);
             for(size_t nc = 0; nc < bfs.size(); nc++){
-                std::map<std::pair<int, int>, double> post_cn;
-                for(int w = 0; w < dim.dim_wgd; w++){
-                    for(int a = 0; a < dim.dim_chr; a++){
-                        for(int s = 0; s < dim.dim_seg; s++){
-                            int base = 1 << w;
-                            int cnA = std::max(0, base + states[a].first + states[s].first);
-                            int cnB = std::max(0, base + states[a].second + states[s].second);
-                            std::pair<int, int> key = is_total ? std::make_pair(cnA + cnB, 0) : std::make_pair(cnA, cnB);
-                            post_cn[key] += bf_wgd.mrca_post[w] * bf_chr.at(c).mrca_post[a] * bfs[nc].mrca_post[s];
-                        }
-                    }
-                }
-                auto best = std::max_element(post_cn.begin(), post_cn.end(),
-                                             [](const auto& x, const auto& y){ return x.second < y.second; });
+                int bs = argmax(bfs[nc].mrca_post);
+                double best_prob = std::max({bf_wgd.mrca_post[bw], bf_chr.at(c).mrca_post[ba], bfs[nc].mrca_post[bs]});
                 INFO("chr " << c << " site " << nc + 1);
                 REQUIRE(std::getline(f, line));
                 std::istringstream ss(line);
@@ -524,19 +515,20 @@ void check_three_chains(const std::string& name, evo_tree& t, int ns, int is_tot
                 double prob;
                 REQUIRE(ss >> nd >> ch >> st);
                 REQUIRE(nd == 2 * ns + 1);
+                REQUIRE(ss >> w);
+                REQUIRE(w == bw);
                 if(is_total){
-                    int cn, cc, sc;
-                    REQUIRE(ss >> cn >> w >> cc >> sc >> prob);
-                    REQUIRE(cn == best->first.first);
-                    REQUIRE(cn == std::max(0, 2 * (1 << w) + cc + sc));
+                    int cc, sc;
+                    REQUIRE(ss >> cc >> sc >> prob);
+                    REQUIRE(cc == states[ba].first + states[ba].second);
+                    REQUIRE(sc == states[bs].first + states[bs].second);
                 }else{
-                    int cnA, cnB, ca, cb, sa, sb;
-                    REQUIRE(ss >> cnA >> cnB >> w >> ca >> cb >> sa >> sb >> prob);
-                    REQUIRE(std::make_pair(cnA, cnB) == best->first);
-                    REQUIRE(cnA == std::max(0, (1 << w) + ca + sa));
-                    REQUIRE(cnB == std::max(0, (1 << w) + cb + sb));
+                    int ca, cb, sa, sb;
+                    REQUIRE(ss >> ca >> cb >> sa >> sb >> prob);
+                    REQUIRE(std::make_pair(ca, cb) == states[ba]);
+                    REQUIRE(std::make_pair(sa, sb) == states[bs]);
                 }
-                REQUIRE_THAT(prob, Catch::Matchers::WithinAbs(best->second, 2e-6));
+                REQUIRE_THAT(prob, Catch::Matchers::WithinAbs(best_prob, 2e-6));
             }
         }
     }

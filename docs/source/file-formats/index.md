@@ -221,22 +221,20 @@ In `<ofile>.mrca.state`/`<ofile>.joint.state`, `site_ID` is written as
 `chromosomeID_siteID`, and the state ID matches the state index of the
 Markov-model rate matrix used for reconstruction.
 
-For model 3 (independent Markov chains), a copy number is built from
-three chains: whole-genome doublings (WGD), chromosome-level changes and
-site-level changes. Each file is tab-separated.
+For model 3 (independent Markov chains), copy-number changes are
+modelled by three chains: whole-genome doublings (WGD), chromosome-level
+changes and site-level changes. Each file is tab-separated.
 
 | file                      | contents |
 | ------------------------- | -------- |
-| `<ofile>.joint.cn`        | Reconstructed copy number of every internal node at every site, and the change of each chain behind it. |
-| `<ofile>.mrca.cn`         | Most likely copy number of the MRCA at every site, as above plus `prob`. |
+| `<ofile>.joint.cn`        | Reconstructed state of each chain at every internal node and site. |
+| `<ofile>.mrca.cn`         | Most likely state of each chain at the MRCA at every site, as above plus `prob`. |
 | `<ofile>.joint.state`     | State index of each chain for every internal node: `node site wgd_state chr_state site_state`. |
 | `<ofile>.mrca.seg.state`  | Posterior probability of each site-level state at the MRCA, per site. |
 | `<ofile>.mrca.chr.state`  | Same, chromosome-level, per chromosome. |
 | `<ofile>.mrca.wgd.state`  | Posterior probability of 0, 1, … WGDs at the MRCA. |
 
-The `.cn` files start with a header line beginning with `#`, so a reader
-that skips comment lines sees the same leading columns as for models
-0-2:
+The `.cn` files start with a header line beginning with `#`:
 
 ```text
 #node  chr  site  num_wgd  chr_change  site_change  [prob]                                       (total)
@@ -254,10 +252,10 @@ that skips comment lines sees the same leading columns as for models
   to chromosome and site changes), which cannot be uniquely determined
   from independent chain posteriors alone. Users can compute copy numbers
   if needed using the reported chain changes and the assumed event order.
-- The chains are independent, so their changes can take one haplotype
-  below zero (e.g. a chromosome-level and a site-level loss on the same
-  haplotype with one copy). Each haplotype's copy number is floored at
-  0.
+  With total copy numbers, the most likely change pair (A, B) is chosen
+  first and then summed, so the reported change can differ from the
+  largest column in the `.mrca.*.state` files, which sum over pairs
+  first.
 - A chain that is not modelled (its maximum change is 0, or the data
   have no events of that type) is reported as no change.
 - `prob` (`.mrca.cn` only) is the posterior probability of the most

@@ -1472,22 +1472,27 @@ CN_CALL get_most_likely_cn_call_decomp(const vector<double>& post_wgd, const vec
     // Get the most likely state for the WGD chain
     if (!post_wgd.empty()) {
         auto max_it = max_element(post_wgd.begin(), post_wgd.end());
+        double sum_prob = accumulate(post_wgd.begin(), post_wgd.end(), 0.0);
         call.num_wgd = (int)distance(post_wgd.begin(), max_it);
-        call.prob = *max_it;  // Use the highest posterior probability among chains
+        call.prob = max(call.prob, *max_it / sum_prob);  // posteriors are unnormalised; report the highest among the chains
     }
     
     // Get the most likely state for the chromosome change chain
     if (!post_chr.empty()) {
         auto max_it = max_element(post_chr.begin(), post_chr.end());
+        double sum_prob = accumulate(post_chr.begin(), post_chr.end(), 0.0);
         int chr_state = (int)distance(post_chr.begin(), max_it);
         call.chr_change = decomp_state_to_change_pair(chr_state, lnl_type.max_chr_change_haplotype);
+        call.prob = max(call.prob, *max_it / sum_prob);
     }
     
     // Get the most likely state for the site change chain
     if (!post_site.empty()) {
         auto max_it = max_element(post_site.begin(), post_site.end());
+        double sum_prob = accumulate(post_site.begin(), post_site.end(), 0.0);
         int site_state = (int)distance(post_site.begin(), max_it);
         call.site_change = decomp_state_to_change_pair(site_state, lnl_type.max_site_change_haplotype);
+        call.prob = max(call.prob, *max_it / sum_prob);
     }
     
     return call;
