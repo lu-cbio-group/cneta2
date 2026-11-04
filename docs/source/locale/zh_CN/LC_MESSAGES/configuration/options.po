@@ -1425,3 +1425,18 @@ msgstr ""
 msgid "`--nsample` / `-s`"
 msgstr ""
 
+#: ../../source/configuration/options.md
+msgid "`--edge_rate_file`"
+msgstr "`--edge_rate_file`"
+
+#: ../../source/configuration/options.md
+msgid ""
+"`mode=4` only: per-branch rate table for the tree in `--tree_file` (the "
+"`.edge_rates.txt` written by `cnetml`, or the `-edge_rates.txt` written "
+"by `cnets`); ancestral states then use each branch's own rates. Requires "
+"`model=3`; with another mode or model `cnetml` stops with an error. "
+"Empty: all branches use the global rates"
+msgstr ""
+"仅 `mode=4`：`--tree_file` 中那棵树的每条分支速率表（`cnetml` 写出的 `.edge_rates.txt`，或 "
+"`cnets` 写出的 `-edge_rates.txt`）；祖先状态重建时每条分支使用自身的速率。需要 `model=3`；用于其他 mode "
+"或 model 时 `cnetml` 报错退出。为空：所有分支使用全局速率"

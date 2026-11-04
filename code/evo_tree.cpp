@@ -516,6 +516,113 @@ void evo_tree::init_edge_rates_rlc(const RateSet& mean_rates, int bsr_dist, doub
   }
 }
 
+// Columns are found by name, so extra columns are ignored. Node IDs in the file are
+// 1-based (as written by write_edge_rate_table / write_simulation_edge_rate_table).
+void evo_tree::read_edge_rates(const string& rate_file) {
+  ifstream in(rate_file);
+  if(!in){
+    cerr << "Error: cannot open edge rate file " << rate_file << endl;
+    exit(EXIT_FAILURE);
+  }
+
+  string line;
+  if(!getline(in, line)){
+    cerr << "Error: edge rate file " << rate_file << " is empty" << endl;
+    exit(EXIT_FAILURE);
+  }
+  vector<string> header;
+  boost::split(header, line, boost::is_any_of("\t"));
+
+  const vector<string> required = {"start", "end", "length", "dup_rate", "del_rate", "chr_gain_rate", "chr_loss_rate", "wgd_rate"};
+  map<string, int> col;
+  for(const auto& name : required){
+    auto it = find(header.begin(), header.end(), name);
+    if(it == header.end()){
+      cerr << "Error: edge rate file " << rate_file << " has no column '" << name << "'" << endl;
+      exit(EXIT_FAILURE);
+    }
+    col[name] = distance(header.begin(), it);
+  }
+
+  map<pair<int, int>, int> eid_by_nodes;
+  for(int eid = 0; eid < (int)edges.size(); eid++){
+    eid_by_nodes[{edges[eid].start, edges[eid].end}] = eid;
+  }
+
+  edge_rates.assign(edges.size(), RateSet());
+  vector<bool> filled(edges.size(), false);
+  int nline = 1;
+  while(getline(in, line)){
+    nline++;
+    if(line.empty()) continue;
+    vector<string> fields;
+    boost::split(fields, line, boost::is_any_of("\t"));
+    if(fields.size() != header.size()){
+      cerr << "Error: line " << nline << " of " << rate_file << " has " << fields.size() << " fields, expected " << header.size() << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    map<string, double> val;
+    for(const auto& name : required){
+      const string& s = fields[col[name]];
+      size_t pos = 0;
+      double v = 0.0;
+      try{
+        v = stod(s, &pos);
+      }catch(const std::exception&){
+        pos = 0;
+      }
+      if(pos == 0 || pos != s.size() || !std::isfinite(v)){
+        cerr << "Error: line " << nline << " of " << rate_file << ": '" << name << "' is not a number (" << s << ")" << endl;
+        exit(EXIT_FAILURE);
+      }
+      if(v < 0){
+        cerr << "Error: line " << nline << " of " << rate_file << ": '" << name << "' is negative (" << s << ")" << endl;
+        exit(EXIT_FAILURE);
+      }
+      val[name] = v;
+    }
+
+    for(const string name : {"start", "end"}){
+      if(val[name] != floor(val[name])){
+        cerr << "Error: line " << nline << " of " << rate_file << ": '" << name << "' is not a node ID (" << fields[col[name]] << ")" << endl;
+        exit(EXIT_FAILURE);
+      }
+    }
+    int start = (int)val["start"] - 1;
+    int end = (int)val["end"] - 1;
+    auto it = eid_by_nodes.find({start, end});
+    if(it == eid_by_nodes.end()){
+      cerr << "Error: line " << nline << " of " << rate_file << ": edge " << start + 1 << " -> " << end + 1 << " is not in the tree" << endl;
+      exit(EXIT_FAILURE);
+    }
+    int eid = it->second;
+    if(filled[eid]){
+      cerr << "Error: line " << nline << " of " << rate_file << ": edge " << start + 1 << " -> " << end + 1 << " appears more than once" << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    // tree files store lengths with fewer digits than rate tables, so allow a small relative difference
+    double blen = edges[eid].length;
+    if(fabs(val["length"] - blen) > 1e-4 * max(1.0, fabs(blen))){
+      cerr << "Error: line " << nline << " of " << rate_file << ": edge " << start + 1 << " -> " << end + 1
+           << " has length " << val["length"] << " but the tree has " << blen
+           << "; the rate file and the tree must come from the same run" << endl;
+      exit(EXIT_FAILURE);
+    }
+
+    edge_rates[eid] = RateSet(0, val["dup_rate"], val["del_rate"], val["chr_gain_rate"], val["chr_loss_rate"], val["wgd_rate"]);
+    filled[eid] = true;
+  }
+
+  for(int eid = 0; eid < (int)edges.size(); eid++){
+    if(!filled[eid]){
+      cerr << "Error: edge " << edges[eid].start + 1 << " -> " << edges[eid].end + 1 << " of the tree is missing from " << rate_file << endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
 
 // create nodes from edges
 void evo_tree::generate_nodes(){

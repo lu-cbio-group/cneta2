@@ -203,6 +203,11 @@ per-branch rates and (for `bsr_mode > 0`) which branches got a rate
 shift, rather than `cnetml`'s reconstructed estimates. Not mentioned in
 `README.md`.
 
+Either table can be given to `cnetml --mode 4 -d 3 --edge_rate_file` to
+reconstruct ancestral states with per-branch rates. cnetml reads only the
+`start`, `end`, `length` and five `*_rate` columns. See
+[Ancestral states with branch-specific rates](../user-guide/cnetml.md#ancestral-states-with-branch-specific-rates).
+
 ### Ancestral-state reconstruction outputs (`cnetml` mode 4)
 
 Named `<ofile>.<suffix>`, same `<ofile>` as in

@@ -349,6 +349,10 @@ public:
   // New rates are drawn around the global mean rates, not around the parent branch rates.
   // bsr_variance is the variance of the mean-1 multiplier.
   void init_edge_rates_rlc(const RateSet& mean_rates, int bsr_dist, double bsr_variance, double bsr_p, gsl_rng* r);
+  // Fill edge_rates from a per-edge rate table (the .edge_rates.txt written by cnetml or
+  // the -edge_rates.txt written by cnets). Rows are matched to edges by start/end node,
+  // and each row's length must agree with the tree's branch length. Exits on any mismatch.
+  void read_edge_rates(const string& rate_file);
 
   // update node ages of a node and its ancestor (after the relevant edge is updated)
   void update_node_age(int node_id, double delta);
