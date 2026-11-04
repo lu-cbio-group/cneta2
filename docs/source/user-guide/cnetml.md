@@ -65,8 +65,12 @@ Model (`--model`/`-d`)
   `cnetml` stops with an error rather than silently fitting one rate.
 
 Independent Markov chain dimensions (model 3 only)
-: - `max_wgd` — at most 1; simulations allow at most one WGD per
-    sample.
+: - `max_wgd` — default 1. If a sample looks like it has more WGDs
+    (mean copy number above 6, or a count in `--meta_file`), cnetml
+    stops and asks for a larger value. cnets can simulate two WGDs in
+    one sample. Values above 1 are only checked to run, not validated.
+    With `--cn_type 0` or `3`, which do not model WGD, cnetml prints a
+    warning if any sample looks like it has a WGD.
   - `max_chr_change` — usually 1, higher only if some chromosomes
     undergo more than one gain/loss event.
   - `max_site_change` — often >1, since site-level CNAs frequently
