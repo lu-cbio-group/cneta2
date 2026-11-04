@@ -861,7 +861,7 @@ double compute_chr_likelihood(
         fill_table();
     }
 
-    double chr_logL = log(lnl_table_chr[rtree.nleaf][NO_CHANGE_HAPLOTYPE]);   // likelihood for no change on chromosome, which is the same for all sites on the chromosome
+    double chr_logL = log(lnl_table_chr[rtree.nleaf][NO_CHANGE_HAPLOTYPE]) + get_lnl_log_scale(lnl_table_chr);   // likelihood for no change on chromosome, which is the same for all sites on the chromosome
 
     if(debug) cout << "log likelihood for no change on chromosome " << nchr << " is: " << chr_logL << endl;
 
@@ -1070,7 +1070,7 @@ double reconstruct_marginal_ancestral_state_decomp(const evo_tree& rtree, const 
             get_likelihood_wgd(lnl_table_wgd, rtree, knodes, pmat_decomp, dim_decomp, debug);
         }
 
-        double wgd_logL = log(lnl_table_wgd[rtree.nleaf][0]);
+        double wgd_logL = log(lnl_table_wgd[rtree.nleaf][0]) + get_lnl_log_scale(lnl_table_wgd);
         logL += wgd_logL;   // likelihood for WGD is the same for all sites, so only compute once
 
         assert(lnl_table_wgd.size() > nid);  // sanity check, the likelihood table should have the same number of nodes as the tree
@@ -1382,6 +1382,12 @@ void get_ancestral_states_site_decomp(LNL_TABLE& lnl_table, STATE_TABLE& state_t
                 double* pmat = get_edge_pmat(pmat_decomp.pmats_wgd, pmat_decomp.pmats_wgd_var, rtree, k, use_edge_rates);
                 lnl_table.lnl_table_wgd[k][sp] = get_max_prob_children(lnl_table.lnl_table_wgd, state_table.state_table_wgd, rtree, pmat, k, dim_decomp.dim_wgd, sp, ni, nj, blen, DECOMP, debug);
             }
+
+            // keep large trees from underflowing to 0; the parent's choice of state does not
+            // depend on a common factor in a child's row, and the values are not reported
+            rescale_lnl_row(lnl_table.lnl_table_seg[k]);
+            rescale_lnl_row(lnl_table.lnl_table_chr[k]);
+            rescale_lnl_row(lnl_table.lnl_table_wgd[k]);
         }
   }
   if(debug){
