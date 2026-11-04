@@ -546,23 +546,119 @@ msgstr ""
 "在 `<ofile>.mrca.state`/`<ofile>.joint.state` 中，`site_ID` 写成 "
 "`chromosomeID_siteID`，状态 ID 对应重建所用 Markov 模型速率矩阵的状态索引。"
 
-#: ../../source/file-formats/index.md:225
+#: ../../source/file-formats/index.md:167
+msgid "Reconstructed state of each chain at every internal node and site."
+msgstr "所有内部节点在每个 site 上每条链的重建状态。"
+
+#: ../../source/file-formats/index.md:167
 msgid ""
-"Model 3 (independent Markov chains) writes `<ofile>.mrca.cn` the same way, "
-"but splits the MRCA state file by event type instead of one `.mrca.state`: "
-"`<ofile>.mrca.seg.state` (only if segment-level events are in play), "
-"`<ofile>.mrca.chr.state` (chromosome-level), and `<ofile>.mrca.wgd.state` "
-"(whole-genome doubling) — each written only when that event type has a non-"
-"zero state-space dimension. The joint file stays a single "
-"`<ofile>.joint.state`, same format as above. None of this is in `README.md`;"
-" model 3 is still described there as \"in development, at test branch\"."
+"Most likely state of each chain at the MRCA at every site, as above "
+"plus `prob`."
+msgstr "MRCA 在每个 site 上每条链最可能的状态，列同上，另加 `prob`。"
+
+#: ../../source/file-formats/index.md:167
+msgid ""
+"State index of each chain for every internal node: `node site wgd_state "
+"chr_state site_state`."
+msgstr "所有内部节点上每条链的状态索引：`node site wgd_state chr_state site_state`。"
+
+#: ../../source/file-formats/index.md:167
+msgid "`<ofile>.mrca.seg.state`"
+msgstr "`<ofile>.mrca.seg.state`"
+
+#: ../../source/file-formats/index.md:167
+msgid "Posterior probability of each site-level state at the MRCA, per site."
+msgstr "MRCA 上每个 site 级状态的后验概率，每个 site 一行。"
+
+#: ../../source/file-formats/index.md:167
+msgid "`<ofile>.mrca.chr.state`"
+msgstr "`<ofile>.mrca.chr.state`"
+
+#: ../../source/file-formats/index.md:167
+msgid "Same, chromosome-level, per chromosome."
+msgstr "同上，染色体级，每条染色体一行。"
+
+#: ../../source/file-formats/index.md:167
+msgid "`<ofile>.mrca.wgd.state`"
+msgstr "`<ofile>.mrca.wgd.state`"
+
+#: ../../source/file-formats/index.md:167
+msgid "Posterior probability of 0, 1, … WGDs at the MRCA."
+msgstr "MRCA 上发生 0、1、… 次 WGD 的后验概率。"
+
+#: ../../source/file-formats/index.md:224
+msgid ""
+"For model 3 (independent Markov chains), copy-number changes are "
+"modelled by three chains: whole-genome doublings (WGD), "
+"chromosome-level changes and site-level changes. Each file is "
+"tab-separated."
+msgstr "Model 3（independent Markov chains）用三条链描述拷贝数变化：全基因组加倍（WGD）、染色体级变化和 site 级变化。各文件均以制表符分隔。"
+
+#: ../../source/file-formats/index.md:237
+msgid "The `.cn` files start with a header line beginning with `#`:"
+msgstr "`.cn` 文件第一行是以 `#` 开头的表头："
+
+#: ../../source/file-formats/index.md:244
+msgid ""
+"`num_wgd` is the number of WGDs; each one doubles the baseline of one "
+"copy per haplotype. `chr_change` and `site_change` are the copies "
+"gained (positive) or lost (negative) at chromosome and site level, on "
+"top of that baseline. With total copy numbers the changes are summed "
+"over the two haplotypes."
+msgstr "`num_wgd` 是 WGD 次数，每次使每条单倍型一份的基础拷贝数加倍。`chr_change` 和 `site_change` 是在该基础上，染色体级和 site 级增加（正数）或减少（负数）的拷贝数。总拷贝数时，变化为两条单倍型之和。"
+
+#: ../../source/file-formats/index.md:249
+msgid ""
+"The chains are independent. Each chain's state is reported as its "
+"most likely value given the posterior distribution. A copy number is "
+"not computed here because it depends on the order of events (WGD "
+"relative to chromosome and site changes), which cannot be uniquely "
+"determined from independent chain posteriors alone. Users can compute "
+"copy numbers if needed using the reported chain changes and the "
+"assumed event order. With total copy numbers, the most likely change "
+"pair (A, B) is chosen first and then summed, so the reported change "
+"can differ from the largest column in the `.mrca.*.state` files, "
+"which sum over pairs first."
+msgstr "三条链相互独立，每条链报告其后验分布下最可能的状态。这里不计算拷贝数，因为拷贝数取决于事件的先后顺序（WGD 与染色体级、site 级变化的先后），而仅凭各条独立链的后验无法唯一确定这一顺序。如有需要，可根据报告的各链变化和假定的事件顺序自行计算拷贝数。总拷贝数时，先选出最可能的变化对（A, B）再求和，因此报告的变化可能与 `.mrca.*.state` 文件中先对变化对求和后最大的那一列不同。"
+
+#: ../../source/file-formats/index.md:262
+msgid ""
+"A chain that is not modelled (its maximum change is 0, or the data "
+"have no events of that type) is reported as no change."
+msgstr "未建模的链（最大变化为 0，或数据中没有该类事件）记为没有变化。"
+
+#: ../../source/file-formats/index.md:264
+msgid ""
+"`prob` (`.mrca.cn` only) is the posterior probability of the most "
+"likely chain state (currently the highest posterior among the "
+"chains)."
+msgstr "`prob`（仅 `.mrca.cn`）是最可能链状态的后验概率（目前取三条链中最高的后验概率）。"
+
+#: ../../source/file-formats/index.md:267
+msgid ""
+"In the `.mrca.*.state` files, `probability_k` is the probability of state"
+" `k`: for total copy numbers, the copy number `k` from that chain alone "
+"(`k = 2` is no change); for haplotype-specific copy numbers, the index of"
+" the change pair in the chain's rate matrix. The probabilities include "
+"the trunk edge from the normal root to the MRCA. The `.seg`/`.chr`/`.wgd`"
+" files are written only for chains with a non-zero state space."
 msgstr ""
-"Model 3（independent Markov chains）以同样方式写出 `<ofile>.mrca.cn`，但 MRCA 状态文件不是一个 "
-"`.mrca.state`，而是按事件类型拆分：`<ofile>.mrca.seg.state`（仅当涉及 segment "
-"级事件时）、`<ofile>.mrca.chr.state`（染色体级）和 "
-"`<ofile>.mrca.wgd.state`（全基因组加倍），每个文件只在该事件类型的状态空间维度不为零时写出。联合状态文件仍是一个 "
-"`<ofile>.joint.state`，格式同上。这些在 `README.md` 中都没有；那里仍把 model 3 描述为\"开发中，在 test"
-" 分支\"。"
+"在 `.mrca.*.state` 文件中，`probability_k` 是状态 `k` 的概率：总拷贝数时，`k` "
+"是仅由该链得到的拷贝数（`k = 2` 表示没有变化）；haplotype-specific 时，`k` "
+"是变化对在该链速率矩阵中的索引。概率包含从正常根节点到 MRCA 的主干边。`.seg`/`.chr`/`.wgd` "
+"文件只在该链状态空间维度不为零时写出。"
+
+#: ../../source/file-formats/index.md:274
+msgid ""
+"`.joint.state` writes each distinct pattern of observed copy numbers "
+"once, at its first site; `.joint.cn` has every site."
+msgstr "`.joint.state` 中每种不同的观测拷贝数模式只写一次，位于其第一个 site；`.joint.cn` 包含全部 site。"
+
+#: ../../source/file-formats/index.md:277
+msgid ""
+"None of this is in `README.md`; model 3 is still described there as \"in "
+"development, at test branch\"."
+msgstr "这些在 `README.md` 中都没有；那里仍把 model 3 描述为\"开发中，在 test 分支\"。"
 
 #: ../../source/file-formats/index.md:236
 msgid "MCMC configuration and trace files"
