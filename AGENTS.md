@@ -67,8 +67,9 @@ Tests build command lines with `tests/helpers/cli.py`.
 - Before a substantial change to core functionality (models,
   likelihood, optimiser, statistics, input or output formats) that has
   no GitHub issue. Such changes must be tied to an issue.
-- Before a change grows beyond about 300 changed lines or a second
-  topic. Propose how to split it.
+- Before a change grows beyond about 300 changed lines of code (tests
+  included; documentation and translation files don't count) or a
+  second topic. Propose how to split it.
 - Before anything that alters results for the same input and seed
   (including `tests/data/expected.json`), or renames or removes an
   option.

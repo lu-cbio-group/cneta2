@@ -59,11 +59,13 @@ One topic per pull request. A substantial change to core functionality
 (the models, the likelihood, the optimiser, the statistics, input and
 output formats) is tied to an issue, and the pull request links it.
 Agents are told to stop and ask when a change grows beyond about 300
-changed lines.
+changed lines of code. Tests count as code; documentation and
+translation files don't.
 
 - **Why.** AI tools make large changes cheap to write, but not cheap to
   review. A small pull request can be checked against the method; a
-  large one built on a misunderstanding has to be redone.
+  large one built on a misunderstanding has to be redone. That risk lies
+  in the code and the tests, so only they count towards the limit.
 
 ### 5. Agents open draft pull requests, people do the rest
 
