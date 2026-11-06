@@ -1,7 +1,7 @@
 # Using AI tools
 
 AI tools are welcome in CNETA: for code, tests, documentation and help
-with English. This page is the policy for the people who use them. The
+with writing. This page is the policy for the people who use them. The
 instructions for the tools themselves are in `AGENTS.md` at the
 repository root, and most tools read that file on their own (see
 [Setting up your tool](#setting-up-your-tool)).
