@@ -74,6 +74,9 @@ Tests build command lines with `tests/helpers/cli.py`.
   option.
 - Before changing `tests/data/`, the CI workflows, the build system or
   the dependencies, or removing an `xfail` marker.
+- Before adding an instruction file for one tool (`CLAUDE.md`,
+  `CLAUDE.local.md`, `.github/copilot-instructions.md`). This file is
+  the only one, and a `CLAUDE.md` stops Claude Code reading it.
 - Whenever you are unsure what a method, option or result means. Don't
   guess.
 

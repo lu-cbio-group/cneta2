@@ -110,12 +110,20 @@ So that you know what to expect from an agent in this repository:
 
 | Tool | Reads | Note |
 |---|---|---|
-| Claude Code | `CLAUDE.md`, which imports `AGENTS.md` | Personal notes go in `CLAUDE.local.md`, which git ignores |
+| Claude Code | `AGENTS.md` | version 2.1.277 or later |
 | GitHub Copilot: cloud agent, code review, VS Code, CLI | `AGENTS.md` | |
-| GitHub Copilot Chat on github.com and in JetBrains IDEs | `.github/copilot-instructions.md` | a short version that points to `AGENTS.md` |
 | Codex, Cursor | `AGENTS.md` | |
 | Gemini CLI | `GEMINI.md` | add `AGENTS.md` under `context.fileName` in its settings |
+| GitHub Copilot Chat on github.com and in JetBrains IDEs | no instruction file | it reads only `.github/copilot-instructions.md`, which we leave out |
 | A chat in the browser | nothing | paste only what rule 3 allows |
+
+`AGENTS.md` is the only instruction file in the repository, so there is
+one place to keep up to date. Don't add a `CLAUDE.md` or
+`CLAUDE.local.md`: Claude Code stops reading `AGENTS.md` when either
+file is in the repository or in a folder above it. Claude Code's `/init`
+command creates a `CLAUDE.md`, so don't run it here. Put personal
+instructions in your own `~/.claude/CLAUDE.md`, which does not stop
+`AGENTS.md` from loading.
 
 ## Good practice
 

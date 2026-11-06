@@ -62,10 +62,6 @@ cneta.code-workspace
 # Jetbrains
 .idea/
 
-# Personal AI-tool notes and settings; the shared instructions are in AGENTS.md
-CLAUDE.local.md
-.claude/settings.local.json
-
 # Build directory (also covers the CMake-generated CMakeCache.txt,
 # CMakeFiles/, cmake_install.cmake, and Makefile within it — build.sh
 # always configures out-of-source here, never in code/ or docs/)
