@@ -67,11 +67,20 @@ html-zh:
 
 html-all: html html-zh
 
+# Shared by the forwarding pages below. While the target page loads, the
+# browser shows the forwarding page; without this it is a white page with
+# one bare link, which looks broken. With it the page stays blank in the
+# reader's light or dark colours, and the link appears only if forwarding
+# has not happened after 3 seconds.
+FORWARD_HEAD := '<meta name="color-scheme" content="light dark">' \
+	'<style>body{font-family:sans-serif}a{opacity:0;animation:show 0s 3s forwards}@keyframes show{to{opacity:1}}</style>'
+
 # The site root redirects to the English pages. GitHub Pages serves
 # /404.html for any missing URL, so the English 404 page is copied up.
 site-root:
 	@printf '%s\n' '<!DOCTYPE html>' \
 		'<meta charset="utf-8">' \
+		$(FORWARD_HEAD) \
 		'<title>CNETA documentation</title>' \
 		'<meta http-equiv="refresh" content="0; url=en/index.html">' \
 		'<link rel="canonical" href="en/index.html">' \
@@ -91,6 +100,7 @@ site-root:
 			done; \
 			mkdir -p "$(BUILDDIR)/html/$$(dirname "$$relative")"; \
 			printf '%s\n' '<!DOCTYPE html>' '<meta charset="utf-8">' \
+				$(FORWARD_HEAD) \
 				'<title>Page moved</title>' \
 				"<script>window.location.replace(\"$$target\" + window.location.search + window.location.hash);</script>" \
 				"<a href=\"$$target\">This page has moved.</a>" \
