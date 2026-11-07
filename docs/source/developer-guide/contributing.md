@@ -6,6 +6,10 @@ For a docs change, `make -C docs strict` locally is the same check CI
 runs, so a local pass means CI will pass too — see
 [Working on the documentation](documentation.md).
 
+**AI tools**: welcome, with six rules. If an AI tool wrote part of your
+change, read [Using AI tools](ai-tools.md) before you open the pull
+request.
+
 **Branches**: one branch per pull request, made from an up-to-date `main`
 and deleted after the merge. Name it `<type>/<topic>`, lower case with
 hyphens, two to four words:

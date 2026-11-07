@@ -16,6 +16,7 @@ architecture
 testing
 writing-tests
 contributing
+ai-tools
 releases
 documentation
 ../api/cpp
