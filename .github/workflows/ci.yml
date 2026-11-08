@@ -61,7 +61,7 @@ jobs:
       OMP_NUM_THREADS: 1
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
@@ -84,7 +84,7 @@ jobs:
       # Catch2 is fetched at configure time when no system copy is present.
       # Cache it so the fetch happens once per pinned version, not per run.
       - name: Cache Catch2
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: code/build/_deps
           key: catch2-${{ runner.os }}-${{ hashFiles('tests/unit/CMakeLists.txt') }}
@@ -105,7 +105,7 @@ jobs:
       - name: Unit tests (Catch2)
         run: ctest --test-dir code/build --output-on-failure
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: pip
@@ -122,7 +122,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results-${{ matrix.os }}
           path: pytest-results.xml
@@ -161,7 +161,7 @@ jobs:
       UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install dependencies
         run: |
@@ -173,7 +173,7 @@ jobs:
       # Separate cache key from the main job: Catch2 built with the sanitizers
       # must not be restored into the normal build, nor the other way round.
       - name: Cache Catch2
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: code/build/_deps
           key: catch2-sanitizers-${{ runner.os }}-${{ hashFiles('tests/unit/CMakeLists.txt') }}
@@ -191,7 +191,7 @@ jobs:
       - name: Unit tests (Catch2)
         run: ctest --test-dir code/build --output-on-failure
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           cache: pip
