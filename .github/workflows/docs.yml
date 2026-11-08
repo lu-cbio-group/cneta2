@@ -36,14 +36,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The cache key must cover requirements.txt as well as environment.yml.
       # By default the cache is keyed on the environment file alone, so a new
       # package added to requirements.txt would restore a stale environment
       # and the build would fail with a missing extension.
       - name: Set up conda environment
-        uses: mamba-org/setup-micromamba@v2
+        uses: mamba-org/setup-micromamba@v3
         with:
           environment-file: docs/environment.yml
           cache-environment: true
@@ -60,15 +60,17 @@ jobs:
       # Reviewers can download this from the checks tab of the pull request
       # and open index.html locally — the stand-in for a hosted PR preview.
       - name: Upload built site as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: html-docs
           path: docs/build/html
           retention-days: 7
 
+      # Since v4 this leaves out files whose names start with a dot. The
+      # site needs none: Sphinx's .buildinfo files are build records only.
       - name: Upload Pages artifact
         if: github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: docs/build/html
 
@@ -85,4 +87,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
