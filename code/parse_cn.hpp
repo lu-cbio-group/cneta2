@@ -470,7 +470,7 @@ void read_meta_info(const string& meta_file,
 
 /**
  * @brief Parse one change token from the meta file.
- * Total CN: an integer, e.g. "-1". Haplotype-specific CN: "a/b", e.g. "1/-1", encoded as its build_pair_states() index.
+ * Total CN: an integer, e.g. "-1". Haplotype-specific CN: "a/b", e.g. "1/-1", encoded as its build_pair_states index.
  * Throws if the token is empty, malformed, or out of range.
  * @param token The token to parse.
  * @param is_total 1 for total copy number changes, 0 for haplotype-specific changes.
@@ -488,7 +488,7 @@ int parse_change_token(const string& token,
  * Used by read_meta_info() for the chromosome-change column (one value per chromosome, in chromosome order)
  * and by parse_site_change_field() for the site changes of each chromosome block.
  * Total CN: "0,1,-1" -> {0, 1, -1}.
- * Haplotype-specific CN: "0/0,1/-1" -> state indices in build_pair_states() order, e.g. "0/0" -> 4.
+ * Haplotype-specific CN: "0/0,1/-1" -> state indices in build_pair_states order, e.g. "0/0" -> 4.
  * @param s The field to parse; a missing field gives an empty vector.
  * @param is_total 1 for total copy number changes, 0 for haplotype-specific changes written as a/b.
  * @param max_haplotype_change Largest change allowed on one haplotype (the smallest is -1); used to validate and encode a/b tokens.
