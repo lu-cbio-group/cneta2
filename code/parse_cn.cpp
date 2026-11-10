@@ -6,7 +6,6 @@
 
 /***************************** utility functions for parsing meta information ********************/
 
-// change haplotype-specific copy number changes to a single index value: "1/-1", "0/0"
 int parse_change_token(const string& token,
                        int is_total,
                        int max_haplotype_change,
@@ -56,9 +55,6 @@ vector<int> parse_change_list(const string& s,
 }
 
 
-// Format: 1:0,1,-1;2:0,0,2;22:-1,1 (total copy number changes) or 1:0,1,4;2:0,0,2 (haplotype-specific copy number change states)
-// Chromosome ids are validated but not stored separately;
-// all values are flattened into one vector for the sample.
 vector<int> parse_site_change_field(const string& s,
                                     bool is_total,
                                     int max_haplotype_change,
@@ -100,15 +96,6 @@ vector<int> parse_site_change_field(const string& s,
 }
 
 
-/** 
- * @brief Convert a state (0-based index of copy number combinations used for rate matrix) to total copy number.    
- * @param state The state index representing a specific copy number combination.
- * @param cn_max The maximum copy number allowed by the program.
- * @return The total copy number corresponding to the given state.
- * 0	1	2	3	4	5	6	7	8	9	10	11	12	13	14
- * 0	1	1	2	2	2	3	3	3	3	4	4	4	4	4
- * 0/0	0/1	1/0	0/2	 1/1	2/0	0/3	 1/2	 2/1	3/0	0/4	 1/3	  2/2	 3/1	4/0
- */
 int state_to_total_cn(int state, int cn_max){
     int cn = 0;
     vector<int> sums;
@@ -189,10 +176,8 @@ int allele_cn_to_state(int cnA, int cnB){
 }
 
 
-// cn_total: copy number change state plus 2 to make it non-negative
-// get the start and end index for the observed total copy number change in the rate matrix
-// seems no formula due to the piecewise nature of the number of states for each total copy number, need to compute the partial sum to get the index
 void get_tcn_state_index(int cn_total, int peak_sum_haplotype, int& si, int& ei){
+    // There seems to be no formula due to the piecewise nature of the number of states for each total copy number, need to compute the partial sum to get the index
     // number of elements for each state
     vector<int> n_states = make_peak_vector(peak_sum_haplotype); // assume 2 in total and 1 for each haplotype at chr level
     int last_index = cn_total;
@@ -221,10 +206,6 @@ void get_tcn_state_index(int cn_total, int peak_sum_haplotype, int& si, int& ei)
 }
 
 
-// Example:
-// max_change_haplotype = 1 -> make_peak_vector(3) -> 1,2,3,2,1
-// max_change_haplotype = 2 -> make_peak_vector(4) -> 1,2,3,4,3,2,1
-// max_change_haplotype = 3 -> make_peak_vector(5) -> 1,2,3,4,5,4,3,2,1
 void set_nstates(int max_change_haplotype,
                  int& max_cn,
                  vector<int>& n_states,
@@ -235,6 +216,10 @@ void set_nstates(int max_change_haplotype,
 
     max_cn = 2 * (max_change_haplotype + 1);
 
+    // Example:
+    // max_change_haplotype = 1 -> make_peak_vector(3) -> 1,2,3,2,1
+    // max_change_haplotype = 2 -> make_peak_vector(4) -> 1,2,3,4,3,2,1
+    // max_change_haplotype = 3 -> make_peak_vector(5) -> 1,2,3,4,5,4,3,2,1
     n_states = make_peak_vector(max_change_haplotype + 2);
 
     sums.clear();
@@ -248,14 +233,6 @@ void set_nstates(int max_change_haplotype,
 }
 
 
-/** 
- * @brief Convert a change state (0-based index of copy number combinations used for rate matrix) to total copy number.    
- * @param state The state index representing a specific copy number combination.
- * @param cn_max The maximum copy number allowed by the program.
- * @return The total copy number corresponding to the given state.
- * When max_change_haplotype = 1, 9 states
- * When max_change_haplotype = 2, 16 states
- */
 int change_state_to_total_cn(int state, int max_change_haplotype){
     vector<int> sums;
     int max_cn;  // local variable to get the cn_max corresponding to the max_change_haplotype, not used in other functions but needed for getting the sums vector
@@ -274,14 +251,6 @@ int change_state_to_total_cn(int state, int max_change_haplotype){
 }
 
 
-/** 
- * @brief Decompose relative total copy number into multi-level changes (WGD, chromosome, segment) given original data and computed changes.
- * @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
- * @param cn_change_info A vector of CN_CHANGE structs to store the decomposed copy number changes for each sample, same dimensions as s_info.
- * @param input_data INPUT_DATA struct containing sample-level information needed for decomposition.
- * @param cn_max Maximum copy number allowed by the program.
- * @param debug Debug flag for verbose output.
- */
 void rcn_to_decomposition(const vector<vector<vector<int>>>& s_info, vector<vector<CN_CHANGE>>& s_info_change, vector<vector<int>>& sample_change_site, vector<int>& site_max_change, int debug){
     if(debug) cout << "\tChanging relativecopy number to multiple level changes" << endl;
 
@@ -366,16 +335,6 @@ void rcn_to_decomposition(const vector<vector<vector<int>>>& s_info, vector<vect
 
 
 
-/** 
- * @brief Decompose total copy number into multi-level changes (WGD, chromosome, segment) given original data and computed changes.
- * @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
- * @param s_info_change A vector of CN_CHANGE structs to store the decomposed copy number changes for each sample, same dimensions as s_info.
- * @param sample_change_chr A vector of vectors containing chromosome-level change states for each sample, indexed by chromosome id (0-based).
- * @param sample_change_site A vector of vectors containing site-level change states for each sample, indexed by segment id.
- * @param sample_num_wgd A vector containing the number of WGD events for each sample.
- * @param input_property struct containing sample-level information needed for decomposition.
- * @param debug Debug flag for verbose output.
- */
 void cn_to_decomposition(const vector<vector<vector<int>>>& s_info, 
                         vector<vector<CN_CHANGE>>& s_info_change, 
                         const vector<vector<int>>&  sample_change_chr, 
@@ -482,13 +441,6 @@ void cn_to_decomposition(const vector<vector<vector<int>>>& s_info,
 
 
 /********************* Reading original input files  ***************************/
-/** 
- * @brief Read time information from a file
- * @param filename The name of the input file containing time data.
- * @param Ns The number of samples to read from the file.   
- * @param age A reference to an integer that will store the minimum age read from the file.
- * @param debug An integer flag for enabling debug output.  
- */
 vector<double> read_time_info(const string& filename, const int Ns, int& age, int debug){
   if(debug) cout << "\nReading timing information file" << endl;
 
@@ -532,12 +484,6 @@ vector<double> read_time_info(const string& filename, const int Ns, int& age, in
 }
 
 
-// for total or haplotype-specific copy number changes
-// Expected columns:
-// 0: sample ID (required)
-// 1: num_wgd (required)
-// 2: chr_change (optional)
-// 3: site_change (optional)
 void read_meta_info(const string& meta_file,
                     int Ns,
                     vector<int>& sample_num_wgd,
@@ -692,17 +638,6 @@ void compute_max_changes(const vector<vector<int>>& sample_change_chr,
 
 
 
-/** 
- *  @brief Read the input copy number file
- *  @param s_info A reference to a vector of vectors of vectors that will store the copy number information for each sample in the format s_info[sample - 1] = {vcn = {chr, sid, cn}}.
- *  @param filename The name of the input file containing copy number data.
- *  @param Ns The number of samples to read from the file.
- *  @param num_total_bins A reference to an integer that will store the total number of bins read from the file.
- *  @param cn_max The maximum allowed copy number.
- *  @param is_total An integer flag indicating whether the copy numbers are total (1) or haplotype-specific (0).
- *  @param is_rcn An integer flag indicating whether the copy numbers are relative copy numbers (1) or absolute copy numbers (0).
- *  @param debug An integer flag for enabling debug output.
- */ 
 void read_cn(vector<vector<vector<int>>>& s_info, const string& filename, int Ns, int& num_total_bins, int cn_max, int is_total, int is_rcn, int debug){
     num_total_bins = 0;
     // data indexed by [sample][data][ chr, bid, cn ]
@@ -849,14 +784,6 @@ void read_cn(vector<vector<vector<int>>>& s_info, const string& filename, int Ns
 
 
 /************************* Analysing copy number changes ******************/
-/** 
- *  @brief Calculate average total copy number or ploidy for a single sample.
- *  @param s_cn copy number information for a sample in the format [chr, sid, cn].
- *  @param chr_cn A map to store copy numbers for each chromosome.  
- *  @param cn_max Maximum copy number.
- *  @param is_total Indicator whether the copy numbers are total (1) or haplotype-specific (0).
- *  @return The average copy number or ploidy for the sample.
- */
 double compute_sample_avg_cn(const vector<vector<int>>& s_cn, map<int, vector<int>>& chr_cn, int cn_max, int is_total){
     if (s_cn.empty()) return 0.0;
 
@@ -882,7 +809,6 @@ double compute_sample_avg_cn(const vector<vector<int>>& s_cn, map<int, vector<in
 }
 
 
-// for one sample
 pair<double, double> compute_sample_avg_cn_haplotype(const vector<vector<int>>& s_cn, map<int, vector<int>>& chr_cnA, map<int, vector<int>>& chr_cnB, int cn_max){
     if (s_cn.empty()) return make_pair(0.0, 0.0);
 
@@ -913,15 +839,6 @@ pair<double, double> compute_sample_avg_cn_haplotype(const vector<vector<int>>& 
 }
 
 
-/**     
- * @brief compute ploidy for either total copy number or haplotype-specific copy number, depending on the input format
- * @param s_info: real CN for total copy number, state for haplotype-specific copy number
- * @param sample_avg_cn: average totalcopy number for each sample, used for WGD estimation and chromosome change estimation
- * @param sample_chr_cn: raw copy numbers for each chromosome in each sample, used for chromosome change estimation, total CN for total copy number, state for haplotype-specific copy number
- * @param cn_max: maximum copy number
- * @param is_total: indicator whether the copy numbers are total (1) or haplotype-specific (0)
- * @param debug: debug flag for verbose output
- */
 void get_sample_ploidy(const vector<vector<vector<int>>>& s_info, vector<double>& sample_avg_cn, vector<map<int, vector<int>>>& sample_chr_cn, int cn_max, int is_total, int debug){
     cout << "\nGetting the average total copy number (ploidy) in each sample" << endl;
 
@@ -939,8 +856,7 @@ void get_sample_ploidy(const vector<vector<vector<int>>>& s_info, vector<double>
 }
 
 
-// compute ploidy for only haplotype-specific copy number, depending on the input format
-void get_sample_ploidy_haplotype(const vector<vector<vector<int>>>& s_info, vector<double>& sample_avg_cnA, vector<map<int, vector<int>>>& sample_chr_cnA, vector<double>& sample_avg_cnB, vector<map<int, vector<int>>>& sample_chr_cnB, int cn_max, int is_total, int debug){
+void get_sample_ploidy_haplotype(const vector<vector<vector<int>>>& s_info, vector<double>& sample_avg_cnA, vector<map<int, vector<int>>>& sample_chr_cnA, vector<double>& sample_avg_cnB, vector<map<int, vector<int>>>& sample_chr_cnB, int cn_max){
     cout << "\nGetting the average total copy number (ploidy) in each sample" << endl;
 
     for(size_t i = 0; i < s_info.size(); i++){
@@ -961,12 +877,6 @@ void get_sample_ploidy_haplotype(const vector<vector<vector<int>>>& s_info, vect
 }
 
 
-/** 
- *  @brief Estimate the potential number of WGDs for each sample        
- *  @param s_info A vector of vectors of vectors where each innermost vector contains copy number information for a segment in the format [chr, sid, cn] for each sample.
- *  @param sample_num_wgd A vector to store the estimated number of WGDs for each sample in the input.
- *  @param debug Debug flag for verbose output.
- */
 void get_num_wgd(const vector<double>& sample_avg_cn, vector<int>& sample_num_wgd, int debug){
     cout << "\nGetting the potential number of WGDs for each sample" << endl;
    
@@ -1011,7 +921,6 @@ void get_num_wgd(const vector<double>& sample_avg_cn, vector<int>& sample_num_wg
 }
 
 
-// use multiple of 2 to roughly determine events before or after WGD
 bool adjust_chr_change_for_wgd(int& rounded_num_change, double avg_cn, int nwgd) {
     // If one WGD is likely, try to interpret changes in multiples of ploidy
     // as possibly having occurred before WGD, and encode ambiguity.
@@ -1049,14 +958,6 @@ bool adjust_site_change_for_wgd(int& rounded_num_change, double avg_cn, int nwgd
     return is_adjusted;
 }
 
-/** 
- *  @brief Estimate the potential number of total chromosome changes for each sample based on known number of WGD or estimated average copy number for each sample       
- *  @param sample_avg_cn A vector to store the average copy number for each sample in the input, required for estimating chr-level copy number changes.
- *  @param sample_chr_cn A vector of maps to store copy numbers for each chromosome in each sample.
- *  @param sample_change_chr A vector to store the estimated number of chromosome changes for each sample in the input, indexed by [sample][chromosome].
- *  @param chr_max_change A vector to store the maximum absolute chromosome change for each sample in the input.
- *  @param debug Debug flag for verbose output.
- */
 void get_chr_change(const vector<int>& sample_num_wgd, 
                     const vector<double>& sample_avg_cn, 
                     const vector<map<int, vector<int>>>& sample_chr_cn, 
@@ -1127,16 +1028,6 @@ void get_chr_change(const vector<int>& sample_num_wgd,
 }
 
 
-/** 
- *  @brief Estimate the potential number of haplotype-specific chromosome changes for each sample        
- *  @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
- *  @param sample_avg_cn A vector to store the average copy number for each sample in the input.
- *  @param sample_chr_cn A vector of maps to store copy numbers for each chromosome in each sample.
- *  @param sample_change_chr A vector to store the estimated number of chromosome changes for each sample in the input, indexed by [sample][chromosome].
- *  @param chr_max_change A vector to store the maximum absolute chromosome change for each sample in the input.
- *  @param max_chr_change_haplotype Maximum copy number change for haplotype-specific chr-level events.
- *  @param debug Debug flag for verbose output.
- */
 void get_chr_change_haplotype(const vector<int>& sample_num_wgd, 
                                 const vector<double>& sample_avg_cnA, 
                                 const vector<double>& sample_avg_cnB, 
@@ -1235,7 +1126,6 @@ void get_chr_change_haplotype(const vector<int>& sample_num_wgd,
 }
 
 
-// get maximum total copy number for each sample for diagnostics
 void get_sample_mcn(const vector<vector<vector<int>>>& s_info, vector<int>& sample_max_cn, int cn_max, int is_total){
     for(size_t i = 0; i < s_info.size(); i++){
         vector<vector<int>> s_cn = s_info[i];
@@ -1257,13 +1147,6 @@ void get_sample_mcn(const vector<vector<vector<int>>>& s_info, vector<int>& samp
 }
 
 
-/** 
- *  @brief Compute per-sample site-level max deviation from avg_cn (baseline) using total copy numbers, then take ceiling as an integer bound.
- *  @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
- *  @param site_max_change A vector to store the estimated number of site changes for each sample in the input.
- *  @param max_site_change_haplotype Maximum site-level copy number change for haplotype-specific model, not used actually for now
- *  @param debug Debug flag for verbose output.
- */         
 void get_site_change(const vector<int>& sample_num_wgd, 
                         const vector<vector<vector<int>>>& s_info, 
                         const vector<double>& sample_avg_cn, 
@@ -1289,6 +1172,7 @@ void get_site_change(const vector<int>& sample_num_wgd,
             // value may differ from lround(cn - avg_cn)
             int cn_change = cn - lround(avg_cn);   // total copy number change, can be positive or negative
             // if(debug > 1) cout << "original copy number change " << cn_change << endl;
+            // TODO: is_adjusted is computed and never used
             bool is_adjusted = adjust_site_change_for_wgd(cn_change, avg_cn, nwgd);  
 
             // used to set change_site for CN_CHANGE variable for this site on this chr in the sample 
@@ -1319,14 +1203,6 @@ void get_site_change(const vector<int>& sample_num_wgd,
 }
 
 
-/** 
- *  @brief Compute per-sample site-level max deviation from avg_cn (baseline) using haplotype-specific copy numbers, then take ceiling as an integer bound.
- *  @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
- *  @param site_max_change A vector to store the estimated number of site changes for each sample in the input.
- *  @param cn_max Maximum copy number, used for converting state back to copy number for haplotype-specific input.
- *  @param max_site_change_haplotype Maximum copy number change for haplotype-specific site-level events, used for determining the state space of site-level changes and the dimension of rate matrix.
- *  @param debug Debug flag for verbose output.
- */         
 void get_site_change_haplotype(const vector<int>& sample_num_wgd, 
                                 const vector<vector<vector<int>>>& s_info, 
                                 vector<double>& sample_avg_cnA, 
@@ -1389,16 +1265,6 @@ void get_site_change_haplotype(const vector<int>& sample_num_wgd,
 
 
 /************************* Parsing segments ******************/
-/** 
- * @brief Identify variable bins across all samples for segment merging.
- * @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
- * @param Ns The number of samples.
- * @param num_total_bins The total number of bins.      
- * @param num_invar_bins A reference to an integer that will store the number of invariable bins found.
- * @param var_bins A reference to a vector that will store flags indicating whether each bin is variable (1) or invariable (0).
- * @param is_total An integer flag indicating whether the copy numbers are total (1) or haplotype-specific (0).
- * @param debug Debug flag for verbose output.
- */
 void get_var_bins(const vector<vector<vector<int>>>& s_info, int Ns, int num_total_bins, int& num_invar_bins, vector<int>& var_bins, int is_total, int debug){
     for(int k = 0; k < num_total_bins; ++k){
         // using sum of CNs across samples to detect variant bins does not work for special cases
@@ -1443,16 +1309,6 @@ void get_var_bins(const vector<vector<vector<int>>>& s_info, int Ns, int num_tot
 
 
 
-/** 
- * @brief Merge consecutive variable bins with the same copy number profiles across all samples into segments.
- * @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample.
- * @param Ns The number of samples.
- * @param num_total_bins The total number of bins.
- * @param num_invar_bins A reference to an integer that will store the number of invariable bins found.
- * @param is_total An integer flag indicating whether the copy numbers are total (1) or haplotype-specific (0).
- * @param debug Debug flag for verbose output.
- * @return A vector of vectors representing the merged segments, where each seg is represented by: {chr, id_start, id_end, seg_start, seg_end}
- */
 vector<vector<int>> get_invar_segs(const vector<vector<vector<int>>>& s_info, int Ns, int num_total_bins, int& num_invar_bins, int is_total, int debug){
     num_invar_bins = 0;
     vector<int> var_bins(num_total_bins, 0);
@@ -1504,16 +1360,6 @@ vector<vector<int>> get_invar_segs(const vector<vector<vector<int>>>& s_info, in
 }
 
 
-/** 
- * @brief Compute average copy number for a given segment across all samples at site i
- * @param i Index of the segment across all the sites
- * @param segs Vector of segments represented by: {chr, id_start, id_end, seg_start, seg_end}, indicating segment locations
- * @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample
- * @param Ns Number of samples.
- * @param cn_max Maximum copy number state, different from maximum copy number value in the input when the input is haplotype-specific copy number.
- * @param debug Debug flag for verbose output
- * @return A vector of average copy numbers for the segment across all samples
- */
 void compute_segment_cn_state(vector<int>& seg_cn, const vector<int>& segs_curr, const vector<vector<vector<int>>>& s_info, int Ns, int cn_max, int debug){
     if(debug > 1){
         cout << "\nComputing segment copy number for segment on chr " << segs_curr[0] << ":" << segs_curr[1] + 1 << "\t" << segs_curr[2] + 1 << "\t" << segs_curr[3] << "\t" << segs_curr[4] << endl;
@@ -1562,24 +1408,16 @@ void compute_segment_cn_state(vector<int>& seg_cn, const vector<int>& segs_curr,
 }
 
 
-/** 
- * @brief Compute average copy number for a given segment across all samples at site i
- * @param seg_cn  A vector of average copy numbers for the segment across all samples
- * @param segs_curr Vector of segments represented by: {chr, id_start, id_end, seg_start, seg_end}, indicating segment locations
- * @param s_info Sample information where each innermost vector contains copy number for a segment in the format [chr, sid, cn] for each sample
- * @param Ns Number of samples.
- * @param debug Debug flag for verbose output
- */
 void compute_segment_cn_change(vector<CN_CHANGE>& seg_cn, const vector<int>& segs_curr, const vector<vector<CN_CHANGE>>& s_info_change, int Ns, int Nsite, int debug){
     if(debug > 1){
         cout << "\nComputing segment copy number for segment on chr " << segs_curr[0] << ":" << segs_curr[1] + 1 << "\t" << segs_curr[2] + 1 << "\t" << segs_curr[3] << "\t" << segs_curr[4] << endl;
     }
     assert(s_info_change.size() == Ns);
 
-    // TODO: need to check consistency of CN_CHANGE across all bins in the segment
+    // TODO: use the first bin as proxy for now as the copy number should be the same across all bins in the segment, need to check consistency of CN_CHANGE across all bins in the segment
     for(int j = 0; j < Ns; ++j){
         assert(s_info_change[j].size() == Nsite);  // all sites for a sample
-        CN_CHANGE bin_cn = s_info_change[j][segs_curr[1]];  // copy number of the/total first bin in the segment
+        CN_CHANGE bin_cn = s_info_change[j][segs_curr[1]];  // copy number of the first bin in the segment
 
         if(debug > 1){
             // print_vector<CN_CHANGE>(s_info[j][segs_curr[1]]);
@@ -1599,7 +1437,6 @@ void compute_segment_cn_change(vector<CN_CHANGE>& seg_cn, const vector<int>& seg
 }
 
 
-// each seg is represented by: {chr, id_start, id_end, seg_start, seg_end}
 vector<vector<int>> get_all_segs(const vector<vector<vector<int>>>& s_info, int Ns, int num_total_bins, int& num_invar_bins, int incl_all, int is_total, int debug){
     num_invar_bins = 0;
     vector<int> var_bins(num_total_bins, 0);
@@ -1636,7 +1473,6 @@ vector<vector<int>> get_all_segs(const vector<vector<vector<int>>>& s_info, int 
 }
 
 
-// cn_max: maximum total copy number or maximum state ID for haplotype-specific copy number, used to validate input CNs
 vector<vector<int>> group_segs(const vector<vector<int>>& segs, const vector<vector<vector<int>>>& s_info, int Ns, int cn_max, int debug){
     vector<vector<int>> ret;
 
@@ -1676,16 +1512,6 @@ vector<vector<int>> group_segs(const vector<vector<int>>& segs, const vector<vec
 
 
 
-/** 
- * @brief Merge consecutive bins with the same copy numbers across all samples      
- * @param segs Input segments represented by: {chr, id_start, id_end, seg_start, seg_end}
- * @param s_info Sample information where each innermost vector contains copy number state (int) or change (CN_CHANGE) for a segment in the format [chr, sid, cn] for each sample.
- * @param Ns Number of samples.
- * @param cn_max Maximum copy number.
- * @param seg_file Output file name to write the segments with copy numbers for each sample.        
- * @param debug Debug flag for verbose output.
- * @return A map where each key is a chromosome number and the value is a vector of segments with their copy numbers for each sample.
- */
 void group_segs_by_chr_state(const vector<vector<int>>& segs, const vector<vector<vector<int>>>& s_info, map<int, vector<vector<int>>>& data, int Ns, int cn_max, const string& seg_file, int debug){
     int Nchar = 0;
     assert(s_info.size() == Ns);
@@ -1737,16 +1563,6 @@ void group_segs_by_chr_state(const vector<vector<int>>& segs, const vector<vecto
 
 
 
-/** 
- * @brief Merge consecutive bins with the same copy numbers across all samples      
- * @param segs Input segments represented by: {chr, id_start, id_end, seg_start, seg_end}
- * @param s_info Sample information where each innermost vector contains copy number state (int) or change (CN_CHANGE) for a segment in the format [chr, sid, cn] for each sample.
- * @param Ns Number of samples.
- * @param cn_max Maximum copy number.
- * @param seg_file Output file name to write the segments with copy numbers for each sample.        
- * @param debug Debug flag for verbose output.
- * @return A map where each key is a chromosome number and the value is a vector of segments with their copy numbers for each sample.
- */
 void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vector<CN_CHANGE>>& s_info_change, map<int, vector<vector<int>>>& data_change, int Ns, int Nsite, const string& seg_file, int debug){
     if(debug) cout << "\nGrouping segments by chromosome with CN_CHANGE type" << endl;
     int Nchar = 0;
@@ -1812,16 +1628,6 @@ void group_segs_by_chr_change(const vector<vector<int>>& segs, const vector<vect
 }
 
 
-/** 
- * @brief Read the input copy number file and merge bins into segments if specified
- * @param s_info Output parameter to store copy number information for each sample.
- * @param segs Output parameter to store segment information.
- * @param filename Input file name containing copy number data.
- * @param input_property Structure containing properties of the input data.
- * @param input_data Structure to store processed input data.
- * @param debug Debug flag for verbose output.
- * @return The maximum copy number state used in the analysis of bounded models. Different from cn_max in the input_property when haplotype-specific CNs are used.
- */
 int get_segs_cn(vector<vector<vector<int>>>& s_info, vector<vector<int>>& segs, const string& filename, const INPUT_PROPERTY& input_property, INPUT_DATA& input_data, int debug){
     int cn_max = input_property.cn_max;
 
@@ -1850,7 +1656,6 @@ int get_segs_cn(vector<vector<vector<int>>>& s_info, vector<vector<int>>& segs, 
 
 
 /************************* Functions called by tree building program *************************/
-// only used in testing ML tree building
 vector<vector<int>> read_data_var_regions(const string& filename, const INPUT_PROPERTY& input_property, INPUT_DATA& input_data, int debug){
   cout << "\nReading data and calculating CNA regions" << endl;
 
@@ -1864,13 +1669,6 @@ vector<vector<int>> read_data_var_regions(const string& filename, const INPUT_PR
 }
 
 
-/** 
- *  @brief Group observed copy numbers by chromosome to construct the CN matrix for tree inference
- *  @param data Input data map where each key is a chromosome number and the value is a vector of vectors containing copy number information.
- *  @param vobs A map where each key is a chromosome number and the value is a vector of vectors containing copy number observations for each sample.
- *  vobs[chr] = { {cn_sample1, cn_sample2, ...}, ...} } 
- *  @param Ns Number of samples.
- */
 void get_obs_vector_by_chr_state(const map<int, vector<vector<int>>>& data,  map<int, vector<vector<int>>>& vobs, int Ns){
     // Assume chromosomes in data are ordered numerically
     // Some chromosomes got lost in the segment merging, so data.rbegin()->first may not equal to data.size()
@@ -1890,13 +1688,6 @@ void get_obs_vector_by_chr_state(const map<int, vector<vector<int>>>& data,  map
 }
 
 
-/** 
- *  @brief Group observed copy number changes by chromosome for tree inference
- *  @param data Input data map where each key is a chromosome number and the value is a vector of vectors containing copy number information.
- *  @param vobs_change A map where each key is a chromosome number and the value is a vector of vectors containing copy number observations for each sample.
- *  vobs[chr] = { {cn_change_sample1, cn_change_sample2, ...}, ...} }
- *  @param Ns Number of samples.
- */
 void get_obs_vector_by_chr_change(const map<int, vector<vector<int>>>& data_change,  map<int, vector<vector<CN_CHANGE>>>& vobs_change, int Ns){
     // Construct the CN matrix by chromosome
     // Assume chromosomes in data are ordered numerically
@@ -1922,15 +1713,6 @@ void get_obs_vector_by_chr_change(const map<int, vector<vector<int>>>& data_chan
 }
 
 
-/** 
- *  @brief Read data and group regions by chromosome, used in tree building for more comprehensive data processing  
- *  @param data: A map where each key is a chromosome number and the value is a vector of vectors containing copy number information for each segment on that chromosome.
- *  @param cn_file Input file name containing copy number data.
- *  @param seg_file Optional output file name to save segment information.
- *  @param input_property Structure containing properties of the input data.
- *  @param input_data Structure to store processed input data.
- *  @param debug Debug flag for verbose output.
-*/
 void read_data_var_regions_by_chr_state(map<int, vector<vector<int>>>& data, const string& cn_file, const string& seg_file, const INPUT_PROPERTY& input_property, INPUT_DATA& input_data, int debug){
     cout << "\nReading data and group regions by chromosome" << endl;
 
@@ -1950,15 +1732,6 @@ void read_data_var_regions_by_chr_state(map<int, vector<vector<int>>>& data, con
 }
 
 
-/** 
- *  @brief Read data and group regions by chromosome, used in tree building for more comprehensive data processing  
- * @param data_change: A map where each key is a chromosome number and the value is a vector of vectors containing copy number change information for each segment on that chromosome.
- *  @param cn_file Input file name containing copy number data.
- *  @param seg_file Optional output file name to save segment information.
- *  @param input_property Structure containing properties of the input data.
- *  @param input_data Structure to store processed input data, will be changed during processing.
- *  @param debug Debug flag for verbose output.
-*/
 void read_data_var_regions_by_chr_change(map<int, vector<vector<int>>>& data_change, const string& cn_file, const string& seg_file, const string& meta_file, const INPUT_PROPERTY& input_property, INPUT_DATA& input_data, int debug){
     cout << "\nReading data and group regions by chromosome" << endl;
     vector<vector<vector<int>>> s_info; 
@@ -2009,7 +1782,7 @@ void read_data_var_regions_by_chr_change(map<int, vector<vector<int>>>& data_cha
         }
         
         if(!input_property.is_total){
-            get_sample_ploidy_haplotype(s_info, sample_avg_cnA, sample_chr_cnA, sample_avg_cnB, sample_chr_cnB, input_property.cn_max, input_property.is_total, debug);
+            get_sample_ploidy_haplotype(s_info, sample_avg_cnA, sample_chr_cnA, sample_avg_cnB, sample_chr_cnB, input_property.cn_max);
         }
 
         bool all_zero = std::all_of(input_data.chr_max_change.begin(), input_data.chr_max_change.end(), [](int x) { return x == 0; });

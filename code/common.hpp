@@ -37,7 +37,7 @@ using namespace std;
 // MK model was used for test, not suitable for CN evolution
 // BOUNDT: bounded total copy number model, ignoring hidden haplotype-specific changes, not recommended for real data
 // BOUNDA: bounded haplotype-specific copy number model, used in CNETML paper
-// INFINITE was used for simulating Poisson process
+// INFINITE was used for simulating Poisson process in CNETS as model 3, so it is overwritten by 3
 enum MODEL {MK, BOUNDT, BOUNDA, DECOMP, INFINITE = 3};
 enum CN_TYPE {ONLY_SEG, EXCLUDE_SEG, EXCLUDE_CHR, EXCLUDE_WGD, ALL}; // 0-ONLY_SEG: only use segments level CN changes (use only r1/r2); 1-EXCLUDE_SEG: exclude segment level CN changes (use only r3/r4/r5); 2-EXCLUDE_CHR: exclude chromosome level changes (use only r1/r2/r5) ; 3-EXCLUDE_WGD: exclude WGD level changes (use only r1/r2/r3/r4) ; 4-ALL: three types of mutations (use r1 to r5)
 
