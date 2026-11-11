@@ -13,9 +13,16 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
+#include "common.hpp"
 #include "parse_cn.hpp"
 
 namespace {
@@ -192,4 +199,209 @@ TEST_CASE("read_cn gives the same answer for plain and gzipped input", "[parse_c
 
     REQUIRE(bins_gz == bins_plain);
     REQUIRE(from_gz == from_plain);
+}
+
+// ===========================================================================
+// Model 3 (DECOMP): converting copy numbers into multi-level changes
+// ===========================================================================
+//
+// Model 3 does not see copy numbers directly: read_data_var_regions_by_chr_change()
+// converts each observed copy number into changes at three levels, and the
+// likelihood runs one Markov chain per level:
+//
+//   - WGD count w, shared by the whole sample;
+//   - chromosome-level change c, shared by every segment on a chromosome
+//     (including segments whose copy number is back at normal);
+//   - segment-level change d, for one segment only.
+//
+// Per haplotype (normal copy number 1) and without WGD, a segment change may
+// come after the chromosome change or before it, in which case a chromosome
+// gain copies it:
+//
+//     CN = 1 + c + d          (segment change after the chromosome change)
+//     CN = (1 + c)(1 + d)     (segment change before it)
+//
+// A lost copy cannot change again: if c = -1, then CN = 0 and d = 0. A total
+// copy number (normal 2) is the sum over the two haplotypes, with changes on
+// one or both. A WGD doubles everything that happened before it.
+//
+// The tests below cover segment-level changes only (w = 0, c = 0), where the
+// conversion must give segment change = copy number - normal. Chromosome-level
+// changes and WGD are being reworked (#50) and will be added later.
+//
+// To print the converted changes:
+//
+//     CNETA_PRINT_DECOMP=1 code/build/tests/cneta_unit_tests "[decomp]"
+
+namespace {
+
+const int CN_MAX = 8;
+
+// One sample at one segment, decoded from the CN_CHANGE values.
+struct Decomposition {
+    std::vector<int> observed;    // {total} or {cnA, cnB}
+    int num_wgd;
+    std::vector<int> chr_change;
+    std::vector<int> seg_change;
+};
+
+struct Segment {
+    int chr;
+    int start;                    // 0-based bin ids, as in the data map
+    int end;
+    std::vector<Decomposition> samples;
+};
+
+std::vector<Segment> convert(const std::string& cn_file, int Ns, bool is_total){
+    // Ns, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype,
+    // model, is_total, is_rcn, is_bin, incl_all -- cnetml's defaults otherwise.
+    const INPUT_PROPERTY property{Ns, CN_MAX, 2, 1, 2, DECOMP, is_total ? 1 : 0, 0, 1, 1};
+    INPUT_DATA input{0, 0, 0, {}, {}, {}};
+    std::map<int, std::vector<std::vector<int>>> data;
+
+    read_data_var_regions_by_chr_change(data, cn_file, "", "", property, input, 0);
+
+    const auto chr_states = build_pair_states(property.max_chr_change_haplotype);
+    const auto site_states = build_pair_states(property.max_site_change_haplotype);
+
+    std::vector<Segment> segments;
+    for(const auto& [chr, rows] : data){
+        for(const auto& row : rows){
+            // chr, start, end, then (cn_state, num_wgd, chr change, site change) per sample
+            REQUIRE(row.size() == 3 + 4 * static_cast<size_t>(Ns));
+            Segment seg{row[0], row[1], row[2], {}};
+            for(int j = 0; j < Ns; ++j){
+                const int cn_state = row[3 + 4 * j];
+                const int chr_code = row[5 + 4 * j];
+                const int site_code = row[6 + 4 * j];
+
+                Decomposition d;
+                d.num_wgd = row[4 + 4 * j];
+                if(is_total){
+                    d.observed = {cn_state};
+                    d.chr_change = {chr_code};
+                    d.seg_change = {site_code};
+                }else{
+                    int a = 0, b = 0;
+                    state_to_allele_cn(cn_state, CN_MAX, a, b);
+                    d.observed = {a, b};
+                    d.chr_change = {chr_states.at(chr_code).first, chr_states.at(chr_code).second};
+                    d.seg_change = {site_states.at(site_code).first, site_states.at(site_code).second};
+                }
+                seg.samples.push_back(d);
+            }
+            segments.push_back(seg);
+        }
+    }
+    return segments;
+}
+
+// The decomposition expected for a segment-only change: no WGD, no
+// chromosome-level change, and segment change = copy number - normal.
+bool is_segment_only(const Decomposition& d, bool is_total){
+    const int normal = is_total ? 2 : 1;
+    if(d.num_wgd != 0) return false;
+    for(size_t h = 0; h < d.observed.size(); ++h){
+        if(d.chr_change[h] != 0 || d.seg_change[h] != d.observed[h] - normal) return false;
+    }
+    return true;
+}
+
+std::string join(const std::vector<int>& v, bool sign){
+    std::ostringstream os;
+    for(size_t i = 0; i < v.size(); ++i){
+        if(i) os << "/";
+        if(sign && v[i] >= 0) os << "+";
+        os << v[i];
+    }
+    return os.str();
+}
+
+// One table per sample.
+std::string table(const std::vector<Segment>& segments, int Ns, bool is_total){
+    std::ostringstream os;
+    os << "Model 3 conversion (" << (is_total ? "total" : "haplotype-specific") << ")\n";
+    for(int j = 0; j < Ns; ++j){
+        os << "Sample " << j + 1 << "\n"
+           << "  chr\tbins\tobserved\tchr change\tseg change\tcheck\n";
+        for(const auto& seg : segments){
+            const auto& d = seg.samples[j];
+            os << "  " << seg.chr << "\t" << seg.start + 1 << "-" << seg.end + 1 << "\t"
+               << join(d.observed, false) << "\t\t"
+               << join(d.chr_change, true) << "\t\t"
+               << join(d.seg_change, true) << "\t\t"
+               << (is_segment_only(d, is_total) ? "ok" : "FAIL") << "\n";
+        }
+    }
+    return os.str();
+}
+
+// Convert an input with segment-level changes only, print if asked, and require
+// every sample at every segment to convert as a segment-only change.
+void require_segment_only(const std::string& cn_file, int Ns, bool is_total){
+    const auto segments = convert(cn_file, Ns, is_total);
+    REQUIRE_FALSE(segments.empty());
+
+    const std::string report = table(segments, Ns, is_total);
+    if(std::getenv("CNETA_PRINT_DECOMP")) std::cout << "\n" << cn_file << "\n" << report;
+    INFO(report);
+
+    for(const auto& seg : segments){
+        for(int j = 0; j < Ns; ++j){
+            INFO("sample " << j + 1 << ", chromosome " << seg.chr << ", bins "
+                 << seg.start + 1 << "-" << seg.end + 1);
+            CHECK(is_segment_only(seg.samples[j], is_total));
+        }
+    }
+}
+
+// Synthetic input: 4 chromosomes of 10 bins, every bin 1/1 (total 2) unless a
+// FocalChange sets it. Samples 1 and 2 carry focal changes of one or two bins
+// on otherwise normal chromosomes; sample 3 is normal. The changes are small
+// enough that no chromosome mean, and no sample ploidy, rounds away from normal.
+struct FocalChange { int sample; int chr; int first_bin; int last_bin; int cnA; int cnB; };
+
+const std::vector<FocalChange> SEGMENT_ONLY_CHANGES{
+    {1, 1, 3, 4, 2, 1},   // gain (+1/0)
+    {1, 2, 5, 5, 0, 1},   // loss (-1/0)
+    {1, 3, 7, 7, 3, 1},   // amplification (+2/0)
+    {1, 4, 2, 2, 0, 0},   // homozygous deletion (-1/-1)
+    {2, 1, 8, 8, 2, 0},   // copy-neutral LOH (+1/-1, total unchanged)
+    {2, 2, 1, 2, 1, 2},   // gain (0/+1)
+    {2, 3, 4, 4, 1, 3},   // amplification (0/+2)
+    {2, 4, 9, 9, 2, 2},   // gain of both haplotypes (+1/+1)
+};
+
+std::string write_segment_only_input(bool is_total){
+    const auto dir = std::filesystem::temp_directory_path() / "cneta_test_parse_cn";
+    std::filesystem::create_directories(dir);
+    const auto path = dir / (is_total ? "segment-only-cn.txt" : "segment-only-haplotype-cn.txt");
+    std::ofstream out(path);
+    for(int sample = 1; sample <= 3; ++sample){
+        for(int chr = 1; chr <= 4; ++chr){
+            for(int bin = 1; bin <= 10; ++bin){
+                int a = 1, b = 1;
+                for(const auto& f : SEGMENT_ONLY_CHANGES){
+                    if(f.sample == sample && f.chr == chr && bin >= f.first_bin && bin <= f.last_bin){
+                        a = f.cnA;
+                        b = f.cnB;
+                    }
+                }
+                out << sample << "\t" << chr << "\t" << bin << "\t";
+                if(is_total) out << a + b << "\n";
+                else         out << a << "\t" << b << "\n";
+            }
+        }
+    }
+    return path.string();
+}
+
+}  // namespace
+
+TEST_CASE("model 3 conversion recovers segment-only changes from total copy numbers", "[parse_cn][decomp]"){
+    require_segment_only(write_segment_only_input(true), 3, true);
+}
+
+TEST_CASE("model 3 conversion recovers segment-only changes from haplotype copy numbers", "[parse_cn][decomp]"){
+    require_segment_only(write_segment_only_input(false), 3, false);
 }
