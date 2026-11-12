@@ -28,6 +28,14 @@ Sections marked **TODO** are placeholders awaiting content.
 - Chaining the tools together? See [Workflows](workflows/index.md).
 - Contributing code? See the [Developer docs](developer-guide/index.md).
 
+## At a glance
+
+<p class="only-light" align="center"><a href="_static/cneta-overview.svg" target="_blank"><img src="_static/cneta-overview.svg" alt="CNETA at a glance" width="100%"></a></p>
+<p class="only-dark" align="center"><a href="_static/cneta-overview-dark.svg" target="_blank"><img src="_static/cneta-overview-dark.svg" alt="CNETA at a glance" width="100%"></a></p>
+
+What CNETA does: input, the two inference programs, the result, and the
+event types and rates they share.
+
 ## Project status
 
 `cnets` and `cnetml` are the mature, published tools; `cnetmcmc` is under

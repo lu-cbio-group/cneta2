@@ -126,7 +126,10 @@ html_theme = "furo"
 # docs. Furo has a light and a dark mode, so it takes both logo variants by
 # file name from the static path; see assets/logo/README.md.
 LOGO_DIR = DOCS_DIR.parent / "assets" / "logo"
-html_static_path = ["_static", str(LOGO_DIR / "svg")]
+# The overview and pipeline figures come the same way, from assets/pipeline/;
+# see assets/pipeline/README.md.
+PIPELINE_DIR = DOCS_DIR.parent / "assets" / "pipeline"
+html_static_path = ["_static", str(LOGO_DIR / "svg"), str(PIPELINE_DIR / "svg")]
 html_favicon = str(LOGO_DIR / "favicon.ico")
 
 html_theme_options = {

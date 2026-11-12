@@ -2,7 +2,8 @@
 
 Two figures, drawn in TikZ the same way as the logo in `../logo/`, so they
 live under version control and come in a light and a dark variant. The
-documentation does not use them yet.
+documentation shows the overview on its home page and the pipeline on the
+Workflows page; `docs/source/conf.py` reads them from `svg/`.
 
 ## At a glance
 

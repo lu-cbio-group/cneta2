@@ -91,6 +91,16 @@ msgid "Contributing code? See the [Developer docs](developer-guide/index.md)."
 msgstr "要贡献代码？见[开发者文档](developer-guide/index.md)。"
 
 #: ../../source/index.md:31
+msgid "At a glance"
+msgstr "概览"
+
+#: ../../source/index.md:36
+msgid ""
+"What CNETA does: input, the two inference programs, the result, and the "
+"event types and rates they share."
+msgstr "CNETA 做什么：输入、两个推断程序、结果，以及它们共用的事件类型和速率。"
+
+#: ../../source/index.md:31
 msgid "Project status"
 msgstr "项目状态"
 

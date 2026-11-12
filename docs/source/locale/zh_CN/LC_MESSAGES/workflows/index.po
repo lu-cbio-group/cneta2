@@ -27,6 +27,12 @@ msgstr "工作流程与数据流"
 msgid "How the tools are chained together, and what data passes between them."
 msgstr "各工具如何衔接，以及它们之间传递哪些数据。"
 
+#: ../../source/workflows/index.md:8
+msgid ""
+"Which program writes and reads which file, from the data sources to the "
+"analysis scripts. Click the figure to open it at full size."
+msgstr "每个程序写出和读取哪些文件，从数据来源到分析脚本。点击图片可查看原尺寸。"
+
 #: ../../source/workflows/index.md:6
 msgid ""
 "The `cnets` and `cnetml` diagrams below are the reviewed ones — those tools "
