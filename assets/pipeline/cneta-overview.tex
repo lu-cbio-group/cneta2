@@ -1,6 +1,6 @@
-% CNETA at a glance: data sources, input, the two inference programs, the
-% result, and the event types and rates they share. The detailed version
-% with every file and mode is cneta-pipeline.tex; read this one first.
+% CNETA at a glance: data sources, input, the two inference programs and
+% the result. The detailed version with every file and mode is
+% cneta-pipeline.tex; read this one first.
 %
 % Plain pdflatex on TeX Live "basic". ./build.sh renders both schemes:
 %
@@ -118,14 +118,12 @@
 \end{tikzpicture}};
 
 % ---------------------------------------------------------------- notes below the diagram
-\node[notetxt] (model) at ($(4,0 |- legend.south)+(0,-11)$)
-  {\textbf{Shared events and rates}: segmental, chromosomal and whole-genome doubling (WGD) events, at constant or branch-specific rates (e.g.\ a random local clock).\\\textbf{cnets} simulates these events one by one along the tree; inference (\textbf{cnetml}, \textbf{cnetmcmc}) uses continuous-time Markov chains.};
 
-\node[notetxt, below=3mm of model.south west, anchor=north west] (next)
+\node[notetxt] (next) at ($(4,0 |- legend.south)+(0,-11)$)
   {\textbf{Next}: a shared library (\texttt{libcneta}) beneath the three programs, with a Python interface, a Nextflow pipeline and a Galaxy tool built on it; versioned releases.};
 
 % the notes sit between two thin rules: no fill, so they do not read as a step or a file
-\node[panel, fit=(model)(next)] (notes) {};
+\node[panel, fit=(next)] (notes) {};
 \draw[muted, line width=0.6pt] (notes.north west) -- (notes.north east)
                                (notes.south west) -- (notes.south east);
 

@@ -95,10 +95,8 @@ msgid "At a glance"
 msgstr "概览"
 
 #: ../../source/index.md:36
-msgid ""
-"What CNETA does: input, the two inference programs, the result, and the "
-"event types and rates they share."
-msgstr "CNETA 做什么：输入、两个推断程序、结果，以及它们共用的事件类型和速率。"
+msgid "What CNETA does: input, the two inference programs and the result."
+msgstr "CNETA 做什么：输入、两个推断程序和结果。"
 
 #: ../../source/index.md:31
 msgid "Project status"

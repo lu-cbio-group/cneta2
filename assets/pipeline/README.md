@@ -16,8 +16,7 @@ Workflows page; `docs/source/conf.py` reads them from `svg/`.
 
 What the tools do: real or simulated (`cnets`) copy-number profiles as
 input; maximum likelihood (`cnetml`) and Bayesian (`cnetmcmc`, in
-development) inference side by side; the result; the event types and rates
-they share; and what comes next. Source: `cneta-overview.tex`.
+development) inference side by side; the result; and what comes next. Source: `cneta-overview.tex`.
 
 ## The pipeline in detail
 
