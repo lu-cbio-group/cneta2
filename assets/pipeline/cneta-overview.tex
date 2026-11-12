@@ -1,5 +1,6 @@
-% CNETA at a glance: what the tools do, on one line. The detailed version
-% with every file and mode is cneta-pipeline.tex; read this one first.
+% CNETA at a glance: data sources, input, the two inference programs and
+% the result. The detailed version with every file and mode is
+% cneta-pipeline.tex; read this one first.
 %
 % Plain pdflatex on TeX Live "basic". ./build.sh renders both schemes:
 %
@@ -18,7 +19,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \renewcommand*\familydefault{\sfdefault}
-\usetikzlibrary{arrows.meta,positioning,calc,shapes.misc}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.misc,fit,backgrounds}
 \hyphenpenalty=10000
 \exhyphenpenalty=10000
 
@@ -26,15 +27,15 @@
 \def\schemeLight{light}
 \ifx\PipelineScheme\schemeLight
   \definecolor{ink}{HTML}{16222E}  \definecolor{muted}{HTML}{6B7280}
-  \definecolor{stln}{HTML}{24405C} \definecolor{stfl}{HTML}{E7EEF5}
-  \definecolor{syln}{HTML}{55606D} \definecolor{syfl}{HTML}{EDEFF2}
+  \definecolor{stln}{HTML}{24405C} \definecolor{stfl}{HTML}{D5E4F3}
+  \definecolor{syln}{HTML}{8A939E} \definecolor{syfl}{HTML}{F6F7F9}
   \definecolor{deln}{HTML}{A5690C} \definecolor{defl}{HTML}{FDF3E2}
   \definecolor{galn}{HTML}{A83226} \definecolor{gafl}{HTML}{FAE9E7}
   \definecolor{opln}{HTML}{2C6B4F} \definecolor{opfl}{HTML}{E6F1EB}
 \else
   \definecolor{ink}{HTML}{E6EBF0}  \definecolor{muted}{HTML}{A9B4BF}
-  \definecolor{stln}{HTML}{8FB3D9} \definecolor{stfl}{HTML}{25364A}
-  \definecolor{syln}{HTML}{A0AAB5} \definecolor{syfl}{HTML}{333B45}
+  \definecolor{stln}{HTML}{8FB3D9} \definecolor{stfl}{HTML}{1E3A5C}
+  \definecolor{syln}{HTML}{8A939E} \definecolor{syfl}{HTML}{2A2F36}
   \definecolor{deln}{HTML}{E0A94B} \definecolor{defl}{HTML}{40321A}
   \definecolor{galn}{HTML}{E07A6E} \definecolor{gafl}{HTML}{42241F}
   \definecolor{opln}{HTML}{6FBF93} \definecolor{opfl}{HTML}{1F3A2B}
@@ -47,15 +48,16 @@
                      rounded corners=3pt, line width=1pt},
   prog/.style={draw=stln, fill=stfl, line width=1.2pt},
   file/.style={draw=syln, fill=syfl},
-  result/.style={draw=opln, fill=opfl, line width=1.2pt},
   draft/.style={draw=galn, fill=gafl, dash pattern=on 3pt off 2pt},
-  planned/.style={draw=deln, fill=defl, dash pattern=on 3pt off 2pt},
   head/.style={font=\large\bfseries, inner sep=0pt},
   dcap/.style={text=muted, font=\small, inner sep=1pt},
   arr/.style={-{Stealth[length=3mm,width=2.2mm]}, line width=1.2pt, draw=stln},
-  arro/.style={-{Stealth[length=3mm,width=2.2mm]}, line width=1.2pt, draw=opln},
-  arrd/.style={-{Stealth[length=3mm,width=2.2mm]}, line width=1pt, draw=galn,
-               dash pattern=on 3pt off 2pt},
+  arrf/.style={-{Stealth[length=3mm,width=2.2mm]}, line width=1pt, draw=syln},
+  arrc/.style={-{Stealth[length=3mm,width=2.2mm]}, line width=1pt, draw=muted,
+               dash pattern=on 3pt off 2pt, rounded corners=3pt},
+  % explanatory text below the diagram: no box, so it is not read as a step
+  notetxt/.style={anchor=north west, align=center, text width=258mm, inner sep=0pt, font=\normalsize},
+  panel/.style={inner xsep=4mm, inner ysep=3.5mm},
   % legend swatch: a small box in one of the styles above
   chip/.style={minimum width=8mm, minimum height=4.2mm, inner sep=0pt,
                rounded corners=1pt},
@@ -65,56 +67,69 @@
 \begin{document}
 \begin{tikzpicture}
 
-\node[anchor=west, font=\Large\bfseries, inner sep=0pt] at (0,30)
+\node[anchor=west, font=\Large\bfseries, inner sep=0pt] at (0,40)
   {CNETA at a glance};
-\node[anchor=west, dcap] at (0,23)
-  {From copy numbers of several samples of one patient to a dated clonal tree with rates and events on its branches.};
+\node[anchor=west, dcap] at (0,33)
+  {From the copy-number profiles of several samples of one patient (bulk tissue, single cells or clones) to a dated phylogeny with rates and events on its branches.};
 
-% ---------------------------------------------------------------- main line
-\node[file, text width=42mm] (in) at (22,0)
-  {\textbf{Input}\\[3pt]copy-number profiles of\\several samples of one\\patient, over time;\\their sampling times};
+% ---------------------------------------------------------------- column 1: data sources
+\node[file, text width=40mm] (real) at (22,12)
+  {\textbf{Real data}\\[3pt]sequencing,\\copy-number calling,\\preprocessing};
+\node[prog, text width=40mm] (sim) at (22,-30)
+  {\textbf{cnets}: simulation\\[3pt]copy-number profiles\\simulated along a known tree};
 
-\node[prog, text width=46mm] (model) at (82,0)
-  {\textbf{One evolutionary model}\\[3pt]copy numbers change along\\a clonal tree by segment,\\chromosome and whole-genome\\events, at constant or\\branch-specific rates};
+% ---------------------------------------------------------------- column 2: input
+\node[file, text width=62mm] (in) at (96,-9)
+  {\textbf{Input}\\[3pt]copy-number profiles\\(total, haplotype-specific or relative);\\optional: sampling times,\\known number of CNA events per sample};
 
-\node[prog, text width=46mm] (ml) at (144,0)
-  {\textbf{cnetml}: maximum likelihood\\[3pt]finds the tree, its node ages\\and the rates; reconstructs\\ancestral copy numbers;\\bootstrap support};
+% ---------------------------------------------------------------- column 3: inference, side by side
+\node[prog, text width=52mm] (ml) at (172,12)
+  {\textbf{cnetml}: maximum likelihood\\[3pt]tree, node ages and rates;\\ancestral copy numbers;\\bootstrap support};
+\node[draft, text width=52mm] (mcmc) at (172,-30)
+  {\textbf{cnetmcmc}: Bayesian sampling\\[3pt]posterior distribution of\\trees, node ages and rates\\\textcolor{galn}{(in development)}};
 
-\node[result, text width=42mm] (out) at (204,0)
-  {\textbf{Result}\\[3pt]a dated clonal tree with\\rates and events per branch,\\ancestral copy numbers,\\plots};
+% ---------------------------------------------------------------- column 4: result
+\node[file, text width=42mm] (out) at (244,-9)
+  {\textbf{Result}\\[3pt]dated phylogeny;\\rates and events per branch;\\ancestral copy numbers};
 
-\draw[arr] (in) -- (model);
-\draw[arr] (model) -- (ml);
-\draw[arro] (ml) -- (out);
-
-% ---------------------------------------------------------------- second line
-\node[prog, text width=42mm] (sim) at (22,-44)
-  {\textbf{cnets}: simulation\\[3pt]data from the same model,\\with a known tree: to test,\\benchmark and plan studies};
-\draw[arr] (sim) -- (in);
-
-\node[draft, text width=46mm] (mcmc) at (144,-44)
-  {\textbf{cnetmcmc}: Bayesian sampling\\[3pt]posterior of trees and rates\\(draft, not released)};
-\draw[arrd] (mcmc) -- (ml);
-
-\node[dcap, text width=46mm] at (82,-44)
-  {The same model drives simulation and inference, so simulated data are the test of the inference.};
-
-% ---------------------------------------------------------------- planned
-\node[planned, text width=228mm, font=\normalsize] (next) at (113,-70)
-  {\textbf{Next}: one library (\texttt{libcneta}) under the three programs, with a Python interface, a Nextflow pipeline and a Galaxy tool on top; versioned releases.};
+% ---------------------------------------------------------------- arrows
+\draw[arrf] (real.east) -- (in.west);
+\draw[arrf] (sim.east)  -- (in.west);
+\draw[arr]  (in.east)   -- (ml.west);
+\draw[arr]  (in.east)   -- (mcmc.west);
+\draw[arrf] (ml.east)   -- (out.west);
+\draw[arrf] (mcmc.east) -- (out.west);
+% simulated data only: compare the inferred tree with the true one
+\draw[arrc] (sim.south) -- ++(0,-8) -| (out.south);
+\node[dcap, anchor=north] at (134,-50.5) {simulated data only: compare the result with the true tree};
 
 % ---------------------------------------------------------------- legend
-\begin{scope}[shift={(0,-86)}]
-  \node[prog, chip]    (lg1) at (4,0)   {}; \node[lg] at ([xshift=3pt]lg1.east) {program};
-  \node[file, chip]    (lg2) at (34,0)  {}; \node[lg] at ([xshift=3pt]lg2.east) {data};
-  \node[result, chip]  (lg3) at (56,0)  {}; \node[lg] at ([xshift=3pt]lg3.east) {result};
-  \node[draft, chip]   (lg4) at (82,0)  {}; \node[lg] at ([xshift=3pt]lg4.east) {not released};
-  \node[planned, chip] (lg5) at (118,0) {}; \node[lg] at ([xshift=3pt]lg5.east) {planned};
-  \draw[arr]  (148,0) -- ++(9,0); \node[lg] at (158,0) {data flow};
-  \draw[arro] (184,0) -- ++(9,0); \node[lg] at (194,0) {to the result};
-\end{scope}
-\node[dcap, anchor=west] at (0,-96)
-  {The detailed pipeline with every file and mode is in \texttt{cneta-pipeline}.};
+% each item: a swatch, 1.2 mm, its label; 5 mm between items; the row is centred (as in cneta-pipeline)
+\node[inner sep=0pt, anchor=north] (legend) at (133,-61) {\begin{tikzpicture}[
+    li/.style={lg},
+    gap/.style={right=5mm of #1},
+    sw/.style={minimum width=8mm, minimum height=4.2mm, inner sep=0pt}]
+  \node[prog, chip]           (c1) {};                 \node[li, right=1.2mm of c1] (t1) {program};
+  \node[file, chip, gap=t1]   (c2) {};                 \node[li, right=1.2mm of c2] (t2) {file};
+  \node[draft, chip, gap=t2]  (c3) {};                 \node[li, right=1.2mm of c3, text=galn] (t3) {in development};
+  \node[sw, gap=t3] (a1) {}; \draw[arr]  (a1.west) -- (a1.east); \node[li, right=1.2mm of a1] (t4) {input to a step};
+  \node[sw, gap=t4] (a2) {}; \draw[arrf] (a2.west) -- (a2.east); \node[li, right=1.2mm of a2] (t5) {file written};
+  \node[sw, gap=t5] (a3) {}; \draw[arrc] (a3.west) -- (a3.east); \node[li, right=1.2mm of a3]      {comparison (simulation only)};
+\end{tikzpicture}};
+
+% ---------------------------------------------------------------- notes below the diagram
+
+\node[notetxt] (next) at ($(4,0 |- legend.south)+(0,-11)$)
+  {\textbf{Next}: a shared library (\texttt{libcneta}) beneath the three programs, with a Python interface, a Nextflow pipeline and a Galaxy tool built on it; versioned releases.};
+
+% the notes sit between two thin rules: no fill, so they do not read as a step or a file
+\node[panel, fit=(next)] (notes) {};
+\draw[muted, line width=0.6pt] (notes.north west) -- (notes.north east)
+                               (notes.south west) -- (notes.south east);
+
+
+\node[dcap, anchor=north west] at ($(0,0 |- notes.south)+(0,-5)$)
+  {The detailed pipeline, with every file and mode, is in \texttt{cneta-pipeline}.};
 
 \end{tikzpicture}
 \end{document}

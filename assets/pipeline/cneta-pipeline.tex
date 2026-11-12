@@ -1,9 +1,8 @@
 % CNETA pipeline figure: how the programs and scripts chain together, and
 % which files cross the boundaries between them.
 %
-% Draft for the researcher meeting; the docs do not use it yet. Plain
-% pdflatex on TeX Live "basic" (TikZ + Latin Modern, nothing else). Do not
-% run this file directly; ./build.sh renders both schemes. To render one:
+% Plain pdflatex on TeX Live "basic" (TikZ + Latin Modern, nothing else). Do
+% not run this file directly; ./build.sh renders both schemes. To render one:
 %
 %   pdflatex -jobname=cneta-pipeline-dark \
 %     "\def\PipelineScheme{dark}\input{cneta-pipeline}"
@@ -12,9 +11,9 @@
 %                    dark background; the background itself stays transparent.
 %
 % Box colours follow the house convention of the report kit:
-%   blue   a program step        grey    a file (the contract between steps)
-%   purple a script in util/     green   a result people look at
-%   amber  settings to choose    red, dashed   not released yet
+%   blue   a program step        grey    a file
+%   green  a helper script       purple  an external tool
+%   amber  settings to choose    red, dashed   in development
 %
 % Editing (details in README.md): each box is one \node line, its text in
 % the braces, its centre at (x,y) in millimetres; arrows name the boxes.
@@ -26,7 +25,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \renewcommand*\familydefault{\sfdefault}
-\usetikzlibrary{arrows.meta,positioning,calc,shapes.misc}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.misc,fit,backgrounds}
 \hyphenpenalty=10000
 \exhyphenpenalty=10000
 
@@ -34,20 +33,24 @@
 \def\schemeLight{light}
 \ifx\PipelineScheme\schemeLight
   \definecolor{ink}{HTML}{16222E}  \definecolor{muted}{HTML}{6B7280}
-  \definecolor{stln}{HTML}{24405C} \definecolor{stfl}{HTML}{E7EEF5}  % program
-  \definecolor{syln}{HTML}{55606D} \definecolor{syfl}{HTML}{EDEFF2}  % file
+  \definecolor{stln}{HTML}{24405C} \definecolor{stfl}{HTML}{D5E4F3}  % program
+  \definecolor{syln}{HTML}{8A939E} \definecolor{syfl}{HTML}{F6F7F9}  % file
   \definecolor{deln}{HTML}{A5690C} \definecolor{defl}{HTML}{FDF3E2}  % settings
-  \definecolor{galn}{HTML}{A83226} \definecolor{gafl}{HTML}{FAE9E7}  % draft
-  \definecolor{opln}{HTML}{2C6B4F} \definecolor{opfl}{HTML}{E6F1EB}  % result
-  \definecolor{ppln}{HTML}{5B4B8A} \definecolor{ppfl}{HTML}{EEEAF6}  % script
+  \definecolor{galn}{HTML}{A83226} \definecolor{gafl}{HTML}{FAE9E7}  % in development
+  \definecolor{opln}{HTML}{2C6B4F} \definecolor{opfl}{HTML}{E6F1EB}  % helper script
+  \definecolor{ppln}{HTML}{5B4B8A} \definecolor{ppfl}{HTML}{EEEAF6}  % external tool
+  \definecolor{grfl}{HTML}{F3F7FB}                                  % program block
+  \definecolor{tabtx}{HTML}{FFFFFF}                                 % text on a program tab
 \else
   \definecolor{ink}{HTML}{E6EBF0}  \definecolor{muted}{HTML}{A9B4BF}
-  \definecolor{stln}{HTML}{8FB3D9} \definecolor{stfl}{HTML}{25364A}
-  \definecolor{syln}{HTML}{A0AAB5} \definecolor{syfl}{HTML}{333B45}
+  \definecolor{stln}{HTML}{8FB3D9} \definecolor{stfl}{HTML}{1E3A5C}
+  \definecolor{syln}{HTML}{8A939E} \definecolor{syfl}{HTML}{2A2F36}
   \definecolor{deln}{HTML}{E0A94B} \definecolor{defl}{HTML}{40321A}
   \definecolor{galn}{HTML}{E07A6E} \definecolor{gafl}{HTML}{42241F}
   \definecolor{opln}{HTML}{6FBF93} \definecolor{opfl}{HTML}{1F3A2B}
   \definecolor{ppln}{HTML}{B3A3E0} \definecolor{ppfl}{HTML}{302A45}
+  \definecolor{grfl}{HTML}{161E28}
+  \definecolor{tabtx}{HTML}{0D1117}
 \fi
 
 % ---------------------------------------------------------------- styles
@@ -57,17 +60,24 @@
                      rounded corners=2pt, line width=0.8pt},
   prog/.style={draw=stln, fill=stfl, line width=1pt},
   file/.style={draw=syln, fill=syfl, font=\footnotesize},
-  script/.style={draw=ppln, fill=ppfl},
-  result/.style={draw=opln, fill=opfl},
+  optfile/.style={draw=syln, fill=syfl, font=\footnotesize,
+                  dash pattern=on 1.5pt off 1.5pt},
+  script/.style={draw=opln, fill=opfl},
+  tool/.style={draw=ppln, fill=ppfl},
+  check/.style={draw=opln, fill=opfl, dash pattern=on 3pt off 2pt},
   settings/.style={draw=deln, fill=defl, font=\footnotesize},
   draft/.style={draw=galn, fill=gafl, dash pattern=on 3pt off 2pt},
+  group/.style={draw=stln, fill=grfl, line width=1.2pt, rounded corners=4pt,
+                inner sep=3.5mm},
+  igroup/.style={draw=syln, line width=0.5pt, rounded corners=3pt, inner sep=2.2mm},
+  pgl/.style={font=\normalsize\bfseries, anchor=center, inner xsep=3mm, inner ysep=1.6mm, fill=stln, text=tabtx, rounded corners=3pt},
+  glabel/.style={text=muted, font=\footnotesize\bfseries, inner sep=1pt, anchor=south},
   dcap/.style={text=muted, font=\scriptsize, inner sep=1pt},
   lane/.style={text=muted, font=\footnotesize\bfseries, inner sep=1pt, anchor=west},
   arr/.style={-{Stealth[length=2.2mm,width=1.7mm]}, line width=0.8pt, draw=stln},
   arrf/.style={-{Stealth[length=2.2mm,width=1.7mm]}, line width=0.7pt, draw=syln},
-  arro/.style={-{Stealth[length=2.2mm,width=1.7mm]}, line width=0.8pt, draw=opln},
-  arrd/.style={-{Stealth[length=2.2mm,width=1.7mm]}, line width=0.8pt, draw=galn,
-               dash pattern=on 3pt off 2pt},
+  arrc/.style={-{Stealth[length=2.2mm,width=1.7mm]}, line width=0.8pt, draw=muted,
+               dash pattern=on 3pt off 2pt, rounded corners=2pt},
   tt/.style={font=\footnotesize\ttfamily},
   % legend swatch: a small box in one of the styles above
   chip/.style={minimum width=7mm, minimum height=3.6mm, inner sep=0pt,
@@ -75,141 +85,183 @@
   lg/.style={anchor=west, text=ink, font=\footnotesize, inner sep=1pt},
 }
 \newcommand{\f}[1]{{\ttfamily #1}}
+% an option name: two hyphens that the font does not merge into a dash
+\newcommand{\opt}[1]{{\ttfamily -{}-#1}}
 
 \begin{document}
 \begin{tikzpicture}
 
 % ---------------------------------------------------------------- title
-\node[anchor=west, font=\large\bfseries, inner sep=0pt] at (0,26)
-  {CNETA pipeline: from copy numbers to a dated clonal tree};
-\node[anchor=west, dcap, font=\footnotesize] at (0,20)
-  {Files are the contract between steps: a pipeline or a Galaxy tool consumes and produces exactly the grey boxes.};
+\node[anchor=west, font=\large\bfseries, inner sep=0pt] at (0,90)
+  {CNETA pipeline: programs, files and scripts};
+\node[anchor=west, dcap, font=\footnotesize] at (0,84)
+  {From the copy-number profiles of several samples of one patient (bulk tissue, single cells or clones) to a dated phylogeny: which program writes which file, and which file each step reads.};
 
-% ---------------------------------------------------------------- lanes
-\node[lane] at (-2,13) {Simulated data};
-\node[lane] at (-2,-31) {Real data};
-\node[lane] at (-2,-111) {Bayesian sampling (draft)};
+% ---------------------------------------------------------------- stages, left to right
+\draw[-{Stealth[length=3mm,width=2.4mm]}, line width=1.2pt, draw=muted] (0,64) -- (318,64);
+\foreach \x/\s in {40/Data sources, 116/Input files, 176/Phylogenetic inference, 236/Output files, 298/Analysis}
+  {\node[text=ink, font=\small\bfseries, inner sep=1pt, anchor=south] at (\x,66) {\s};}
+
+% ---------------------------------------------------------------- lanes: where the data come from
 
 % ---------------------------------------------------------------- column A: sources
-\node[settings, text width=30mm] (simset) at (14,0)
-  {simulation settings:\\tree size, rates, model,\\sampling times, seed};
-\node[file, text width=30mm] (wgs) at (14,-44)
-  {whole-genome sequencing\\of several samples\\of one patient over time};
+\node[settings, text width=32mm] (simset) at (16,-47)
+  {simulation settings:\\tree, number of samples,\\rates, seed};
+\node[tool, text width=32mm] (seq) at (16,-71)
+  {copy-number calling\\(e.g.\ QDNAseq) on\\sequencing data:\\bulk or single cells};
+
+% lane labels sit the same distance above their first box
+\path (simset.north) ++(0,3) coordinate (laneSim) (seq.north) ++(0,3) coordinate (laneReal);
+\node[lane, anchor=south west] at (simset.west |- laneSim) {Simulated data};
+\node[lane, anchor=south west] at (seq.west |- laneReal) {Real data};
 
 % ---------------------------------------------------------------- column B: producers
-\node[prog, text width=32mm] (cnets) at (58,0)
-  {\textbf{cnets}\\simulate copy-number\\evolution along a tree};
-\node[script, text width=32mm] (prep) at (58,-44)
-  {copy-number calling\\(QDNAseq, \ldots)\\+ \f{preprocess\_QDNASeq.R}};
+\node[prog, text width=34mm] (cnets) at (64,-47)
+  {simulate copy-number\\evolution along a tree};
+\begin{scope}[on background layer]
+  \node[group, fit=(cnets), inner ysep=5mm] (cnetsgrp) {};
+\end{scope}
+\node[pgl] at (cnetsgrp.north) {\f{cnets}: simulation};
+\node[script, text width=34mm] (prep) at (64,-71)
+  {\f{preprocess\_QDNASeq.R}:\\formats QDNAseq\\output as input files};
 
-% ---------------------------------------------------------------- column C: input files
-\node[file, text width=30mm] (fcn) at (102,8)
-  {\f{<prefix>-cn.txt.gz}\\total copy numbers};
-\node[file, text width=30mm] (fhap) at (102,-4)
-  {\f{-haplotype-cn.txt.gz}\\haplotype-specific};
-\node[file, text width=30mm] (ftimes) at (102,-16)
-  {\f{-rel-times.txt}\\sampling times};
-\node[file, text width=30mm] (ftree) at (102,-28)
-  {\f{-tree.txt}\\true tree (simulation only)};
-\node[file, text width=30mm] (finfo) at (102,-40)
-  {\f{-info.txt}\\version, seeds, events};
+% ---------------------------------------------------------------- column C: files read by cnetml
+\node[file, text width=46mm] (truth) at (116,49)
+  {\textbf{truth (simulation only)}\\\f{-tree.txt}, \f{-tree.nex}\\\f{-mut.txt}, \f{-info.txt}\\\f{-edge\_rates.txt}\\\f{-inodes-cn.txt.gz}};
+\node[file, text width=46mm] (fcn) at (116,-51)
+  {copy numbers, one of:\\total: \f{-cn.txt.gz}\\haplotype-specific:\\\f{-haplotype-cn.txt.gz}\\relative: with \opt{is\_rcn 1}};
+\node[optfile, text width=46mm] (ftimes) at (116,-70)
+  {\f{-rel-times.txt}:\\sampling times (optional)};
+\node[file, text width=46mm] (ftree) at (116,16)
+  {\opt{tree\_file}:\\the tree for modes 3 and 4\\(from mode 0, the true tree\\or another method)};
+\node[optfile, text width=46mm] (fmeta) at (116,0)
+  {\opt{meta\_file}:\\known CNA events per sample\\(optional, model 3 only)};
+\node[settings, text width=46mm] (params) at (116,-19)
+  {settings for every \f{cnetml} run:\\\opt{model}, \opt{cn\_type}, \opt{cn\_max},\\\opt{dup\_rate} \ldots\ \opt{wgd\_rate},\\\opt{constrained}, \opt{estmu},\\\opt{bsr\_mode}, \opt{seed}};
 
 % ---------------------------------------------------------------- column D: cnetml
-\node[prog, text width=36mm] (m0) at (150,0)
-  {\textbf{cnetml} \f{--mode 0}\\search the ML tree\\(exhaustive or hill climbing)};
-\node[prog, text width=36mm] (m3) at (150,-26)
-  {\textbf{cnetml} \f{--mode 3}\\fixed topology: branch lengths,\\rates, branch-specific rates};
-\node[prog, text width=36mm] (m4) at (150,-52)
-  {\textbf{cnetml} \f{--mode 4}\\ancestral copy numbers};
-\node[prog, text width=36mm] (boot) at (150,-76)
-  {\textbf{bootstrap replicates}\\\f{-b 1}, N runs of mode 0 or 3};
-\node[settings, text width=36mm] (params) at (150,-98)
-  {settings for every \f{cnetml} run\\per project: model, \f{cn\_type}, \f{cn\_max},\\rates r1--r5, \f{cons}, \f{estmu}\\per run: seed, prefix, bsr settings};
+\node[prog, text width=40mm] (m0) at (176,14)
+  {\opt{mode 0}\\search the ML tree\\(hill climbing or exhaustive)};
+\node[prog, text width=40mm, below=5mm of m0] (m3)
+  {\opt{mode 3}\\given topology: branch lengths\\and rates; branch-specific\\rates with \opt{bsr\_mode}};
+\node[prog, text width=40mm, below=5mm of m3] (m4)
+  {\opt{mode 4}\\ancestral copy numbers\\on a given tree};
+\node[prog, text width=40mm, below=12mm of m4] (boot)
+  {\textbf{bootstrap}\\mode 0 or 3 with\\\opt{bootstrap 1}, which\\resamples the sites;\\repeat for more replicates};
+\begin{scope}[on background layer]
+  \node[group, fit=(m0)(m3)(m4)(boot), inner ysep=6mm] (cnetml) {};
+\end{scope}
+\node[pgl] at (cnetml.north) {\f{cnetml}: maximum likelihood};
 
-% ---------------------------------------------------------------- column E: outputs
-\node[file, text width=34mm] (o0) at (198,0)
-  {\f{MaxL-*.txt} tree, \f{.nex},\\\f{.summary.txt} (settings, seed,\\version, likelihood), \f{.edge\_rates.txt}};
-\node[file, text width=34mm] (o3) at (198,-26)
-  {\f{*-fixt.txt} + sidecars\\branch rates, rate shifts};
-\node[file, text width=34mm] (o4) at (198,-52)
-  {\f{.mrca.cn}, \f{.joint.cn}\\ancestral states};
-\node[file, text width=34mm] (ob) at (198,-76)
-  {\f{btree-N.txt}\\replicate trees};
+% ---------------------------------------------------------------- column E: cnetml outputs
+\node[file, text width=40mm] (otree) at (236,3)
+  {\f{<ofile>}: the tree\\\f{<ofile>.nex}, \f{<ofile>.nmut.nex}\\[2pt]\f{<ofile>.summary.txt}: settings,\\seed, version, likelihood\\[2pt]\f{<ofile>.edge\_rates.txt}:\\rates and events per branch};
+\node[file, text width=40mm] (oasr) at (236,0 |- m4)
+  {\f{.mrca.cn}, \f{.joint.cn}, \f{.*.state}:\\ancestral states};
+\node[file, text width=40mm] (oboot) at (236,0 |- boot)
+  {one \f{<ofile>} per replicate:\\trees and rates};
 
 % ---------------------------------------------------------------- column F: analysis
-\node[result, text width=32mm] (plott) at (246,0)
-  {\f{plot-trees-all.R}\\trees with support,\\ages, intervals};
-\node[result, text width=32mm] (plotc) at (246,-26)
-  {\f{plot-cns.R}\\copy-number heatmaps};
-\node[result, text width=32mm] (cmp) at (246,-52)
-  {\f{compare\_trees.R}\\against the true tree\\(simulation only)};
-\node[result, text width=32mm] (ci) at (246,-76)
-  {\f{compute\_ci.R}\\rate confidence intervals};
+\node[check, text width=38mm] (cmp) at (298,51)
+  {\textbf{comparison with the truth}\\trees, rates and\\ancestral states (functions\\in \f{compare\_trees.R})};
+\node[script, text width=38mm] (plotc) at (298,34)
+  {\f{plot-cns.R}\\heatmaps of the\\input copy numbers};
+\node[script, text width=38mm] (plott) at (298,3)
+  {\f{plot-trees-all.R}\\trees with ages, intervals\\and bootstrap support};
+\node[script, text width=38mm] (ci) at (298,0 |- boot)
+  {\f{compute\_ci.R}\\confidence intervals of\\rates from the replicates};
 
-% ---------------------------------------------------------------- MCMC lane
-\node[file, text width=30mm] (cfg) at (102,-102)
-  {\f{config/cnet\_mcmc.cfg}\\chain length, model, priors};
-\node[file, text width=30mm] (cnin) at (102,-120)
-  {\f{-cn.txt.gz} or\\\f{-haplotype-cn.txt.gz}\\(as above)};
-\node[draft, text width=36mm] (mcmc) at (150,-120)
-  {\textbf{cnetmcmc}\\Bayesian sampling of\\trees and rates (draft)};
-\node[file, text width=34mm] (traces) at (198,-120)
-  {\f{mcmc\_*.p}, \f{mcmc\_*.t}\\parameter and tree traces};
-\node[result, text width=32mm] (tracer) at (246,-120)
-  {Tracer, TreeAnnotator,\\\f{check\_convergence.R}};
-
-% ---------------------------------------------------------------- arrows
-\draw[arr] (simset) -- (cnets);
-\foreach \t in {fcn,fhap,ftimes,ftree,finfo} {\draw[arrf] (cnets.east) -- (\t.west);}
-\draw[arr] (wgs) -- (prep);
-\draw[arrf] (prep.east) -- (fcn.west);
-\draw[arrf] (prep.east) -- (ftimes.west);
-
-\draw[arr] (fcn.east) -- (m0.west);
-\draw[arr] (ftimes.east) -- (m0.west);
-\draw[arrd] (fhap.east) -- (m0.west);
-\node[dcap,anchor=south west] at (123,-12.5) {or haplotype-specific input};
-
-\draw[arrf] (m0) -- (o0);
-\draw[arr] (o0.south west) -- (m3.north east);
-\node[dcap,anchor=west] at (176,-13) {tree};
-\draw[arrf] (m3) -- (o3);
-\draw[arr] (o3.south west) -- (m4.north east);
-\draw[arrf] (m4) -- (o4);
-\draw[arrf] (boot) -- (ob);
-\draw[arr] (m0) -- (m3);
-\draw[arr] (m3) -- (m4);
-
-\draw[arro] (o0.east) -- (plott.west);
-\draw[arro] (o3.east) -- (plott.west);
-\draw[arro] (ob.east) -- (plott.west);
-\draw[arro] (ob.east) -- (ci.west);
-\draw[arro] (o4.east) -- (plotc.west);
-\draw[arro] (o0.east) -- (cmp.west);
-\draw[arro] (ftree.east) -- (124,-28) -- (124,-65) -- (246,-65) -- (cmp.south);
-
-\draw[arr] (cfg.east) -- (mcmc.west);
-\draw[arr] (cnin.east) -- (mcmc.west);
-\draw[arrf] (mcmc) -- (traces);
-\draw[arro] (traces) -- (tracer);
-
-% ---------------------------------------------------------------- legend
-\begin{scope}[shift={(0,-134)}]
-  \node[prog, chip]     (lg1) at (4,0)   {}; \node[lg] at ([xshift=2pt]lg1.east) {program};
-  \node[file, chip]     (lg2) at (30,0)  {}; \node[lg] at ([xshift=2pt]lg2.east) {file};
-  \node[script, chip]   (lg3) at (48,0)  {}; \node[lg] at ([xshift=2pt]lg3.east) {script in \f{util/}};
-  \node[result, chip]   (lg4) at (82,0)  {}; \node[lg] at ([xshift=2pt]lg4.east) {result};
-  \node[settings, chip] (lg5) at (104,0) {}; \node[lg] at ([xshift=2pt]lg5.east) {settings};
-  \node[draft, chip]    (lg6) at (128,0) {}; \node[lg] at ([xshift=2pt]lg6.east) {not released};
-  \draw[arr]  (158,0) -- ++(8,0); \node[lg] at (167,0) {input to a step};
-  \draw[arrf] (196,0) -- ++(8,0); \node[lg] at (205,0) {file written};
-  \draw[arro] (228,0) -- ++(8,0); \node[lg] at (237,0) {feeds a result};
-  \draw[arrd] (4,-7) -- ++(8,0);  \node[lg] at (13,-7) {alternative input};
+% inputs in two groups: read by both programs, and read by cnetml only
+\begin{scope}[on background layer]
+  \node[igroup, fit=(fcn)(ftimes)] (shared) {};
+  \node[igroup, fit=(ftree)(fmeta)(params)] (mlonly) {};
 \end{scope}
+\node[glabel] at (shared.north) {input data (\f{cnetml} and \f{cnetmcmc})};
+\node[glabel] at (mlonly.north) {\f{cnetml} options};
+
+% ---------------------------------------------------------------- arrows, part 1
+\draw[arr] (simset) -- (cnets);
+% each source writes into the shared input group; cnets also writes the truth
+\draw[arrf] ([xshift=-3mm]cnetsgrp.north east) |- (truth.west);
+\draw[arrf] (cnetsgrp.east) -- (cnetsgrp.east -| shared.west);
+\draw[arr] (seq) -- (prep);
+\draw[arrf] (prep.east) -- (prep.east -| shared.west);
+
+\draw[arr] (mlonly.east) -- (mlonly.east -| cnetml.west);
+
+\draw[arrf] (m0.east) -- (m0.east -| otree.west);
+\draw[arrf] (m3.east) -- (m3.east -| otree.west);
+\draw[arrf] (m4) -- (oasr);
+\draw[arrf] (boot) -- (oboot);
+\draw[arr] (otree.south) -- (oasr.north);
+\node[dcap, anchor=west, align=left] at ($(otree.south)!0.5!(oasr.north)+(1.5,0)$) {\opt{edge\_rate\_file}\\per-branch rates\\(optional, model 3)};
+
+% plot-cns reads the input copy numbers: route above the cnetml group
+\draw[arr] (otree.east) -- (plott.west);
+\draw[arr] (oboot.east) -- ++(6,0) |- ([yshift=-3mm]plott.west);
+\draw[arr] (oboot) -- (ci);
+\fill[stln] ($(oboot.east)+(6,0)$) circle (0.8mm);
+
+% simulated data only: compare the inferred files with the truth
+\draw[arrc] (truth.east) -- (cmp.west);
+\draw[arrc] (otree.north) |- ([yshift=-3mm]cmp.west);
+\draw[arrc] (oasr.east) -- ++(4,0) |- ([yshift=-3mm]cmp.west);
+\path ($(oasr.east)+(4,0)$) coordinate (cmpA) ([yshift=-3mm]cmp.west) coordinate (cmpB);
+\fill[muted] (cmpA |- cmpB) circle (0.8mm);
+
+% ---------------------------------------------------------------- cnetmcmc: the other way to infer from the same input
+\node[file, text width=46mm] (cfg) at (116,-103)
+  {\f{config/cnet\_mcmc.cfg}:\\chain length, model, priors};
+\node[draft, text width=40mm] (mcmc) at (176,-100)
+  {Bayesian sampling of\\trees, node ages and rates\\\textcolor{galn}{(in development)}};
+\begin{scope}[on background layer]
+  \node[group, fit=(mcmc), inner ysep=6mm] (mcmcgrp) {};
+\end{scope}
+\node[pgl] at (mcmcgrp.north) {\f{cnetmcmc}: Bayesian};
+\node[file, text width=40mm] (traces) at (236,-100)
+  {\f{*.p}, \f{*.t}:\\parameter and tree traces};
+\node[tool, text width=38mm] (tracer) at (298,-94)
+  {Tracer, TreeAnnotator};
+\node[script, text width=38mm] (conv) at (298,-106)
+  {\f{check\_convergence.R}};
+
+% the same input files feed cnetmcmc: a bus from the copy numbers and times
+% the input data fork into the two inference methods, symmetrically
+\coordinate (fork) at ($(shared.east)+(4.5,0)$);
+\path let \p1 = (fork), \p2 = (mcmcgrp.west) in coordinate (dn) at (\x1,\y2) coordinate (up) at (\x1,{2*\y1-\y2});
+\draw[line width=0.8pt, draw=stln] (shared.east) -- (fork);
+\draw[arr] (fork) -- (up) -- (up -| cnetml.west);
+\draw[arr] (fork) -- (dn) -- (mcmcgrp.west);
+\fill[stln] (fork) circle (0.8mm);
+\draw[arr] (cfg.east) -- (cfg.east -| mcmcgrp.west);
+\draw[arrf] (mcmc) -- (traces);
+\coordinate (tfork) at ($(traces.east)+(8,0)$);
+\draw[line width=0.8pt, draw=stln] (traces.east) -- (tfork);
+\draw[arr] (tfork) |- (tracer.west);
+\draw[arr] (tfork) |- (conv.west);
+\fill[stln] (tfork) circle (0.8mm);
+
+% ---------------------------------------------------------------- legend (one row, centred; scriptsize labels + 5 mm arrows to fit)
+% each item: a swatch, 1.2 mm, its label; 5 mm between items; the row is centred under the figure
+\node[inner sep=0pt] at (158,-120) {\begin{tikzpicture}[
+    li/.style={lg, font=\scriptsize},
+    gap/.style={right=5mm of #1},
+    sw/.style={minimum width=6mm, minimum height=3.6mm, inner sep=0pt}]
+  \node[prog, chip]                    (c1) {};                 \node[li, right=1.2mm of c1] (t1) {program};
+  \node[file, chip, gap=t1]            (c2) {};                 \node[li, right=1.2mm of c2] (t2) {file};
+  \node[optfile, chip, gap=t2]         (c3) {};                 \node[li, right=1.2mm of c3] (t3) {optional file};
+  \node[script, chip, gap=t3]          (c4) {};                 \node[li, right=1.2mm of c4] (t4) {helper script};
+  \node[tool, chip, gap=t4]            (c5) {};                 \node[li, right=1.2mm of c5] (t5) {external tool};
+  \node[settings, chip, gap=t5]        (c6) {};                 \node[li, right=1.2mm of c6] (t6) {settings};
+  \node[draft, chip, gap=t6]           (c7) {};                 \node[li, right=1.2mm of c7, text=galn] (t7) {in development};
+  \node[sw, gap=t7] (a1) {}; \draw[arr]  (a1.west) -- (a1.east); \node[li, right=1.2mm of a1] (t8) {input to a step};
+  \node[sw, gap=t8] (a2) {}; \draw[arrf] (a2.west) -- (a2.east); \node[li, right=1.2mm of a2] (t9) {file written};
+  \node[sw, gap=t9] (a3) {}; \draw[arrc] (a3.west) -- (a3.east); \node[li, right=1.2mm of a3]      {comparison (simulation only)};
+\end{tikzpicture}};
 
 % ---------------------------------------------------------------- footer
-\node[dcap,anchor=north west, align=left] at (0,-146)
-  {Every program records its version and seed in its outputs (\f{-info.txt}, \f{.summary.txt}, the logs), so any result can be traced to the code and the random draw that made it.};
+\node[dcap,anchor=north west, align=left] at (0,-127)
+  {\f{cnets} and \f{cnetml} write their version number and random seed into their outputs (\f{-info.txt}, \f{.summary.txt}), so every result can be traced back to the code and the seed that produced it.\\File names follow each program's defaults; the scripts in \f{bin/} may rename them (for example, \f{run-cnetml.sh} adds the prefix \f{MaxL-}).};
 
 \end{tikzpicture}
 \end{document}

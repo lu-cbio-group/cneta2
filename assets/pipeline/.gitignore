@@ -5,3 +5,6 @@ png/
 *.aux
 *.log
 *.pdf
+*.synctex.gz
+*.fls
+*.fdb_latexmk

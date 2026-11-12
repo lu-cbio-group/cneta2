@@ -2,6 +2,12 @@
 
 How the tools are chained together, and what data passes between them.
 
+<p class="only-light" align="center"><a href="../_static/cneta-pipeline.svg" target="_blank"><img src="../_static/cneta-pipeline.svg" alt="CNETA pipeline" width="100%"></a></p>
+<p class="only-dark" align="center"><a href="../_static/cneta-pipeline-dark.svg" target="_blank"><img src="../_static/cneta-pipeline-dark.svg" alt="CNETA pipeline" width="100%"></a></p>
+
+Which program writes and reads which file, from the data sources to the
+analysis scripts. Click the figure to open it at full size.
+
 :::{note}
 The `cnets` and `cnetml` diagrams below are the reviewed ones — those
 tools are published and current priority. The [MCMC workflow](#mcmc-workflow-cnetmcmc)
