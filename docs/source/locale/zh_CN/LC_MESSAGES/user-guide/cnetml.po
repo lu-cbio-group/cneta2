@@ -33,8 +33,8 @@ msgstr "`cnetml` 用最大似然法从拷贝数谱构建系统发育树，从单
 #: ../../source/user-guide/cnetml.md:7
 msgid ""
 "Overview of the cnetml2 workflow, from longitudinal sampling to copy number "
-"profiles to evolutionary inference"
-msgstr "cnetml2 工作流程概览：从纵向采样到拷贝数谱，再到演化推断"
+"profiles to multi-scale, variable-rate modelling of tumour evolution"
+msgstr "cnetml2 工作流程概览：从纵向采样到拷贝数谱，再到多尺度、可变速率的肿瘤演化建模"
 
 #: ../../source/user-guide/cnetml.md:16
 msgid "Status"

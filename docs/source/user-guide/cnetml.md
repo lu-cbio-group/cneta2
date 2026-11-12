@@ -5,11 +5,11 @@ likelihood, jointly inferring tree topology, node ages, and mutation rates
 from (optionally longitudinal) samples of a single patient.
 
 :::{thumbnail} /_static/briefing.jpeg
-:alt: Overview of the cnetml2 workflow, from longitudinal sampling to copy number profiles to evolutionary inference
+:alt: Overview of the cnetml2 workflow, from longitudinal sampling to copy number profiles to multi-scale, variable-rate modelling of tumour evolution
 :align: center
 :class: centered-figure
 :show_caption: true
-:title: Longitudinal tumour sampling, copy-number profiling, and evolutionary inference with cnetml2.
+:title: Longitudinal tumour sampling, copy-number profiles, and a time-scaled phylogeny with branch- and event-specific rates inferred by cnetml2 (illustrative). CN, copy number; CNA, copy-number alteration; Chr, chromosome; Hap, haplotype; T and S, sampling time point and tumour sample; ToTI, time of tumour initiation (the root, the last ancestor with a normal copy number); MRCA, most recent common ancestor of all tumour samples.
 :::
 
 
