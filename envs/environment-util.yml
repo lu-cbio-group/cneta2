@@ -9,9 +9,9 @@
 # for that see envs/environment-mac.yml or envs/environment-linux.yml.
 #
 # Quartet (compare_trees.R) and rwty (check_convergence.R) are on CRAN but not
-# on conda; util/install_cran_packages.R installs them into this environment.
-# Their dependencies that conda provides are listed here, and the compilers
-# are included because Quartet has C++ code.
+# on conda, nor is Ternary, which Quartet needs; util/install_cran_packages.R
+# installs them into this environment. Their dependencies that conda provides
+# are listed here, and the compilers are included because Quartet has C++ code.
 #
 # R's `tools` package (listed as a dependency in the top-level README) is
 # part of every R installation via r-base below; it has no separate
@@ -42,11 +42,26 @@ dependencies:
   # dependencies of the CRAN-only packages (see install_cran_packages.R)
   - r-rdpack           # Quartet
   - r-rcpp             # Quartet
+  - r-treetools        # Quartet
+  - r-plottools        # Quartet, Ternary
   - r-coda             # rwty
   - r-viridis          # rwty
   - r-reshape2         # rwty
   - r-plyr             # rwty
   - r-ggdendro         # rwty
   - r-ggally           # rwty
+  - r-treedist         # rwty
+  - r-clue             # Ternary; brings r-cluster, which conda's r-base lacks
+  - r-sp               # Ternary
+  - r-shiny            # Ternary
   - compilers
   - networkx
+
+# R also reads packages from a personal folder in the home directory (on
+# macOS e.g. ~/Library/R/arm64/4.4/library) and searches it first. Packages
+# left there by another R installation may not load with this R, and
+# install.packages() would write there instead of into this environment.
+# R skips a folder that does not exist, so /dev/null switches it off while
+# this environment is active.
+variables:
+  R_LIBS_USER: /dev/null
