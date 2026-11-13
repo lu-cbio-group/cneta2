@@ -213,30 +213,32 @@ TEST_CASE("read_cn gives the same answer for plain and gzipped input", "[parse_c
 //   - WGD count w, shared by the whole sample;
 //   - chromosome-level change c, shared by every segment on a chromosome
 //     (including segments whose copy number is back at normal);
-//   - segment-level change d, for one segment only.
+//   - segment-level change s, for one segment only.
 //
 // Per haplotype (normal copy number 1) and without WGD, a segment change may
 // come after the chromosome change or before it, in which case a chromosome
 // gain copies it:
 //
-//     CN = 1 + c + d          (segment change after the chromosome change)
-//     CN = (1 + c)(1 + d)     (segment change before it)
+//     CN = 1 + c + s          (segment change after the chromosome change)
+//     CN = (1 + c)(1 + s)     (segment change before it)
 //
-// A lost copy cannot change again: if c = -1, then CN = 0 and d = 0. A total
+// A lost copy cannot change again: if c = -1, then CN = 0 and s = 0. A total
 // copy number (normal 2) is the sum over the two haplotypes, with changes on
 // one or both. A WGD doubles everything that happened before it.
 //
-// The tests below cover inputs without WGD (w = 0), with segment-level changes
-// only and with chromosome- and segment-level changes together. They use only
-// cases with a single valid answer, so the expected segment change is the
-// copy number minus 1 + c per haplotype (0 on a lost copy). Cases with two
-// valid answers, such as 4/1 on a chromosome gained on A (segment +1 before the
-// gain, or +2 after it), and WGD are left for the rework in #50.
+// The tests below cover inputs without WGD (w = 0) and with one WGD (w = 1),
+// with segment-level changes, chromosome-level changes, or both. They use only
+// cases with a single answer under one rule: a change counts the fewest
+// events that make it up, where a WGD, or a chromosome gain that doubles a
+// haplotype, doubles every event before it. E.g. 4/1 on a chromosome gained
+// on A is segment +1/0 (one gain before the chromosome gain), not +2/0 (two
+// after it), and 5/1 is +2/0 (one before, one after). See expected_changes.
+// Two WGDs are left for the rework in #50.
 //
 // Each test writes an input as copy numbers (Regions), converts it, and
 // compares every segment with an Expectation: a rule giving the expected WGD
-// count, chromosome change and segment change. To add a test, e.g. with WGD,
-// write its Regions and an Expectation for it; the rest is shared.
+// count, chromosome change and segment change. To add a test, write its Regions
+// and an Expectation for it (usually expected_changes); the rest is shared.
 //
 // To print the converted changes:
 //
@@ -367,23 +369,75 @@ struct Expected {
 // sample number (1-based), chromosome and observed copy numbers.
 using Expectation = std::function<Expected(int sample, int chr, const std::vector<int>& observed)>;
 
-// Chromosome-level change of one sample on one chromosome, per haplotype.
+// Copies gained (+) or lost (-) on a whole chromosome of one sample, per
+// haplotype, as seen in the observed copy numbers (so already doubled by a WGD
+// if the change came before it).
 struct ChrChange { int sample; int chr; int cA; int cB; };
 
-// The answer without WGD for cases with a single valid decomposition:
-// each chromosome's change as given (0 if not listed),
-// and per haplotype a segment change of copy number - (1 + c), or 0 on a lost copy.
-// For total copy numbers, both summed over the two haplotypes.
-Expectation without_wgd(const std::vector<ChrChange>& chr_changes){
-    return [chr_changes](int sample, int chr, const std::vector<int>& observed){
+// Number of WGDs in each sample (1-based sample = index + 1).
+const std::vector<int> NO_WGD{0, 0, 0};
+const std::vector<int> ONE_WGD{1, 1, 0};   // both tumours, not the normal sample
+
+// The fewest events adding up to a change of copies, signed, where an event
+// adds 1 copy doubled by each doubling after it: sizes 1, 2, ..., 2^doublings.
+// E.g. +3 with one doubling is two events (+1 before it, +1 after), not three.
+int fewest_events(int change, int doublings){
+    int left = std::abs(change), events = 0;
+    for(int size = 1 << doublings; size >= 1; size /= 2){
+        events += left / size;
+        left %= size;
+    }
+    return change < 0 ? -events : events;
+}
+
+// The answer for cases with a single valid decomposition, given each sample's
+// WGD count (0 or 1) and the chromosome changes (0 if not listed).
+//
+// Per haplotype, with w WGDs:
+//   normal copy number      = 2^w (1 without WGD, 2 after one)
+//   chromosome copy number  = normal + chromosome change
+//   segment change          = fewest events making up segment copy number -
+//                             chromosome copy number, or 0 if the chromosome
+//                             copy number is 0 (a lost copy cannot change again)
+//
+// Events are counted with fewest_events. A WGD doubles earlier events, and so
+// does a chromosome gain that doubles the haplotype (chromosome at twice the
+// normal), so a segment change may mix events before and after them. E.g.
+// without WGD, 5/1 on a chromosome at 2/1 is segment +2/0: one gain before the
+// chromosome gain (copied by it) and one after.
+//
+// For total copy numbers, the same is applied to the sums over the two
+// haplotypes, so tests change one haplotype per chromosome or segment.
+Expectation expected_changes(const std::vector<int>& num_wgd, const std::vector<ChrChange>& chr_changes){
+    return [num_wgd, chr_changes](int sample, int chr, const std::vector<int>& observed){
+        const int w = num_wgd.at(sample - 1);
+        REQUIRE(w <= 1);
+        const int normal = 1 << w;
+
         int cA = 0, cB = 0;
         for(const auto& c : chr_changes){
             if(c.sample == sample && c.chr == chr){ cA = c.cA; cB = c.cB; }
         }
-        if(observed.size() == 1) return Expected{0, {cA + cB}, {observed[0] - (2 + cA + cB)}};
-        auto seg = [](int cn, int c){ return c == -1 ? 0 : cn - (1 + c); };
-        return Expected{0, {cA, cB}, {seg(observed[0], cA), seg(observed[1], cB)}};
+        // Doublings after a segment event on a haplotype whose chromosome changed by c.
+        auto doublings = [w, normal](int c){ return w + (normal + c == 2 * normal ? 1 : 0); };
+
+        const bool is_total = observed.size() == 1;   // {total} or {cnA, cnB}
+        if(is_total){
+            const int chr_cn = 2 * normal + cA + cB;
+            return Expected{w, {fewest_events(cA + cB, w)},
+                            {fewest_events(observed[0] - chr_cn, std::max(doublings(cA), doublings(cB)))}};
+        }
+        auto seg = [&](int cn, int c){
+            const int chr_cn = normal + c;
+            return chr_cn == 0 ? 0 : fewest_events(cn - chr_cn, doublings(c));
+        };
+        return Expected{w, {fewest_events(cA, w), fewest_events(cB, w)},
+                        {seg(observed[0], cA), seg(observed[1], cB)}};
     };
+}
+
+Expectation without_wgd(const std::vector<ChrChange>& chr_changes){
+    return expected_changes(NO_WGD, chr_changes);
 }
 
 // ---------------------------------------------------------------------------
@@ -493,6 +547,87 @@ const std::vector<Region> CHR_AND_SEGMENT_INPUT{
     {2, 4, 9, 9, 2, 0},     // gain on the remaining copy: seg +1/0
 };
 
+// One WGD in both tumours: every chromosome starts at 2/2, then the changes.
+// Changes keep each haplotype's sample mean at 2, so the ploidy (about 4)
+// gives one WGD and no chromosome mean rounds the wrong way.
+std::vector<Region> after_one_wgd(const std::vector<Region>& changes){
+    std::vector<Region> regions;
+    for(int sample : {1, 2}){
+        for(int chr = 1; chr <= NCHR; ++chr) regions.push_back(whole_chr(sample, chr, 2, 2));
+    }
+    regions.insert(regions.end(), changes.begin(), changes.end());
+    return regions;
+}
+
+// Segment-level changes and WGD.
+const std::vector<Region> SEGMENT_AND_WGD_INPUT = after_one_wgd({
+    {1, 1, 3, 4, 3, 2},     // gain after WGD: seg +1/0
+    {1, 2, 5, 5, 1, 2},     // loss after WGD: seg -1/0
+    {1, 3, 7, 7, 4, 2},     // gain before WGD: seg +1/0
+    {1, 4, 2, 2, 0, 2},     // loss before WGD: seg -1/0
+    {2, 1, 8, 8, 2, 4},     // gain before WGD: seg 0/+1
+    {2, 2, 1, 2, 2, 3},     // gain after WGD: seg 0/+1
+    {2, 3, 4, 4, 2, 1},     // loss after WGD: seg 0/-1
+    {2, 4, 9, 9, 6, 2},     // amplification before WGD: seg +2/0
+    {2, 4, 2, 2, 0, 0},     // homozygous deletion before WGD: seg -1/-1
+});
+
+// Chromosome-level changes and WGD, given as observed copies per haplotype.
+const std::vector<ChrChange> CHR_AND_WGD_CHANGES{
+    {1, 1, 2, 0},    // chr 1 gained on A before WGD: chr +1/0
+    {1, 2, -2, 0},   // chr 2 lost on A before WGD: chr -1/0
+    {2, 3, 0, 1},    // chr 3 gained on B after WGD: chr 0/+1
+    {2, 4, 0, -1},   // chr 4 lost on B after WGD: chr 0/-1
+};
+const std::vector<Region> CHR_AND_WGD_INPUT = after_one_wgd({
+    whole_chr(1, 1, 4, 2),
+    whole_chr(1, 2, 0, 2),
+    whole_chr(2, 3, 2, 3),
+    whole_chr(2, 4, 2, 1),
+});
+
+// Segment- and chromosome-level changes and WGD, on the chromosomes above.
+std::vector<Region> with_chr_and_wgd(const std::vector<Region>& changes){
+    std::vector<Region> regions = CHR_AND_WGD_INPUT;
+    regions.insert(regions.end(), changes.begin(), changes.end());
+    return regions;
+}
+const std::vector<Region> SEGMENT_CHR_AND_WGD_INPUT = with_chr_and_wgd({
+    {1, 1, 3, 3, 5, 2},     // gain after WGD on a chromosome gained before it: seg +1/0
+    {1, 1, 5, 5, 6, 2},     // gain before WGD, with the chromosome gain: seg +1/0
+    {1, 1, 10, 10, 2, 2},   // back at 2/2: seg -1/0, cancelling the gain
+    {1, 2, 5, 5, 0, 3},     // gain after WGD on the remaining copy: seg 0/+1
+    {2, 3, 7, 7, 3, 3},     // gain after WGD on the other haplotype: seg +1/0
+    {2, 3, 2, 2, 2, 5},     // gain before WGD, before the chromosome gain: seg 0/+1
+    {2, 4, 9, 9, 4, 1},     // gain before WGD on the other haplotype: seg +1/0
+});
+
+// Segment changes made of events before and after a doubling (chromosome gain
+// or WGD). Sample 1 has no WGD; sample 2 has one.
+const std::vector<int> MIXED_TIMING_WGD{0, 1, 0};
+const std::vector<ChrChange> MIXED_TIMING_CHR_CHANGES{
+    {1, 1, 1, 0},    // chr 1 gained on A: chr +1/0
+    {1, 2, -1, 0},   // chr 2 lost on A: chr -1/0
+    {2, 1, 2, 0},    // chr 1 gained on A before WGD: chr +1/0
+    {2, 2, -2, 0},   // chr 2 lost on A before WGD: chr -1/0
+};
+const std::vector<Region> MIXED_TIMING_INPUT = [](){
+    std::vector<Region> regions;
+    for(int chr = 1; chr <= NCHR; ++chr) regions.push_back(whole_chr(2, chr, 2, 2));
+    const std::vector<Region> changes{
+        whole_chr(1, 1, 2, 1),
+        whole_chr(1, 2, 0, 1),
+        whole_chr(2, 1, 4, 2),
+        whole_chr(2, 2, 0, 2),
+        {1, 1, 3, 3, 4, 1},   // gain before the chromosome gain: seg +1/0
+        {1, 1, 5, 5, 5, 1},   // gains before and after the chromosome gain: seg +2/0
+        {2, 1, 3, 3, 6, 2},   // gain before the chromosome gain and WGD: seg +1/0
+        {2, 3, 4, 4, 5, 2},   // gains before and after the WGD: seg +2/0
+    };
+    regions.insert(regions.end(), changes.begin(), changes.end());
+    return regions;
+}();
+
 }  // namespace
 
 TEST_CASE("model 3 conversion recovers segment-only changes from total copy numbers", "[parse_cn][decomp]"){
@@ -509,4 +644,44 @@ TEST_CASE("model 3 conversion recovers chromosome- and segment-level changes fro
 
 TEST_CASE("model 3 conversion recovers chromosome- and segment-level changes from haplotype-specific copy numbers", "[parse_cn][decomp]"){
     check_conversion(write_input("chr-and-segment", CHR_AND_SEGMENT_INPUT, false), false, without_wgd(CHR_CHANGES));
+}
+
+TEST_CASE("model 3 conversion recovers segment-level changes and WGD from total copy numbers", "[parse_cn][decomp][wgd]"){
+    check_conversion(write_input("segment-wgd", SEGMENT_AND_WGD_INPUT, true), true, expected_changes(ONE_WGD, {}));
+}
+
+TEST_CASE("model 3 conversion recovers segment-level changes and WGD from haplotype-specific copy numbers", "[parse_cn][decomp][wgd]"){
+    check_conversion(write_input("segment-wgd", SEGMENT_AND_WGD_INPUT, false), false, expected_changes(ONE_WGD, {}));
+}
+
+TEST_CASE("model 3 conversion recovers chromosome-level changes and WGD from total copy numbers", "[parse_cn][decomp][wgd]"){
+    check_conversion(write_input("chr-wgd", CHR_AND_WGD_INPUT, true), true, expected_changes(ONE_WGD, CHR_AND_WGD_CHANGES));
+}
+
+TEST_CASE("model 3 conversion recovers chromosome-level changes and WGD from haplotype-specific copy numbers", "[parse_cn][decomp][wgd]"){
+    check_conversion(write_input("chr-wgd", CHR_AND_WGD_INPUT, false), false, expected_changes(ONE_WGD, CHR_AND_WGD_CHANGES));
+}
+
+// Known to fail (#50): the segment change is halved for the WGD before the chromosome change is subtracted,
+// so a segment whose change and chromosome change differ in parity is wrong, e.g. 7 on a chromosome at 6 gives +2, not +1.
+// Remove [!shouldfail] once fixed; Catch2 then reports this test if it passes.
+TEST_CASE("model 3 conversion recovers segment- and chromosome-level changes and WGD from total copy numbers", "[parse_cn][decomp][wgd][!shouldfail]"){
+    check_conversion(write_input("segment-chr-wgd", SEGMENT_CHR_AND_WGD_INPUT, true), true, expected_changes(ONE_WGD, CHR_AND_WGD_CHANGES));
+}
+
+TEST_CASE("model 3 conversion recovers segment- and chromosome-level changes and WGD from haplotype-specific copy numbers", "[parse_cn][decomp][wgd]"){
+    check_conversion(write_input("segment-chr-wgd", SEGMENT_CHR_AND_WGD_INPUT, false), false, expected_changes(ONE_WGD, CHR_AND_WGD_CHANGES));
+}
+
+// Known to fail (#50): the code takes every segment event as coming after the
+// doublings, so it counts too many events, e.g. 6 on a chromosome at 3 (5/1 on
+// 2/1) gives +3, not +2. With haplotype-specific copy numbers, clamping the
+// change to +-2 hides some of this, but 5/1 on 2/1 gives +1, not +2.
+// Remove [!shouldfail] once fixed; Catch2 then reports these tests if they pass.
+TEST_CASE("model 3 conversion recovers segment changes with events before and after a doubling from total copy numbers", "[parse_cn][decomp][wgd][!shouldfail]"){
+    check_conversion(write_input("mixed-timing", MIXED_TIMING_INPUT, true), true, expected_changes(MIXED_TIMING_WGD, MIXED_TIMING_CHR_CHANGES));
+}
+
+TEST_CASE("model 3 conversion recovers segment changes with events before and after a doubling from haplotype-specific copy numbers", "[parse_cn][decomp][wgd][!shouldfail]"){
+    check_conversion(write_input("mixed-timing", MIXED_TIMING_INPUT, false), false, expected_changes(MIXED_TIMING_WGD, MIXED_TIMING_CHR_CHANGES));
 }
