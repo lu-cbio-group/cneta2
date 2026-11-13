@@ -165,6 +165,12 @@ Rscript util/install_cran_packages.R   # only needed for compare_trees.R and che
 not on conda); it skips packages that are already installed and prints
 `OK`/`FAILED` for each.
 
+The environment sets `R_LIBS_USER=/dev/null`, so R skips the personal
+package folder in your home directory (on macOS e.g.
+`~/Library/R/arm64/4.4/library`). Packages there were built for another R
+and may not load with this one. In a `cneta-util` created before this
+setting, the script stops and prints the commands that add it.
+
 None of this is needed to build or run `cnets`, `cnetml`, or `cnetmcmc`
 themselves.
 
