@@ -328,7 +328,10 @@ struct Segment {
 std::vector<Segment> convert(const std::string& cn_file, bool is_total){
     // Ns, cn_max, max_wgd, max_chr_change_haplotype, max_site_change_haplotype,
     // model, is_total, is_rcn, is_bin, incl_all -- cnetml's defaults otherwise.
-    const INPUT_PROPERTY property{NS, CN_MAX, 2, 1, 2, DECOMP, is_total ? 1 : 0, 0, 1, 1};
+    const INPUT_PROPERTY property{.Ns = NS, .cn_max = CN_MAX, .max_wgd = 2,
+                                 .max_chr_change_haplotype = 1, .max_site_change_haplotype = 2,
+                                 .model = DECOMP, .is_total = is_total ? 1 : 0, .is_rcn = 0,
+                                 .is_bin = 1, .incl_all = 1};
     INPUT_DATA input{0, 0, 0, {}, {}, {}};
     std::map<int, std::vector<std::vector<int>>> data;
     read_data_var_regions_by_chr_change(data, cn_file, "", "", property, input, 0);
