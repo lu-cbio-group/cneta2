@@ -215,6 +215,9 @@ TEST_CASE("read_cn gives the same answer for plain and gzipped input", "[parse_c
 //     (including segments whose copy number is back at normal);
 //   - segment-level change s, for one segment only.
 //
+// Chromosome-level events are called gains and losses, segment-level events
+// duplications and deletions.
+//
 // Per haplotype (normal copy number 1) and without WGD, a segment change may
 // come after the chromosome change or before it, in which case a chromosome
 // gain copies it:
@@ -226,13 +229,25 @@ TEST_CASE("read_cn gives the same answer for plain and gzipped input", "[parse_c
 // copy number (normal 2) is the sum over the two haplotypes, with changes on
 // one or both. A WGD doubles everything that happened before it.
 //
-// The tests below cover inputs without WGD (w = 0) and with one WGD (w = 1),
-// with segment-level changes, chromosome-level changes, or both. They use only
-// cases with a single answer under one rule: a change counts the fewest
-// events that make it up, where a WGD, or a chromosome gain that doubles a
-// haplotype, doubles every event before it. E.g. 4/1 on a chromosome gained
-// on A is segment +1/0 (one gain before the chromosome gain), not +2/0 (two
-// after it), and 5/1 is +2/0 (one before, one after). See expected_changes.
+// The tests below cover inputs with no, one or two WGDs (w = 0, 1, 2), with
+// segment-level changes, chromosome-level changes, or both.
+//
+// The conversion keeps only the net change at each level, not the order of
+// the events behind it: real data cannot tell orders apart (a large
+// duplication followed by a small deletion looks like a smaller duplication),
+// and trying every order is infeasible. So at each level an increase is read
+// as the fewest gains or duplications, and a decrease as the fewest losses or
+// deletions, never a mix of both, where a WGD, or a chromosome gain that
+// doubles a haplotype, doubles every event before it. E.g. 4/1 on a
+// chromosome gained on A is segment +1/0 (one duplication before the
+// chromosome gain), not +2/0 (two after it), and 5/1 is +2/0 (one before,
+// one after). See expected_changes.
+//
+// A history mixing duplications and deletions can be just as short, e.g.
+// 7/2 on a chromosome at 4/2 after one WGD is +2 +1 (expected) or +4 -1. Such
+// histories are not considered, so every case has a single expected answer.
+// The order of events written above each input is one history giving that
+// answer, there to make it easy to check, not the only possible one.
 // Tests the current code fails are tagged [!shouldfail] with a note on #50.
 //
 // Each test writes an input as copy numbers (Regions), converts it, and
@@ -378,11 +393,17 @@ struct ChrChange { int sample; int chr; int cA; int cB; };
 const std::vector<int> NO_WGD{0, 0, 0};
 const std::vector<int> ONE_WGD{1, 1, 0};   // both tumours, not the normal sample
 
-// The fewest events adding up to a change of copies, signed, where an event
-// adds 1 copy doubled by each doubling after it: sizes 1, 2, ..., 2^doublings.
+// The fewest events adding up to a change of copies, signed: all gains (or
+// duplications) for an increase, all losses (or deletions) for a decrease, at
+// the chromosome (or segment) level. An event adds (or removes) 1 copy,
+// doubled by each doubling after it: sizes 1, 2, ..., 2^doublings.
 // E.g. +3 with one doubling is two events (+1 before it, +1 after), not three.
+// doublings is the most doublings an event can have had (see expected_changes),
+// so it sets the largest event size.
 int fewest_events(int change, int doublings){
     int left = std::abs(change), events = 0;
+    // Take as many of the largest events as fit, then the next size down. As
+    // the sizes are powers of 2, this gives the fewest events.
     for(int size = 1 << doublings; size >= 1; size /= 2){
         events += left / size;
         left %= size;
@@ -390,24 +411,28 @@ int fewest_events(int change, int doublings){
     return change < 0 ? -events : events;
 }
 
-// The answer for cases with a single valid decomposition, given each sample's
+// The expected decomposition (net changes, read as above), given each sample's
 // WGD count (0, 1 or 2) and the chromosome changes (0 if not listed).
 //
 // Per haplotype, with w WGDs:
-//   normal copy number      = 2^w (1 without WGD, 2 after one)
+//   normal copy number      = 2^w (1 without WGD, 2 after one, 4 after two)
 //   chromosome copy number  = normal + chromosome change
-//   segment change          = fewest events making up segment copy number -
-//                             chromosome copy number, or 0 if the chromosome
-//                             copy number is 0 (a lost copy cannot change again)
+//   segment change          = fewest duplications (or deletions) making up
+//                             segment copy number - chromosome copy number,
+//                             or 0 if the chromosome copy number is 0 (a lost
+//                             copy cannot change again)
 //
 // Events are counted with fewest_events. A WGD doubles earlier events, and so
 // does a chromosome gain that doubles the haplotype (chromosome at twice the
-// normal), so a segment change may mix events before and after them. E.g.
-// without WGD, 5/1 on a chromosome at 2/1 is segment +2/0: one gain before the
-// chromosome gain (copied by it) and one after.
+// normal), so the events of a segment change may come before or after them,
+// but are all duplications or all deletions. E.g. without WGD, 5/1 on a
+// chromosome at 2/1 is segment +2/0: one duplication before the chromosome
+// gain (copied by it) and one after.
 //
 // For total copy numbers, the same is applied to the sums over the two
-// haplotypes, so tests change one haplotype per chromosome or segment.
+// haplotypes, so tests change one haplotype per chromosome or segment. The
+// segment change is 0 only if the chromosome's total is 0 (both haplotypes
+// lost): a total above 0 cannot show that one haplotype is at 0.
 Expectation expected_changes(const std::vector<int>& num_wgd, const std::vector<ChrChange>& chr_changes){
     return [num_wgd, chr_changes](int sample, int chr, const std::vector<int>& observed){
         const int w = num_wgd.at(sample - 1);
@@ -417,19 +442,33 @@ Expectation expected_changes(const std::vector<int>& num_wgd, const std::vector<
         for(const auto& c : chr_changes){
             if(c.sample == sample && c.chr == chr){ cA = c.cA; cB = c.cB; }
         }
-        // Doublings after a segment event on a haplotype whose chromosome changed by c.
+        // The most doublings a segment event can have had, on a haplotype whose
+        // chromosome changed by c: the w WGDs, plus one if the chromosome gain
+        // doubled the haplotype (chromosome at twice the normal, so gained
+        // before every WGD). E.g. with one WGD, a chromosome at 4 copies on the
+        // haplotype gives 2: a duplication then adds 4, 2 or 1 copies to the
+        // bin, depending on how many doublings come after it. At 3 copies it
+        // gives 1 (adds 2 or 1).
+        // Simplification: a gain that does not double the haplotype is left
+        // out, although it copies a duplication made before a WGD: 1 -> 2 ->
+        // 4 -> 6 on a chromosome at 3 is one event, counted as two (+2 +1).
+        // See COPIED_BY_CHR_GAIN_INPUT.
         auto doublings = [w, normal](int c){ return w + (normal + c == 2 * normal ? 1 : 0); };
 
         const bool is_total = observed.size() == 1;   // {total} or {cnA, cnB}
         if(is_total){
             const int chr_cn = 2 * normal + cA + cB;
+            // Chromosome events are doubled only by WGDs, hence w. A total does
+            // not show which haplotype a segment event was on, so allow the
+            // larger number of doublings of the two.
             return Expected{w, {fewest_events(cA + cB, w)},
-                            {fewest_events(observed[0] - chr_cn, std::max(doublings(cA), doublings(cB)))}};
+                            {chr_cn == 0 ? 0 : fewest_events(observed[0] - chr_cn, std::max(doublings(cA), doublings(cB)))}};
         }
         auto seg = [&](int cn, int c){
             const int chr_cn = normal + c;
             return chr_cn == 0 ? 0 : fewest_events(cn - chr_cn, doublings(c));
         };
+        // Chromosome events are doubled only by WGDs, hence w.
         return Expected{w, {fewest_events(cA, w), fewest_events(cB, w)},
                         {seg(observed[0], cA), seg(observed[1], cB)}};
     };
@@ -511,42 +550,43 @@ void check_conversion(const std::string& cn_file, bool is_total, const Expectati
 // ---------------------------------------------------------------------------
 
 // Each region is commented with its expected change and one history of events
-// from 1/1 that gives it, the one with the fewest events (haplotype A/B):
+// from 1/1 that gives it, with the fewest events, all increases or all
+// decreases on each haplotype at each level (haplotype A/B):
 //   -W->            a WGD
-//   -chr gain A->   a chromosome-level gain (or loss) on haplotype A
-//   -gain A->       a segment-level gain (or loss) on haplotype A
+//   -chr gain A->   a chromosome-level gain (-chr loss A->: loss) on haplotype A
+//   -dup A->        a segment-level duplication (-del A->: deletion) on haplotype A
 
 // Segment-level changes only: focal changes of one or two bins on otherwise
 // normal chromosomes.
 const std::vector<Region> SEGMENT_ONLY_INPUT{
-    // gain: seg +1/0
-    // 1/1 -gain A-> 2/1
+    // duplication: seg +1/0
+    // 1/1 -dup A-> 2/1
     {1, 1, 3, 4, 2, 1},
-    // loss: seg -1/0
-    // 1/1 -loss A-> 0/1
+    // deletion: seg -1/0
+    // 1/1 -del A-> 0/1
     {1, 2, 5, 5, 0, 1},
     // amplification: seg +2/0
-    // 1/1 -gain A-> 2/1 -gain A-> 3/1
+    // 1/1 -dup A-> 2/1 -dup A-> 3/1
     {1, 3, 7, 7, 3, 1},
     // homozygous deletion: seg -1/-1
-    // 1/1 -loss A-> 0/1 -loss B-> 0/0
+    // 1/1 -del A-> 0/1 -del B-> 0/0
     {1, 4, 2, 2, 0, 0},
     // copy-neutral LOH: seg +1/-1, total unchanged
-    // 1/1 -gain A-> 2/1 -loss B-> 2/0
+    // 1/1 -dup A-> 2/1 -del B-> 2/0
     {2, 1, 8, 8, 2, 0},
-    // gain: seg 0/+1
-    // 1/1 -gain B-> 1/2
+    // duplication: seg 0/+1
+    // 1/1 -dup B-> 1/2
     {2, 2, 1, 2, 1, 2},
     // amplification: seg 0/+2
-    // 1/1 -gain B-> 1/2 -gain B-> 1/3
+    // 1/1 -dup B-> 1/2 -dup B-> 1/3
     {2, 3, 4, 4, 1, 3},
-    // gain of both haplotypes: seg +1/+1
-    // 1/1 -gain A-> 2/1 -gain B-> 2/2
+    // duplication of both haplotypes: seg +1/+1
+    // 1/1 -dup A-> 2/1 -dup B-> 2/2
     {2, 4, 9, 9, 2, 2},
 };
 
 // Chromosome- and segment-level changes together, each segment with a single
-// valid decomposition. Changes are small enough that no chromosome mean, and
+// expected decomposition. Changes are small enough that no chromosome mean, and
 // no sample ploidy, rounds the wrong way.
 const std::vector<ChrChange> CHR_CHANGES{
     {1, 1, 1, 0},    // chr 1 gained on A
@@ -563,24 +603,24 @@ const std::vector<Region> CHR_AND_SEGMENT_INPUT{
     whole_chr(2, 3, 1, 2),
     // 1/1 -chr loss B-> 1/0
     whole_chr(2, 4, 1, 0),
-    // gain after the chromosome gain: seg +1/0
-    // 1/1 -chr gain A-> 2/1 -gain A-> 3/1
+    // duplication after the chromosome gain: seg +1/0
+    // 1/1 -chr gain A-> 2/1 -dup A-> 3/1
     {1, 1, 3, 3, 3, 1},
-    // back at normal: seg -1/0, cancelling the gain
-    // 1/1 -chr gain A-> 2/1 -loss A-> 1/1
+    // back at normal: seg -1/0, cancelling the chromosome gain
+    // 1/1 -chr gain A-> 2/1 -del A-> 1/1
     {1, 1, 10, 10, 1, 1},
-    // gain on an unchanged chromosome: seg +1/0 (keeps bin 10 from being
+    // duplication on an unchanged chromosome: seg +1/0 (keeps bin 10 from being
     // dropped as the same in every sample)
-    // 1/1 -gain A-> 2/1
+    // 1/1 -dup A-> 2/1
     {2, 1, 10, 10, 2, 1},
-    // gain on the remaining copy: seg 0/+1
-    // 1/1 -chr loss A-> 0/1 -gain B-> 0/2
+    // duplication on the remaining copy: seg 0/+1
+    // 1/1 -chr loss A-> 0/1 -dup B-> 0/2
     {1, 2, 5, 5, 0, 2},
-    // gain on the other haplotype: seg +1/0
-    // 1/1 -chr gain B-> 1/2 -gain A-> 2/2
+    // duplication on A, not on B, whose chromosome was gained: seg +1/0
+    // 1/1 -chr gain B-> 1/2 -dup A-> 2/2
     {2, 3, 7, 7, 2, 2},
-    // gain on the remaining copy: seg +1/0
-    // 1/1 -chr loss B-> 1/0 -gain A-> 2/0
+    // duplication on the remaining copy: seg +1/0
+    // 1/1 -chr loss B-> 1/0 -dup A-> 2/0
     {2, 4, 9, 9, 2, 0},
 };
 
@@ -600,32 +640,32 @@ std::vector<Region> after_wgd(int num_wgd, const std::vector<Region>& changes){
 
 // Segment-level changes and WGD.
 const std::vector<Region> SEGMENT_AND_WGD_INPUT = after_wgd(1, {
-    // gain after WGD: seg +1/0
-    // 1/1 -W-> 2/2 -gain A-> 3/2
+    // duplication after WGD: seg +1/0
+    // 1/1 -W-> 2/2 -dup A-> 3/2
     {1, 1, 3, 4, 3, 2},
-    // loss after WGD: seg -1/0
-    // 1/1 -W-> 2/2 -loss A-> 1/2
+    // deletion after WGD: seg -1/0
+    // 1/1 -W-> 2/2 -del A-> 1/2
     {1, 2, 5, 5, 1, 2},
-    // gain before WGD: seg +1/0, not two gains after it
-    // 1/1 -gain A-> 2/1 -W-> 4/2
+    // duplication before WGD: seg +1/0, not two duplications after it
+    // 1/1 -dup A-> 2/1 -W-> 4/2
     {1, 3, 7, 7, 4, 2},
-    // loss before WGD: seg -1/0
-    // 1/1 -loss A-> 0/1 -W-> 0/2
+    // deletion before WGD: seg -1/0
+    // 1/1 -del A-> 0/1 -W-> 0/2
     {1, 4, 2, 2, 0, 2},
-    // gain before WGD: seg 0/+1
-    // 1/1 -gain B-> 1/2 -W-> 2/4
+    // duplication before WGD: seg 0/+1
+    // 1/1 -dup B-> 1/2 -W-> 2/4
     {2, 1, 8, 8, 2, 4},
-    // gain after WGD: seg 0/+1
-    // 1/1 -W-> 2/2 -gain B-> 2/3
+    // duplication after WGD: seg 0/+1
+    // 1/1 -W-> 2/2 -dup B-> 2/3
     {2, 2, 1, 2, 2, 3},
-    // loss after WGD: seg 0/-1
-    // 1/1 -W-> 2/2 -loss B-> 2/1
+    // deletion after WGD: seg 0/-1
+    // 1/1 -W-> 2/2 -del B-> 2/1
     {2, 3, 4, 4, 2, 1},
-    // amplification before WGD: seg +2/0, not four gains after it
-    // 1/1 -gain A-> 2/1 -gain A-> 3/1 -W-> 6/2
+    // amplification before WGD: seg +2/0, not four duplications after it
+    // 1/1 -dup A-> 2/1 -dup A-> 3/1 -W-> 6/2
     {2, 4, 9, 9, 6, 2},
     // homozygous deletion before WGD: seg -1/-1
-    // 1/1 -loss A-> 0/1 -loss B-> 0/0 -W-> 0/0
+    // 1/1 -del A-> 0/1 -del B-> 0/0 -W-> 0/0
     {2, 4, 2, 2, 0, 0},
 });
 
@@ -654,27 +694,39 @@ std::vector<Region> with_chr_and_wgd(const std::vector<Region>& changes){
     return regions;
 }
 const std::vector<Region> SEGMENT_CHR_AND_WGD_INPUT = with_chr_and_wgd({
-    // gain after WGD on a chromosome gained before it: seg +1/0
-    // 1/1 -chr gain A-> 2/1 -W-> 4/2 -gain A-> 5/2
+    // duplication after WGD on a chromosome gained before it: seg +1/0
+    // 1/1 -chr gain A-> 2/1 -W-> 4/2 -dup A-> 5/2
     {1, 1, 3, 3, 5, 2},
-    // gain between the chromosome gain and WGD: seg +1/0
-    // 1/1 -chr gain A-> 2/1 -gain A-> 3/1 -W-> 6/2
+    // duplication between the chromosome gain and WGD: seg +1/0
+    // 1/1 -chr gain A-> 2/1 -dup A-> 3/1 -W-> 6/2
     {1, 1, 5, 5, 6, 2},
-    // back at 2/2: seg -1/0, cancelling the gain
-    // 1/1 -chr gain A-> 2/1 -loss A-> 1/1 -W-> 2/2
+    // back at 2/2: seg -1/0, cancelling the chromosome gain
+    // 1/1 -chr gain A-> 2/1 -del A-> 1/1 -W-> 2/2
     {1, 1, 10, 10, 2, 2},
-    // gain after WGD on the remaining copy: seg 0/+1
-    // 1/1 -chr loss A-> 0/1 -W-> 0/2 -gain B-> 0/3
+    // duplication after WGD on the remaining copy: seg 0/+1
+    // 1/1 -chr loss A-> 0/1 -W-> 0/2 -dup B-> 0/3
     {1, 2, 5, 5, 0, 3},
-    // gain after WGD on the other haplotype: seg +1/0
-    // 1/1 -W-> 2/2 -chr gain B-> 2/3 -gain A-> 3/3
+    // duplication after WGD on A, not on B, whose chromosome was gained: seg +1/0
+    // 1/1 -W-> 2/2 -chr gain B-> 2/3 -dup A-> 3/3
     {2, 3, 7, 7, 3, 3},
-    // gain before WGD, before the chromosome gain: seg 0/+1
-    // 1/1 -gain B-> 1/2 -W-> 2/4 -chr gain B-> 2/5
+    // duplication on one copy of B after WGD, then copied by the chromosome
+    // gain: seg 0/+1. The gain copies one of the two B copies (chromosome at
+    // 3, not 4), so it adds 2, not 3.
+    // 1/1 -W-> 2/2 -dup B-> 2/3 -chr gain B-> 2/5
     {2, 3, 2, 2, 2, 5},
-    // gain before WGD on the other haplotype: seg +1/0
-    // 1/1 -gain A-> 2/1 -W-> 4/2 -chr loss B-> 4/1
+    // duplication before WGD on A, not on B, whose chromosome was lost: seg +1/0
+    // 1/1 -dup A-> 2/1 -W-> 4/2 -chr loss B-> 4/1
     {2, 4, 9, 9, 4, 1},
+});
+
+// A duplication before WGD that a later chromosome gain also copies, on the
+// chromosomes above. It is one event, but counted as two under the
+// simplification in doublings, so the expected value is seg 0/+2.
+const std::vector<Region> COPIED_BY_CHR_GAIN_INPUT = with_chr_and_wgd({
+    // duplication before WGD, copied by the WGD and then by the chromosome
+    // gain (chromosome at 3): seg 0/+2, two events (+2 +1) here
+    // 1/1 -dup B-> 1/2 -W-> 2/4 -chr gain B-> 2/6
+    {2, 3, 5, 5, 2, 6},
 });
 
 // Segment changes made of events before and after a doubling (chromosome gain
@@ -698,20 +750,20 @@ const std::vector<Region> MIXED_TIMING_INPUT = [](){
         whole_chr(2, 1, 4, 2),
         // 1/1 -chr loss A-> 0/1 -W-> 0/2
         whole_chr(2, 2, 0, 2),
-        // gain before the chromosome gain: seg +1/0, not two gains after it
-        // 1/1 -gain A-> 2/1 -chr gain A-> 4/1
+        // duplication before the chromosome gain: seg +1/0, not two duplications after it
+        // 1/1 -dup A-> 2/1 -chr gain A-> 4/1
         {1, 1, 3, 3, 4, 1},
-        // gains before and after the chromosome gain: seg +2/0, not three after it
-        // 1/1 -gain A-> 2/1 -chr gain A-> 4/1 -gain A-> 5/1
+        // duplications before and after the chromosome gain: seg +2/0, not three after it
+        // 1/1 -dup A-> 2/1 -chr gain A-> 4/1 -dup A-> 5/1
         {1, 1, 5, 5, 5, 1},
-        // gain between the chromosome gain and WGD: seg +1/0
-        // 1/1 -chr gain A-> 2/1 -gain A-> 3/1 -W-> 6/2
+        // duplication between the chromosome gain and WGD: seg +1/0
+        // 1/1 -chr gain A-> 2/1 -dup A-> 3/1 -W-> 6/2
         {2, 1, 3, 3, 6, 2},
-        // gains before and after the WGD: seg +2/0, not three after it
-        // 1/1 -chr gain A-> 2/1 -gain A-> 3/1 -W-> 6/2 -gain A-> 7/2
+        // duplications before and after the WGD: seg +2/0, not three after it
+        // 1/1 -chr gain A-> 2/1 -dup A-> 3/1 -W-> 6/2 -dup A-> 7/2
         {2, 1, 8, 8, 7, 2},
-        // gains before and after the WGD: seg +2/0, not three after it
-        // 1/1 -gain A-> 2/1 -W-> 4/2 -gain A-> 5/2
+        // duplications before and after the WGD: seg +2/0, not three after it
+        // 1/1 -dup A-> 2/1 -W-> 4/2 -dup A-> 5/2
         {2, 3, 4, 4, 5, 2},
     };
     regions.insert(regions.end(), changes.begin(), changes.end());
@@ -720,34 +772,35 @@ const std::vector<Region> MIXED_TIMING_INPUT = [](){
 
 // Two WGDs in both tumours: every chromosome starts at 4/4 (total 8). A
 // segment event adds 4 copies before both WGDs, 2 between them and 1 after
-// them. With totals at most CN_MAX (10), only losses can come before both WGDs.
+// them. With totals at most CN_MAX (10), only deletions can come before both
+// WGDs.
 const std::vector<int> TWO_WGD{2, 2, 0};
 
 // Segment-level changes and two WGDs.
 const std::vector<Region> SEGMENT_AND_TWO_WGD_INPUT = after_wgd(2, {
-    // gain after both WGDs: seg +1/0
-    // 1/1 -W-> 2/2 -W-> 4/4 -gain A-> 5/4
+    // duplication after both WGDs: seg +1/0
+    // 1/1 -W-> 2/2 -W-> 4/4 -dup A-> 5/4
     {1, 1, 3, 4, 5, 4},
-    // gain between the WGDs: seg +1/0, not two gains after both
-    // 1/1 -W-> 2/2 -gain A-> 3/2 -W-> 6/4
+    // duplication between the WGDs: seg +1/0, not two duplications after both
+    // 1/1 -W-> 2/2 -dup A-> 3/2 -W-> 6/4
     {1, 2, 5, 5, 6, 4},
-    // loss between the WGDs: seg -1/0
-    // 1/1 -W-> 2/2 -loss A-> 1/2 -W-> 2/4
+    // deletion between the WGDs: seg -1/0
+    // 1/1 -W-> 2/2 -del A-> 1/2 -W-> 2/4
     {1, 3, 7, 7, 2, 4},
-    // loss after both WGDs: seg -1/0
-    // 1/1 -W-> 2/2 -W-> 4/4 -loss A-> 3/4
+    // deletion after both WGDs: seg -1/0
+    // 1/1 -W-> 2/2 -W-> 4/4 -del A-> 3/4
     {1, 4, 2, 2, 3, 4},
-    // gain between the WGDs: seg 0/+1
-    // 1/1 -W-> 2/2 -gain B-> 2/3 -W-> 4/6
+    // duplication between the WGDs: seg 0/+1
+    // 1/1 -W-> 2/2 -dup B-> 2/3 -W-> 4/6
     {2, 1, 8, 8, 4, 6},
-    // loss before both WGDs: seg 0/-1; B is gone, so nothing later changes it
-    // 1/1 -loss B-> 1/0 -W-> 2/0 -W-> 4/0
+    // deletion before both WGDs: seg 0/-1; B is gone, so nothing later changes it
+    // 1/1 -del B-> 1/0 -W-> 2/0 -W-> 4/0
     {2, 2, 1, 1, 4, 0},
-    // losses between and after the WGDs: seg -2/0, not three losses after both
-    // 1/1 -W-> 2/2 -loss A-> 1/2 -W-> 2/4 -loss A-> 1/4
+    // deletions between and after the WGDs: seg -2/0, not three deletions after both
+    // 1/1 -W-> 2/2 -del A-> 1/2 -W-> 2/4 -del A-> 1/4
     {2, 3, 4, 4, 1, 4},
-    // gain after both WGDs: seg 0/+1
-    // 1/1 -W-> 2/2 -W-> 4/4 -gain B-> 4/5
+    // duplication after both WGDs: seg 0/+1
+    // 1/1 -W-> 2/2 -W-> 4/4 -dup B-> 4/5
     {2, 4, 9, 9, 4, 5},
 });
 
@@ -782,38 +835,38 @@ const std::vector<Region> CHR_AND_TWO_WGD_INPUT = after_wgd(2, {
 const std::vector<Region> SEGMENT_CHR_AND_TWO_WGD_INPUT = [](){
     std::vector<Region> regions = CHR_AND_TWO_WGD_INPUT;
     const std::vector<Region> changes{
-        // loss after both WGDs on a chromosome at 6/4: seg -1/0
-        // 1/1 -W-> 2/2 -chr gain A-> 3/2 -W-> 6/4 -loss A-> 5/4
+        // deletion after both WGDs on a chromosome at 6/4: seg -1/0
+        // 1/1 -W-> 2/2 -chr gain A-> 3/2 -W-> 6/4 -del A-> 5/4
         {1, 1, 3, 3, 5, 4},
-        // back at 4/4, a loss between the WGDs: seg -1/0
-        // 1/1 -W-> 2/2 -chr gain A-> 3/2 -loss A-> 2/2 -W-> 4/4
+        // back at 4/4, a deletion between the WGDs: seg -1/0
+        // 1/1 -W-> 2/2 -chr gain A-> 3/2 -del A-> 2/2 -W-> 4/4
         {1, 1, 5, 5, 4, 4},
-        // loss after both WGDs on the other haplotype: seg 0/-1
-        // 1/1 -W-> 2/2 -chr gain A-> 3/2 -W-> 6/4 -loss B-> 6/3
+        // deletion after both WGDs on B, not on A, whose chromosome was gained: seg 0/-1
+        // 1/1 -W-> 2/2 -chr gain A-> 3/2 -W-> 6/4 -del B-> 6/3
         {1, 1, 10, 10, 6, 3},
-        // gain after both WGDs on a chromosome at 2/4: seg +1/0
-        // 1/1 -W-> 2/2 -chr loss A-> 1/2 -W-> 2/4 -gain A-> 3/4
+        // duplication after both WGDs on a chromosome at 2/4: seg +1/0
+        // 1/1 -W-> 2/2 -chr loss A-> 1/2 -W-> 2/4 -dup A-> 3/4
         {1, 2, 5, 5, 3, 4},
-        // loss between the WGDs on a chromosome at 2/4: seg -1/0
-        // 1/1 -W-> 2/2 -chr loss A-> 1/2 -loss A-> 0/2 -W-> 0/4
+        // deletion between the WGDs on a chromosome at 2/4: seg -1/0
+        // 1/1 -W-> 2/2 -chr loss A-> 1/2 -del A-> 0/2 -W-> 0/4
         {1, 2, 7, 7, 0, 4},
-        // gain after both WGDs on a chromosome at 5/4: seg +1/0
-        // 1/1 -W-> 2/2 -W-> 4/4 -chr gain A-> 5/4 -gain A-> 6/4
+        // duplication after both WGDs on a chromosome at 5/4: seg +1/0
+        // 1/1 -W-> 2/2 -W-> 4/4 -chr gain A-> 5/4 -dup A-> 6/4
         {1, 3, 7, 7, 6, 4},
-        // gain after both WGDs on the other haplotype: seg 0/+1
-        // 1/1 -W-> 2/2 -W-> 4/4 -chr loss A-> 3/4 -gain B-> 3/5
+        // duplication after both WGDs on B, not on A, whose chromosome was lost: seg 0/+1
+        // 1/1 -W-> 2/2 -W-> 4/4 -chr loss A-> 3/4 -dup B-> 3/5
         {1, 4, 9, 9, 3, 5},
-        // loss between the WGDs on the other haplotype: seg 0/-1
-        // 1/1 -W-> 2/2 -chr gain A-> 3/2 -loss B-> 3/1 -W-> 6/2
+        // deletion between the WGDs on B, not on A, whose chromosome was gained: seg 0/-1
+        // 1/1 -W-> 2/2 -chr gain A-> 3/2 -del B-> 3/1 -W-> 6/2
         {2, 1, 2, 2, 6, 2},
-        // gain after both WGDs on the remaining copy: seg 0/+1
-        // 1/1 -chr loss A-> 0/1 -W-> 0/2 -W-> 0/4 -gain B-> 0/5
+        // duplication after both WGDs on the remaining copy: seg 0/+1
+        // 1/1 -chr loss A-> 0/1 -W-> 0/2 -W-> 0/4 -dup B-> 0/5
         {2, 2, 5, 5, 0, 5},
-        // gain between the WGDs on the remaining copy: seg 0/+1
-        // 1/1 -chr loss A-> 0/1 -W-> 0/2 -gain B-> 0/3 -W-> 0/6
+        // duplication between the WGDs on the remaining copy: seg 0/+1
+        // 1/1 -chr loss A-> 0/1 -W-> 0/2 -dup B-> 0/3 -W-> 0/6
         {2, 2, 6, 6, 0, 6},
-        // loss after both WGDs on the other haplotype: seg 0/-1
-        // 1/1 -W-> 2/2 -chr gain A-> 3/2 -W-> 6/4 -loss B-> 6/3
+        // deletion after both WGDs on B, not on A, whose chromosome was gained: seg 0/-1
+        // 1/1 -W-> 2/2 -chr gain A-> 3/2 -W-> 6/4 -del B-> 6/3
         {2, 3, 7, 7, 6, 3},
     };
     regions.insert(regions.end(), changes.begin(), changes.end());
@@ -863,6 +916,17 @@ TEST_CASE("model 3 conversion recovers segment- and chromosome-level changes and
 
 TEST_CASE("model 3 conversion recovers segment- and chromosome-level changes and WGD from haplotype-specific copy numbers", "[parse_cn][decomp][wgd]"){
     check_conversion(write_input("segment-chr-wgd", SEGMENT_CHR_AND_WGD_INPUT, false), false, expected_changes(ONE_WGD, CHR_AND_WGD_CHANGES));
+}
+
+// Known to fail (#50): the expected value follows the simplification in
+// doublings (seg +2), while the current code gives +1.
+// Remove [!shouldfail] once fixed; Catch2 then reports these tests if they pass.
+TEST_CASE("model 3 conversion counts a duplication copied by a later chromosome gain as two events from total copy numbers", "[parse_cn][decomp][wgd][!shouldfail]"){
+    check_conversion(write_input("copied-by-chr-gain", COPIED_BY_CHR_GAIN_INPUT, true), true, expected_changes(ONE_WGD, CHR_AND_WGD_CHANGES));
+}
+
+TEST_CASE("model 3 conversion counts a duplication copied by a later chromosome gain as two events from haplotype-specific copy numbers", "[parse_cn][decomp][wgd][!shouldfail]"){
+    check_conversion(write_input("copied-by-chr-gain", COPIED_BY_CHR_GAIN_INPUT, false), false, expected_changes(ONE_WGD, CHR_AND_WGD_CHANGES));
 }
 
 // Known to fail (#50): the code takes every segment event as coming after the
