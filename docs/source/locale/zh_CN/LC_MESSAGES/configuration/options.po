@@ -554,6 +554,49 @@ msgstr ""
 msgid "`bsr_mode=3` only: probability of a rate change at each node"
 msgstr "仅 `bsr_mode=3`：每个节点发生速率改变的概率"
 
+#: ../../source/configuration/options.md
+msgid "Rates after a WGD"
+msgstr "WGD 之后的速率"
+
+#: ../../source/configuration/options.md
+msgid "`--use_wgd_shift`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid ""
+"Only with `method=0` and `model` 0, 1 or 2; otherwise `cnets` stops with an "
+"error. 0: a WGD does not change the rates; 1: from the first WGD of a "
+"lineage on, each rate of that genome and of all its descendants is "
+"multiplied by a multiplier drawn once at that WGD. Later WGDs in the same "
+"lineage keep these multipliers"
+msgstr ""
+"仅在 `method=0` 且 `model` 为 0、1 或 2 时可用，否则 `cnets` 报错退出。0：WGD "
+"不改变速率；1：从一个谱系的第一次 WGD 起，该基因组及其所有后代的每个速率都乘以一个 multiplier，multiplier 在这次 WGD "
+"时抽取一次。同一谱系之后的 WGD 沿用这些 multiplier"
+
+#: ../../source/configuration/options.md
+msgid "`--wgd_shift_means`"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "1,1,2.5,2.5,1"
+msgstr ""
+
+#: ../../source/configuration/options.md
+msgid "five numbers ≥ 1"
+msgstr "五个 ≥ 1 的数"
+
+#: ../../source/configuration/options.md
+msgid ""
+"`use_wgd_shift=1` only: mean multipliers, comma-separated, in the order "
+"`dup_rate`, `del_rate`, `chr_gain`, `chr_loss`, `wgd`. Mean 1: the rate does"
+" not change. Mean M > 1: the multiplier is 1 + Gamma(shape 2, scale (M − "
+"1)/2), so it is always above 1"
+msgstr ""
+"仅 `use_wgd_shift=1`：multiplier 的平均值，用逗号分隔，顺序为 "
+"`dup_rate`、`del_rate`、`chr_gain`、`chr_loss`、`wgd`。平均值为 1：该速率不变。平均值 M > "
+"1：multiplier 为 1 + Gamma(shape 2, scale (M − 1)/2)，因此总是大于 1"
+
 #: ../../source/configuration/options.md:86
 msgid "Output"
 msgstr "输出"

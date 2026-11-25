@@ -236,6 +236,104 @@ def test_bsr_mode_is_refused_when_sequences_are_simulated_directly(tmp_path,
     assert "bsr_mode" in combined and "method" in combined, str(result)
 
 
+# Waiting-times runs in which WGDs happen: --use_wgd_shift needs --method 0,
+# and --cn_max 8 leaves room for a WGD and for chromosome gains after it.
+WGD_RUN = {"--method": 0, "--cn_max": 8, "--chr_gain": 0.002,
+           "--chr_loss": 0.002, "--wgd": 0.1}
+GAIN, WGD = 2, 4   # event type codes in the third column of *-mut.txt
+
+
+def _all_outputs_digest(outdir) -> dict[str, str]:
+    """Digest of every output file (see the gzip note above)."""
+    digests = {}
+    for path in sorted(p for p in outdir.rglob("*") if p.is_file()):
+        opener = gzip.open if path.suffix == ".gz" else open
+        with opener(path, "rb") as handle:
+            digests[str(path.relative_to(outdir))] = hashlib.sha256(
+                handle.read()).hexdigest()
+    return digests
+
+
+def _events(outdir, event_type: int) -> set[tuple[str, str]]:
+    """(edge, time) of each simulated event of one type. *-mut.txt repeats an
+    event for every sample below it, so the set counts it once."""
+    rows = (line.split() for line in
+            (outdir / "sim-data-1-mut.txt").read_text().splitlines())
+    return {(row[1], row[4]) for row in rows if int(row[2]) == event_type}
+
+
+@pytest.mark.parametrize("unchanged", [
+    {"--use_wgd_shift": 0},
+    {"--use_wgd_shift": 1, "--wgd_shift_means": "1,1,1,1,1"},
+    {"--use_wgd_shift": 1, "--wgd": 0},
+], ids=["switched-off", "all-means-one", "no-wgd"])
+def test_wgd_shift_changes_nothing_when_it_has_nothing_to_do(tmp_path, cnets,
+                                                             run, unchanged):
+    """Rates after a WGD (--use_wgd_shift) are off by default. Switched off,
+    with every mean multiplier at 1, or without any WGD, a run must write the
+    same files as one that never names the option."""
+    with_option = {**WGD_RUN, **unchanged}
+    plain = {k: v for k, v in with_option.items() if "wgd_shift" not in k}
+    digests = []
+    for name, options in (("plain", plain), ("with-option", with_option)):
+        outdir = tmp_path / name
+        outdir.mkdir()
+        run([cnets, *cli.cnets_args(outdir, **options)]).assert_ok()
+        digests.append(_all_outputs_digest(outdir))
+
+    assert digests[0] == digests[1]
+
+
+def test_wgd_shift_raises_only_the_rates_it_is_told_to(tmp_path, cnets, run):
+    """With a mean multiplier of 50 on chromosome gains and 1 on the other
+    four rates, the first WGD of a lineage must draw a gain multiplier above
+    1 and leave the others at exactly 1, and the run must then have more
+    chromosome gains than the same run without the option."""
+    def simulate(name, **extra):
+        outdir = tmp_path / name
+        outdir.mkdir()
+        result = run([cnets, *cli.cnets_args(outdir, **{**WGD_RUN, **extra})])
+        result.assert_ok()
+        return outdir, result.stdout
+
+    plain, _ = simulate("plain")
+    shifted, log = simulate("shifted", **{"--use_wgd_shift": 1,
+                                          "--wgd_shift_means": "1,1,50,1,1"})
+
+    assert _events(plain, WGD), "no WGD was simulated; the test checks nothing"
+    drawn = [line.split(":")[-1].split() for line in log.splitlines()
+             if line.startswith("WGD rate shift")]
+    assert drawn, "a WGD happened but no multipliers were reported"
+    for dup, dele, gain, loss, wgd in drawn:
+        assert float(gain) > 1
+        assert (dup, dele, loss, wgd) == ("1", "1", "1", "1")
+    assert len(_events(shifted, GAIN)) > len(_events(plain, GAIN))
+
+
+@pytest.mark.parametrize("bad, mentions", [
+    ({"--method": 1}, "method"),
+    ({"--model": 3}, "model"),
+    ({"--wgd_shift_means": "1,1,2.5"}, "wgd_shift_means"),
+    ({"--wgd_shift_means": "1,1,0.5,1,1"}, "wgd_shift_means"),
+    ({"--wgd_shift_means": "1,1,high,1,1"}, "wgd_shift_means"),
+    ({"--wgd_shift_means": "1,1,inf,1,1"}, "wgd_shift_means"),
+], ids=["method-1", "infinite-sites", "three-means", "mean-below-one",
+        "not-a-number", "infinite"])
+def test_wgd_shift_refuses_what_it_cannot_do(tmp_path, cnets, run, bad,
+                                             mentions):
+    """--use_wgd_shift needs the time of the WGD on the branch (--method 0,
+    models 0 to 2) and five mean multipliers of at least 1. Anything else
+    must stop with a message that names the option at fault."""
+    outdir = tmp_path / "out"
+    outdir.mkdir()
+    result = run([cnets, *cli.cnets_args(
+        outdir, **{**WGD_RUN, "--use_wgd_shift": 1, **bad})])
+
+    assert result.returncode > 0, str(result)
+    assert mentions in result.stdout + result.stderr, str(result)
+    assert not list(outdir.iterdir()), "a refused run still wrote files"
+
+
 def test_help_lists_key_options(cnets, run):
     result = run([cnets, "--help"])
 

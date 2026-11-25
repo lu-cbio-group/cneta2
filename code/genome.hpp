@@ -61,6 +61,9 @@ public:
   vector<int> nmuts;
   // store all the mutations generated
   vector<mutation> mutations;
+  // rate multipliers carried since the first WGD of the lineage (--use_wgd_shift),
+  // in the order of MUT_TYPES; all 1 before that. Copied from parent to child genome.
+  vector<double> wgd_multipliers = vector<double>(N_MUT_TYPE, 1.0);
 
   /* 
   can specify the germline in a number of different ways: genome germline(1,10); genome germline(chr_lengths);

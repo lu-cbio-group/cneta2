@@ -458,9 +458,28 @@ void print_sequences(map<int, copy_number>& cn_matrix, int cn_max, int model, in
 }
 
 
+// Shape of the gamma part of a WGD rate multiplier (--use_wgd_shift). With shape 2 the
+// density is 0 at a multiplier of 1 and has a light tail: values far above the mean are rare.
+const double WGD_SHIFT_GAMMA_SHAPE = 2.0;
+
+// Draw the rate multipliers a lineage carries from its first WGD on, one per event type.
+// A mean of 1 leaves that rate unchanged and draws nothing; a mean above 1 gives
+// 1 + Gamma(shape, (mean - 1) / shape), so the multiplier is always above 1.
+vector<double> sample_wgd_multipliers(gsl_rng* r, const vector<double>& means){
+    vector<double> multipliers(means.size(), 1.0);
+    for(size_t i = 0; i < means.size(); ++i){
+        if(means[i] > 1.0){
+            multipliers[i] = 1.0 + gsl_ran_gamma(r, WGD_SHIFT_GAMMA_SHAPE, (means[i] - 1.0) / WGD_SHIFT_GAMMA_SHAPE);
+        }
+    }
+    return multipliers;
+}
+
+
 // Simulate mutations under different models by simulating waiting times of a Markov chain
 // Each mutation occur at some sites on one chromosome 
-vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edge_id, const double blength, const double node_time, const vector<int>& chr_lengths, const vector<double>& rate_consts, const SV_SIZE& sv_size, int model, int cn_max, int& num_fail, int debug){
+// wgd_shift_means: mean rate multipliers after the first WGD of a lineage (--use_wgd_shift); empty when the option is off
+vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edge_id, const double blength, const double node_time, const vector<int>& chr_lengths, const vector<double>& rate_consts, const SV_SIZE& sv_size, int model, int cn_max, int& num_fail, int debug, const vector<double>& wgd_shift_means = {}){
     if(debug){
         cout << "\tGenerate_mutations at node ID " << g.node_id + 1 << " (time " << node_time << "), edge ID " << edge_id + 1 << " with branch length:" << "\t" << blength << endl;
     }
@@ -486,7 +505,16 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
           cout << "There are " << get_num_available_chr(g) << " non-empty chromosomes before" << endl;
         }
 
-        double rate = get_total_rates_haplotype_specific(g, site_dup_rates, site_del_rates, chr_gain_rates, chr_loss_rates, type_rates, rate_consts, model, cn_max, debug);
+        // The edge rates times the multipliers this genome carries since its first WGD
+        vector<double> shifted_rate_consts;
+        if(!wgd_shift_means.empty()){
+            for(size_t i = 0; i < rate_consts.size(); ++i){
+                shifted_rate_consts.push_back(rate_consts[i] * g.wgd_multipliers[i]);
+            }
+        }
+        const vector<double>& curr_rate_consts = wgd_shift_means.empty() ? rate_consts : shifted_rate_consts;
+
+        double rate = get_total_rates_haplotype_specific(g, site_dup_rates, site_del_rates, chr_gain_rates, chr_loss_rates, type_rates, curr_rate_consts, model, cn_max, debug);
         if(rate <= 0){
             if(debug) cout << "This genome cannot be mutated any more on edge " << edge_id + 1 << endl;
             break;
@@ -571,6 +599,13 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
             // time/blength: relative time in the branch; node_time + time: real time when the mutation generates
             mutation mut(edge_id, e, time / blength, node_time + time, c, seg_id);
             ret.push_back(mut);
+            // Only the first WGD of a lineage draws multipliers; later WGDs keep them
+            if(e == WGD && !wgd_shift_means.empty() && g.nmuts[WGD] == 0){
+                g.wgd_multipliers = sample_wgd_multipliers(r, wgd_shift_means);
+                cout << "WGD rate shift on edge " << edge_id + 1 << " at time " << node_time + time << ", multipliers (" << MUT_TYPES[0] << ", " << MUT_TYPES[1] << ", " << MUT_TYPES[2] << ", " << MUT_TYPES[3] << ", " << MUT_TYPES[4] << "):";
+                for(double m : g.wgd_multipliers) cout << "\t" << m;
+                cout << endl;
+            }
             g.nmuts[e]++;
             g.mutations.push_back(mut);
             if(debug) cout << "Update copy number after each mutation event" << endl;
@@ -770,7 +805,7 @@ void apply_mutations(gsl_rng* r, const vector<mutation>& muts, genome& g, const 
 // Preorder traversal: copies parent genome to each child, then draws and applies
 // mutations for that branch. Rates are read from tree.edge_rates via get_edge_rate_vec;
 // callers must call init_edge_rates* before invoking this function.
-void traverse_tree_mutating_generic(gsl_rng* r, const int node_id, const evo_tree& tree, const vector<int>& chr_lengths, const SV_SIZE& sv_size, map<int, vector<mutation>>& all_muts, map<int, int>& failed_muts, vector<genome>& genomes, int model, int cn_max, int debug){
+void traverse_tree_mutating_generic(gsl_rng* r, const int node_id, const evo_tree& tree, const vector<int>& chr_lengths, const SV_SIZE& sv_size, map<int, vector<mutation>>& all_muts, map<int, int>& failed_muts, vector<genome>& genomes, int model, int cn_max, int debug, const vector<double>& wgd_shift_means = {}){
   if(!tree.nodes[node_id].isRoot){
     // copy parent genome to child
     genomes[node_id] = genomes[tree.nodes[node_id].parent];
@@ -799,7 +834,7 @@ void traverse_tree_mutating_generic(gsl_rng* r, const int node_id, const evo_tre
             muts = generate_mutation_times(r, edge_id, tree.edges[edge_id].length, tree.nodes[tree.nodes[node_id].parent].time, rates, debug);
             apply_mutations(r, muts, genomes[node_id], sv_size, debug);
         }else{
-            muts = generate_mutation_by_model(r, genomes[node_id], edge_id, tree.edges[edge_id].length, tree.nodes[tree.nodes[node_id].parent].time, chr_lengths, rates, sv_size, model, cn_max, num_fail, debug);
+            muts = generate_mutation_by_model(r, genomes[node_id], edge_id, tree.edges[edge_id].length, tree.nodes[tree.nodes[node_id].parent].time, chr_lengths, rates, sv_size, model, cn_max, num_fail, debug, wgd_shift_means);
         }
 
         // debug info for max CN after all mutations
@@ -814,7 +849,7 @@ void traverse_tree_mutating_generic(gsl_rng* r, const int node_id, const evo_tre
   }
 
   for(int child : tree.nodes[node_id].daughters){
-    traverse_tree_mutating_generic(r, child, tree, chr_lengths, sv_size, all_muts, failed_muts, genomes, model, cn_max, debug);
+    traverse_tree_mutating_generic(r, child, tree, chr_lengths, sv_size, all_muts, failed_muts, genomes, model, cn_max, debug, wgd_shift_means);
     if(debug) cout << "Finished for node " << child << endl;
   }
 
@@ -825,7 +860,7 @@ void traverse_tree_mutating_generic(gsl_rng* r, const int node_id, const evo_tre
 // Initialises per-node genomes, then runs traverse_tree_mutating_generic.
 // Requires tree.edge_rates to be populated by one of the init_edge_rates* functions beforehand.
 // To add a new rate model, add a new init_edge_rates_* function — no changes needed here.
-void simulate_samples(gsl_rng* r, vector<genome>& genomes, map<int,vector<mutation>>& muts, map<int,int>& failed_muts, const evo_tree& tree, genome& germline, const vector<int>& chr_lengths, const SV_SIZE& sv_size, int model, int cn_max, int debug = 0){
+void simulate_samples(gsl_rng* r, vector<genome>& genomes, map<int,vector<mutation>>& muts, map<int,int>& failed_muts, const evo_tree& tree, genome& germline, const vector<int>& chr_lengths, const SV_SIZE& sv_size, int model, int cn_max, int debug = 0, const vector<double>& wgd_shift_means = {}){
   germline.node_id = tree.root_node_id;
 
   for(int i = 0; i < (2 * tree.nleaf - 1); ++i){
@@ -836,7 +871,7 @@ void simulate_samples(gsl_rng* r, vector<genome>& genomes, map<int,vector<mutati
     }
   }
 
-  traverse_tree_mutating_generic(r, tree.root_node_id, tree, chr_lengths, sv_size, muts, failed_muts, genomes, model, cn_max, debug);
+  traverse_tree_mutating_generic(r, tree.root_node_id, tree, chr_lengths, sv_size, muts, failed_muts, genomes, model, cn_max, debug, wgd_shift_means);
 
   if(debug){
     cout << "MUTATIONS:" << endl;
@@ -1459,7 +1494,7 @@ void print_simulations(int mode, int model, int num_seg, int bsr_mode, const vec
 // r_tree: the generator the trees are drawn from. Normally r itself; with
 // --tree_seed a separate one, so that runs differing only in what happens after
 // tree generation (e.g. bsr_mode, which draws rate multipliers) draw the same trees.
-void run_simulations(string tree_file, int mode, int method, const vector<int>& chr_lengths, int num_seg, int Ns, int Nsims, int cn_max, int model, int cons, const ITREE_PARAM& itree_param, double delta_t, int age, const vector<double>& rate_consts, const vector<int>& time_sampling, const SV_SIZE& sv_size, string dir, string prefix, PRINT_LEVEL print_level, gsl_rng* r, gsl_rng* r_tree, int nerr = 0, int debug = 0, int bsr_mode = 0, int bsr_dist = 0, double bsr_variance = 0.25, double bsr_p = 0.3){
+void run_simulations(string tree_file, int mode, int method, const vector<int>& chr_lengths, int num_seg, int Ns, int Nsims, int cn_max, int model, int cons, const ITREE_PARAM& itree_param, double delta_t, int age, const vector<double>& rate_consts, const vector<int>& time_sampling, const SV_SIZE& sv_size, string dir, string prefix, PRINT_LEVEL print_level, gsl_rng* r, gsl_rng* r_tree, int nerr = 0, int debug = 0, int bsr_mode = 0, int bsr_dist = 0, double bsr_variance = 0.25, double bsr_p = 0.3, const vector<double>& wgd_shift_means = {}){
     genome germline(chr_lengths, NORM_PLOIDY);
 
     string orig_prefix = prefix;
@@ -1547,7 +1582,7 @@ void run_simulations(string tree_file, int mode, int method, const vector<int>& 
                 }
             }
 
-            simulate_samples(r, genomes, muts, failed_muts, test_tree, germline, chr_lengths, sv_size, model, cn_max, debug);
+            simulate_samples(r, genomes, muts, failed_muts, test_tree, germline, chr_lengths, sv_size, model, cn_max, debug, wgd_shift_means);
 
     int num_seg = get_num_seg(chr_lengths);
     print_simulations(mode, model, num_seg, bsr_mode, rate_consts, genomes, chr_lengths, muts, failed_muts, test_tree, dir, prefix, age, cn_max, print_level, r, cons, nerr, debug);
@@ -1638,6 +1673,8 @@ int main (int argc, char** const argv) {
     int bsr_dist; // branch-specific-rate distribution
     double bsr_variance; // target variance of the branch-specific-rate sampling distribution
     double bsr_p; // probability of a rate change at each node (random local clock, bsr_mode=3)
+    int use_wgd_shift; // whether or not rates change after the first WGD of a lineage
+    string wgd_shift_means_str; // mean rate multipliers after that WGD, one per event type
 
     int Ne;     // effective population size
     double beta, gtime;    // population growth rate
@@ -1722,6 +1759,8 @@ int main (int argc, char** const argv) {
         // where shape = 1 / bsr_variance and scale = bsr_variance,
         // so that E[m] = 1 and Var[m] = bsr_variance.
       ("bsr_p", po::value<double>(&bsr_p)->default_value(0.3), "probability of a rate change at each node, used only for random local clock (bsr_mode=3); must be in (0, 1)")
+      ("use_wgd_shift", po::value<int>(&use_wgd_shift)->default_value(0), "whether or not to change the rates of a lineage after its first WGD. If yes (1), each rate is multiplied from that WGD on, in the genome and all its descendants, by a multiplier drawn once (see --wgd_shift_means). Only with method=0 and model 0 to 2")
+      ("wgd_shift_means", po::value<string>(&wgd_shift_means_str)->default_value("1,1,2.5,2.5,1"), "with --use_wgd_shift 1: comma-separated mean multipliers of the five rates, in the order dup_rate,del_rate,chr_gain,chr_loss,wgd; each must be >= 1. A mean of 1 leaves the rate unchanged; a mean above 1 draws the multiplier as 1 + gamma")
 
       ("seed", po::value<unsigned>(&seed)->default_value(0), "seed used for generating random numbers")
       ("tree_seed", po::value<unsigned>(&tree_seed)->default_value(0), "seed of a separate generator used only to draw the trees, so that runs differing only in what happens after tree generation (e.g. --bsr_mode) draw the same trees. 0 (default): trees come from the same stream as everything else")
@@ -1755,6 +1794,38 @@ int main (int argc, char** const argv) {
         cerr << "Error: --bsr_mode " << bsr_mode << " has no effect with --method " << method
              << " (sequences simulated directly). Use --method 0 for branch-specific rates, or --bsr_mode 0." << endl;
         return 1;
+    }
+
+    // Rates after a WGD (--use_wgd_shift) need the time of the WGD on the branch and
+    // rates that depend on the genome, which only the waiting-times path of models 0 to 2 has.
+    vector<double> wgd_shift_means;
+    if(use_wgd_shift){
+        if(method != SIM_TIME || model == INFINITE){
+            cerr << "Error: --use_wgd_shift 1 needs --method 0 and --model 0, 1 or 2 (got --method " << method
+                 << ", --model " << model << ")." << endl;
+            return 1;
+        }
+        stringstream ss(wgd_shift_means_str);
+        string field;
+        while(getline(ss, field, ',')){
+            size_t used = 0;
+            double mean = 0.0;
+            try{
+                mean = stod(field, &used);
+            }catch(const std::exception&){
+                used = 0;
+            }
+            if(used == 0 || used != field.size() || !std::isfinite(mean) || mean < 1.0){
+                cerr << "Error: --wgd_shift_means must be finite numbers >= 1, got '" << field << "' in '" << wgd_shift_means_str << "'." << endl;
+                return 1;
+            }
+            wgd_shift_means.push_back(mean);
+        }
+        if(wgd_shift_means.size() != N_MUT_TYPE){
+            cerr << "Error: --wgd_shift_means needs " << N_MUT_TYPE << " comma-separated numbers (dup_rate,del_rate,chr_gain,chr_loss,wgd), got '"
+                 << wgd_shift_means_str << "'." << endl;
+            return 1;
+        }
     }
 
     if(seg_max < NUM_CHR){
@@ -1891,7 +1962,7 @@ int main (int argc, char** const argv) {
         if(beta > 0){
             cout << "\nSimulating exponential growth" << endl;
         }
-        run_simulations(tree_file, mode, method, chr_lengths, num_seg, Ns, Nsims, cn_max, model, cons, itree_param, delta_t, age, rate_consts, time_sampling, sv_size, dir, prefix, print_level, r, r_tree, nerr, debug, bsr_mode, bsr_dist, bsr_variance, bsr_p);
+        run_simulations(tree_file, mode, method, chr_lengths, num_seg, Ns, Nsims, cn_max, model, cons, itree_param, delta_t, age, rate_consts, time_sampling, sv_size, dir, prefix, print_level, r, r_tree, nerr, debug, bsr_mode, bsr_dist, bsr_variance, bsr_p, wgd_shift_means);
     }else{
         cout << "\nRunning test" << endl;
         run_test(r, mode, dir, seed, itree_param, sv_size, debug);

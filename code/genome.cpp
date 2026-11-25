@@ -100,6 +100,7 @@ genome::genome(const genome& _g2) {
 
   nmuts = _g2.nmuts;
   mutations = _g2.mutations;
+  wgd_multipliers = _g2.wgd_multipliers;
 }
 
 
