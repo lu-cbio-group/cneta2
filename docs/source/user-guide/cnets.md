@@ -75,6 +75,22 @@ Branch-specific rates
   with probability `--bsr_p` at each node), `--bsr_dist` (0: log-normal,
   1: Gamma — both parameterised by `--bsr_variance`).
 
+Rates after a WGD
+: `--use_wgd_shift 1` changes the rates of a lineage from an ancestral
+  node with a WGD. After a WGD, `cnets` draws one multiplier per rate;
+  the genome and all its descendants then use the original branch rate
+  times this multiplier. The branch where the first WGD occurs keeps the
+  mutation rates it has at its beginning, with no rate change along the
+  branch. If it is a terminal branch, there are no branches below it and no
+  rates change. A later WGD in the same lineage keeps the multipliers
+  for simplicity. The mean multipliers are set with
+  `--wgd_shift_means` (default `1,1,2.5,2.5,1`:
+  chromosome gains and losses become 2.5 times as frequent on average,
+  the other rates stay the same). Branch-specific rates (`--bsr_mode`)
+  work as before and are multiplied with these multipliers. The
+  multipliers drawn are printed in the run log, one line per branch whose
+  WGD draws them; `*-edge_rates.txt` does not include them. Off by default.
+
 ## Inputs
 
 A tree file (`--tree_file`) is optional; without one, a random coalescent
