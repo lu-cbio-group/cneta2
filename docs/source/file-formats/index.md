@@ -208,6 +208,22 @@ reconstruct ancestral states with per-branch rates. cnetml reads only the
 `start`, `end`, `length` and five `*_rate` columns. See
 [Ancestral states with branch-specific rates](../user-guide/cnetml.md#ancestral-states-with-branch-specific-rates).
 
+With `cnets --use_wgd_shift 1` the table has 6 more columns at the end:
+
+| Column | Meaning |
+|---|---|
+| `wgd_m_dup`, `wgd_m_del`, `wgd_m_chr_gain`, `wgd_m_chr_loss`, `wgd_m_wgd` | The WGD multipliers used on this branch. 1 if no branch above it has had a WGD |
+| `is_wgd_shift_edge` | 1 on the branches right below the branch with the first WGD of a lineage, where the multipliers start. 0 on all other branches |
+
+- The five `*_rate` columns, `total_rate` and the `*_expected` columns
+  include these multipliers. Each `*_rate` is the branch rate from
+  `--bsr_mode` times `wgd_m_*`: the rate used to simulate the branch.
+  To get the rate without the WGD multiplier, divide `*_rate` by
+  `wgd_m_*`.
+- The branch with the first WGD has multipliers of 1. It keeps its rates.
+- The `m_*`, `is_shift_edge` and `local_clock_id` columns describe
+  `--bsr_mode` only. They are the same as without the option.
+
 ### Ancestral-state reconstruction outputs (`cnetml` mode 4)
 
 Named `<ofile>.<suffix>`, same `<ofile>` as in

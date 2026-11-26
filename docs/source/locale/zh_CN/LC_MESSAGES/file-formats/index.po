@@ -790,3 +790,57 @@ msgstr ""
 "的输入，用每条分支的速率重建祖先状态。cnetml 只读取 `start`、`end`、`length` 和五个 `*_rate` "
 "列。见[分支特异速率下的祖先状态](../user-guide/cnetml.md#ancestral-states-with-branch-"
 "specific-rates)。"
+
+#: ../../source/file-formats/index.md
+msgid "With `cnets --use_wgd_shift 1` the table has 6 more columns at the end:"
+msgstr "使用 `cnets --use_wgd_shift 1` 时，表的末尾多 6 列："
+
+#: ../../source/file-formats/index.md
+msgid ""
+"`wgd_m_dup`, `wgd_m_del`, `wgd_m_chr_gain`, `wgd_m_chr_loss`, `wgd_m_wgd`"
+msgstr ""
+
+#: ../../source/file-formats/index.md
+msgid ""
+"The WGD multipliers used on this branch. 1 if no branch above it has had a "
+"WGD"
+msgstr "这条分支上使用的 WGD multiplier。它上游的分支都没有发生过 WGD 时为 1"
+
+#: ../../source/file-formats/index.md
+msgid "`is_wgd_shift_edge`"
+msgstr ""
+
+#: ../../source/file-formats/index.md
+msgid ""
+"1 on the branches right below the branch with the first WGD of a lineage, "
+"where the multipliers start. 0 on all other branches"
+msgstr "一个谱系的第一次 WGD 所在分支的直接下一级分支为 1，multiplier 从这些分支开始使用。其余分支为 0"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"The five `*_rate` columns, `total_rate` and the `*_expected` columns include"
+" these multipliers. Each `*_rate` is the branch rate from `--bsr_mode` times"
+" `wgd_m_*`: the rate used to simulate the branch. To get the rate without "
+"the WGD multiplier, divide `*_rate` by `wgd_m_*`."
+msgstr ""
+"五个 `*_rate` 列、`total_rate` 和各 `*_expected` 列都包含这些 multiplier。每个 `*_rate` 等于 "
+"`--bsr_mode` 给出的分支速率乘以 `wgd_m_*`，即模拟这条分支时使用的速率。要得到不含 WGD multiplier 的速率，用 `*_rate` 除以 "
+"`wgd_m_*`。"
+
+#: ../../source/file-formats/index.md
+msgid "The branch with the first WGD has multipliers of 1. It keeps its rates."
+msgstr "第一次 WGD 所在的分支 multiplier 为 1，保持原速率。"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"The `m_*`, `is_shift_edge` and `local_clock_id` columns describe "
+"`--bsr_mode` only. They are the same as without the option."
+msgstr "`m_*`、`is_shift_edge` 和 `local_clock_id` 列只描述 `--bsr_mode`，与不使用该选项时相同。"
+
+#: ../../source/file-formats/index.md
+msgid "Column"
+msgstr "列"
+
+#: ../../source/file-formats/index.md
+msgid "Meaning"
+msgstr "含义"

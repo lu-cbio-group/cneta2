@@ -1082,9 +1082,16 @@ EdgeObservedCounts count_observed_mutations_on_edge(const vector<mutation>& edge
     return out;
 }
 
-void write_simulation_edge_rate_table(const evo_tree& tree, int bsr_mode, const vector<double>& rate_consts, const map<int, vector<mutation>>& muts, const string& ofile, int num_total_bins){
+// genomes: the simulated genome of each node, indexed by node ID.
+// use_wgd_shift: a WGD changes the rates of the edges below (--use_wgd_shift). The rates and
+// the expected numbers of mutations then include the WGD multipliers, and the table has 6 more columns.
+void write_simulation_edge_rate_table(const evo_tree& tree, int bsr_mode, const vector<double>& rate_consts, const map<int, vector<mutation>>& muts, const string& ofile, int num_total_bins, const vector<genome>& genomes, bool use_wgd_shift){
     ofstream out(ofile);
-    out << "eid\tstart\tend\tlength\tnmut_expected\tdup_expected\tdel_expected\tchr_gain_expected\tchr_loss_expected\twgd_expected\tnmut_observed\tdup_observed\tdel_observed\tchr_gain_observed\tchr_loss_observed\twgd_observed\tdup_rate\tdel_rate\tchr_gain_rate\tchr_loss_rate\twgd_rate\ttotal_rate\tm_shared\tm_dup\tm_del\tm_chr_gain\tm_chr_loss\tm_wgd\tis_shift_edge\tlocal_clock_id\n";
+    out << "eid\tstart\tend\tlength\tnmut_expected\tdup_expected\tdel_expected\tchr_gain_expected\tchr_loss_expected\twgd_expected\tnmut_observed\tdup_observed\tdel_observed\tchr_gain_observed\tchr_loss_observed\twgd_observed\tdup_rate\tdel_rate\tchr_gain_rate\tchr_loss_rate\twgd_rate\ttotal_rate\tm_shared\tm_dup\tm_del\tm_chr_gain\tm_chr_loss\tm_wgd\tis_shift_edge\tlocal_clock_id";
+    if(use_wgd_shift){
+        out << "\twgd_m_dup\twgd_m_del\twgd_m_chr_gain\twgd_m_chr_loss\twgd_m_wgd\tis_wgd_shift_edge";
+    }
+    out << "\n";
 
     RateSet reference(0.0, rate_consts[0], rate_consts[1], rate_consts[2], rate_consts[3], rate_consts[4]);
     bool has_edge_rates = (int)tree.edge_rates.size() == (int)tree.edges.size();
@@ -1177,6 +1184,18 @@ void write_simulation_edge_rate_table(const evo_tree& tree, int bsr_mode, const 
         double blen = tree.edges[eid].length;
         RateSet rs = has_edge_rates ? tree.edge_rates[eid] : reference;
 
+        // The multipliers of an edge are those of the genome at its start node. The edges
+        // right below the edge with the first WGD of a lineage are the first to use them.
+        vector<double> wgd_m(N_MUT_TYPE, 1.0);
+        int is_wgd_shift = 0;
+        if(use_wgd_shift){
+            int start = tree.edges[eid].start;
+            wgd_m = genomes[start].wgd_multipliers;
+            rs = RateSet(0.0, rs.dup * wgd_m[DUP], rs.del * wgd_m[DEL], rs.chr_gain * wgd_m[GAIN], rs.chr_loss * wgd_m[LOSS], rs.wgd * wgd_m[WGD]);
+            int parent = tree.nodes[start].parent;
+            is_wgd_shift = genomes[start].nmuts[WGD] > 0 && (parent < 0 || genomes[parent].nmuts[WGD] == 0);
+        }
+
         double dup_expected = NORM_PLOIDY * num_total_bins * rs.dup * blen;
         double del_expected = NORM_PLOIDY * num_total_bins * rs.del * blen;
         double chr_gain_expected = NORM_PLOIDY * NUM_CHR * rs.chr_gain * blen;
@@ -1221,12 +1240,17 @@ void write_simulation_edge_rate_table(const evo_tree& tree, int bsr_mode, const 
             << m_chr_loss[eid] << "\t"
             << m_wgd[eid] << "\t"
             << is_shift_edge[eid] << "\t"
-            << local_clock_id[eid] << "\n";
+            << local_clock_id[eid];
+        if(use_wgd_shift){
+            for(double m : wgd_m) out << "\t" << report_sim_double(m);
+            out << "\t" << is_wgd_shift;
+        }
+        out << "\n";
     }
 }
 
 // Print data simulated with waiting times
-void print_simulations(int mode, int model, int num_seg, int bsr_mode, const vector<double>& rate_consts, vector<genome>& results, const vector<int>& chr_lengths, map<int, vector<mutation>>& muts, map<int, int>& failed_muts, evo_tree& test_tree, string dir, string prefix, int age, int cn_max, PRINT_LEVEL print_level, gsl_rng* r, int cons, int nerr = 0, int debug = 0){
+void print_simulations(int mode, int model, int num_seg, int bsr_mode, const vector<double>& rate_consts, vector<genome>& results, const vector<int>& chr_lengths, map<int, vector<mutation>>& muts, map<int, int>& failed_muts, evo_tree& test_tree, string dir, string prefix, int age, int cn_max, PRINT_LEVEL print_level, gsl_rng* r, int cons, int nerr = 0, int debug = 0, bool use_wgd_shift = false){
     stringstream sstm;
 
     sstm << dir << prefix << "-cn.txt.gz";
@@ -1430,7 +1454,7 @@ void print_simulations(int mode, int model, int num_seg, int bsr_mode, const vec
     sstm.str("");
 
     sstm << dir << prefix << "-edge_rates.txt";
-    write_simulation_edge_rate_table(test_tree, bsr_mode, rate_consts, muts, sstm.str(), num_seg);
+    write_simulation_edge_rate_table(test_tree, bsr_mode, rate_consts, muts, sstm.str(), num_seg, results, use_wgd_shift);
     sstm.str("");
 
     if(print_level.print_nex){
@@ -1586,7 +1610,7 @@ void run_simulations(string tree_file, int mode, int method, const vector<int>& 
             simulate_samples(r, genomes, muts, failed_muts, test_tree, germline, chr_lengths, sv_size, model, cn_max, debug, wgd_shift_means);
 
     int num_seg = get_num_seg(chr_lengths);
-    print_simulations(mode, model, num_seg, bsr_mode, rate_consts, genomes, chr_lengths, muts, failed_muts, test_tree, dir, prefix, age, cn_max, print_level, r, cons, nerr, debug);
+    print_simulations(mode, model, num_seg, bsr_mode, rate_consts, genomes, chr_lengths, muts, failed_muts, test_tree, dir, prefix, age, cn_max, print_level, r, cons, nerr, debug, !wgd_shift_means.empty());
 
 }else{  // SIM_SEQ path: only BOUNDA or BOUNDT are supported
             assert(model == BOUNDA || model == BOUNDT);

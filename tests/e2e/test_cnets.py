@@ -296,16 +296,24 @@ def test_wgd_shift_changes_nothing_when_it_has_nothing_to_do(tmp_path, cnets,
                                                              run, unchanged):
     """Rates after a WGD (--use_wgd_shift) are off by default. Switched off,
     with every mean multiplier at 1, or without any WGD, a run must write the
-    same files as one that never names the option."""
+    same files as one that never names the option. The one difference allowed:
+    switched on, the edge-rate table has extra columns after the usual 30."""
     with_option = {**WGD_RUN, **unchanged}
     plain = {k: v for k, v in with_option.items() if "wgd_shift" not in k}
-    digests = []
+    table = "sim-data-1-edge_rates.txt"
+    digests, tables = [], []
     for name, options in (("plain", plain), ("with-option", with_option)):
         outdir = tmp_path / name
         outdir.mkdir()
         run([cnets, *cli.cnets_args(outdir, **options)]).assert_ok()
         digests.append(_all_outputs_digest(outdir))
+        tables.append([line.split("\t") for line in
+                       (outdir / table).read_text().splitlines()])
 
+    if unchanged["--use_wgd_shift"]:
+        assert [row[:30] for row in tables[1]] == tables[0]
+        for digest in digests:
+            del digest[table]
     assert digests[0] == digests[1]
 
 
@@ -340,6 +348,63 @@ def test_wgd_shift_raises_only_the_rates_it_is_told_to(tmp_path, cnets, run):
                           log.splitlines() if line.startswith("WGD rate shift"))
     assert _edge_events(shifted, first_wgd_edge) == _edge_events(
         plain, first_wgd_edge)
+
+
+RATE_NAMES = ("dup", "del", "chr_gain", "chr_loss", "wgd")
+
+
+def _edge_rate_rows(outdir) -> list[dict[str, str]]:
+    """Rows of *-edge_rates.txt, the true rates of each branch."""
+    lines = (outdir / "sim-data-1-edge_rates.txt").read_text().splitlines()
+    header = lines[0].split("\t")
+    return [dict(zip(header, line.split("\t"))) for line in lines[1:]]
+
+
+def test_wgd_shift_is_written_to_the_edge_rate_table(tmp_path, cnets, run):
+    """With --use_wgd_shift 1 the table of true rates gains the multipliers
+    used on each branch and a mark on the branches where they start. The
+    branches right below the branch with the first WGD are marked; the
+    branches further down keep the multipliers of their parent branch. The
+    rates and the expected counts include the multipliers. Without the
+    option the table keeps its 30 columns."""
+    def simulate(name, **extra):
+        outdir = tmp_path / name
+        outdir.mkdir()
+        run([cnets, *cli.cnets_args(outdir, **{**WGD_RUN, **extra})]).assert_ok()
+        return _edge_rate_rows(outdir)
+
+    plain = simulate("plain")
+    assert len(plain[0]) == 30 and "wgd_m_dup" not in plain[0]
+
+    rows = simulate("shifted", **{"--use_wgd_shift": 1})
+    assert len(rows[0]) == 36
+    by_end_node = {row["end"]: row for row in rows}
+    assert any(row["is_wgd_shift_edge"] == "1" for row in rows), (
+        "no WGD started a shift; the test checks nothing")
+
+    for row, plain_row in zip(rows, plain):
+        parent = by_end_node.get(row["start"])
+        multipliers = [row[f"wgd_m_{name}"] for name in RATE_NAMES]
+        inherited = ([parent[f"wgd_m_{name}"] for name in RATE_NAMES]
+                     if parent else ["1"] * 5)
+        if row["is_wgd_shift_edge"] == "1":
+            assert int(parent["wgd_observed"]) > 0
+            assert inherited == ["1"] * 5, "not the first WGD of the lineage"
+            assert float(row["wgd_m_chr_gain"]) > 1
+            assert float(row["wgd_m_chr_loss"]) > 1
+        else:
+            assert multipliers == inherited
+        # The default means leave these three rates alone.
+        assert (row["wgd_m_dup"], row["wgd_m_del"], row["wgd_m_wgd"]) == (
+            "1", "1", "1")
+        # The tree and the rates without the option are the same in both runs.
+        for name in RATE_NAMES:
+            assert float(row[f"{name}_rate"]) == pytest.approx(
+                float(plain_row[f"{name}_rate"]) * float(row[f"wgd_m_{name}"]),
+                rel=1e-6)
+        # 2 haplotypes x 22 chromosomes can gain a copy.
+        assert float(row["chr_gain_expected"]) == pytest.approx(
+            44 * float(row["chr_gain_rate"]) * float(row["length"]), rel=1e-6)
 
 
 @pytest.mark.parametrize("bad, mentions", [
