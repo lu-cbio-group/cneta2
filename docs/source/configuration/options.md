@@ -132,7 +132,7 @@ the simulation (`cnets` has no `--cn_type` option).
 | `--version` | `-v` | — | — | Print version |
 | `--cfile` | `-c` | **required** | file path | Input copy-number file (e.g. `*-cn.txt.gz` / `*-haplotype-cn.txt.gz` from `cnets`). A missing file can cause a segmentation fault |
 | `--tfile` | `-t` | "" | file path | Sampling-time file (e.g. `*-rel-times.txt`); if empty, all samples have time 0 |
-| `--meta_file` | | "" | file path | Meta information: known number of WGDs (required if the file is given), optionally per-chromosome gain/loss and per-site duplication/deletion |
+| `--meta_file` | | "" | file path | Meta information: known number of WGDs (required if the file is given), optionally per-chromosome gain/loss and per-site duplication/deletion. Read only with `model=3`. Format: [Meta file](../file-formats/index.md#meta-file) |
 | `--nsample` | `-s` | 5 | positive integer | Number of samples; must match the input file |
 | `--tree_file` | | "" | file path | Given tree (needed for `mode` 1–4) |
 | `--edge_rate_file` | | "" | file path | `mode=4` only: per-branch rate table for the tree in `--tree_file` (the `.edge_rates.txt` written by `cnetml`, or the `-edge_rates.txt` written by `cnets`); ancestral states then use each branch's own rates. Requires `model=3`; with another mode or model `cnetml` stops with an error. Empty: all branches use the global rates |

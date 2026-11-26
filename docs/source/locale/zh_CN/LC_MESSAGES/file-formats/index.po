@@ -790,3 +790,197 @@ msgstr ""
 "的输入，用每条分支的速率重建祖先状态。cnetml 只读取 `start`、`end`、`length` 和五个 `*_rate` "
 "列。见[分支特异速率下的祖先状态](../user-guide/cnetml.md#ancestral-states-with-branch-"
 "specific-rates)。"
+
+#: ../../source/file-formats/index.md
+msgid "Meta file"
+msgstr "Meta 文件（每个样本的已知信息）"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"`--meta_file` (optional input to `cnetml`) gives what is already known about"
+" each sample: its number of WGDs and, optionally, the copy-number change of "
+"each chromosome and of each site."
+msgstr ""
+"`--meta_file`（`cnetml` 的可选输入）给出每个样本已知的信息：WGD 次数，以及可选的每条染色体和每个 site 的拷贝数变化。"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"`cnetml` reads the file only with `--model 3` and absolute copy numbers "
+"(`--is_rcn 0`). Model 3 splits every copy number into a WGD part, a "
+"chromosome part and a site part. Without the file, `cnetml` works these "
+"parts out from the copy numbers. Values in the file replace them."
+msgstr ""
+"`cnetml` 只在 `--model 3` 且输入为绝对拷贝数（`--is_rcn 0`）时读取这个文件。Model 3 把每个拷贝数拆成 WGD "
+"部分、染色体部分和 site 部分。没有这个文件时，`cnetml` 从拷贝数推算这三部分；文件中的值会替代推算的值。"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"Tab-separated columns, no header. Blank lines and lines that start with `#` "
+"are skipped. Every sample from 1 to n needs exactly one row."
+msgstr "各列用 tab 分隔，没有表头。空行和以 `#` 开头的行会被跳过。从 1 到 n 的每个样本都必须恰好有一行。"
+
+#: ../../source/file-formats/index.md
+msgid "required"
+msgstr "是否必填"
+
+#: ../../source/file-formats/index.md
+msgid "`sample_id`"
+msgstr ""
+
+#: ../../source/file-formats/index.md
+msgid "yes"
+msgstr "是"
+
+#: ../../source/file-formats/index.md
+msgid "1 to n (number of patient samples)"
+msgstr "1 到 n（患者样本数）"
+
+#: ../../source/file-formats/index.md
+msgid "`num_wgd`"
+msgstr ""
+
+#: ../../source/file-formats/index.md
+msgid ""
+"Number of WGDs in the sample (integer). Replaces the number `cnetml` takes "
+"from the mean copy number of the sample (above 3: one WGD; above 6: two). "
+"Must not be above `--max_wgd`"
+msgstr ""
+"该样本的 WGD 次数（整数）。替代 `cnetml` 根据样本平均拷贝数得到的次数（大于 3：一次 WGD；大于 6：两次）。不能超过 "
+"`--max_wgd`"
+
+#: ../../source/file-formats/index.md
+msgid "`chr_change`"
+msgstr ""
+
+#: ../../source/file-formats/index.md
+msgid "no"
+msgstr "否"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"22 comma-separated integers, one per chromosome from 1 to 22: copies the "
+"whole chromosome gained (positive) or lost (negative). Copies added by a WGD"
+" are not counted"
+msgstr "22 个用逗号分隔的整数，按 1 到 22 号染色体的顺序每条一个：整条染色体增加（正数）或减少（负数）的拷贝数。WGD 增加的拷贝不计入"
+
+#: ../../source/file-formats/index.md
+msgid "`site_change`"
+msgstr ""
+
+#: ../../source/file-formats/index.md
+msgid ""
+"One block per chromosome, separated by `;`. A block is `chr:v1,v2,...`, with"
+" one integer per site of that chromosome: copies the site gained or lost. "
+"Copies added by a WGD are not counted; the change of the whole chromosome is"
+" counted (see below)"
+msgstr ""
+"每条染色体一个块，块之间用 `;` 分隔。一个块写作 `chr:v1,v2,...`，该染色体的每个 site 一个整数：这个 site "
+"增加或减少的拷贝数。WGD 增加的拷贝不计入；整条染色体的变化要计入（见下文）"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"An optional column counts as not given when it is left out, empty, or one of"
+" `.`, `NA`, `na`, `null`."
+msgstr "可选列在省略、为空，或者是 `.`、`NA`、`na`、`null` 之一时，视为没有给出。"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"For haplotype-specific input (`--is_total 0`), each value of `chr_change` "
+"and `site_change` is written `a/b`: the change on haplotype A, then on "
+"haplotype B. Each side is at least -1 and at most "
+"`--max_chr_change_haplotype` (default 1) for `chr_change` or "
+"`--max_site_change_haplotype` (default 2) for `site_change`."
+msgstr ""
+"输入为 haplotype-specific 拷贝数（`--is_total 0`）时，`chr_change` 和 `site_change` "
+"的每个值写作 `a/b`：先是 haplotype A 上的变化，再是 haplotype B 上的变化。每一侧最小为 -1；`chr_change` "
+"最大为 `--max_chr_change_haplotype`（默认 1），`site_change` 最大为 "
+"`--max_site_change_haplotype`（默认 2）。"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"Example, total copy numbers, three samples. Samples 1 and 2 have one WGD and"
+" one more copy of chromosome 3; sample 3 has no change:"
+msgstr "例子：总拷贝数，三个样本。样本 1 和样本 2 有一次 WGD，并且 3 号染色体多一个拷贝；样本 3 没有变化："
+
+#: ../../source/file-formats/index.md
+msgid ""
+"The same `chr_change` for haplotype-specific input is `0/0,0/0,1/0,0/0,...` "
+"when the extra copy is on haplotype A. A `site_change` column for a genome "
+"with three sites on chromosome 1 and two on chromosome 2 looks like "
+"`1:0,1,0;2:0,0` (total) or `1:0/0,1/0,0/0;2:0/0,0/0` (haplotype-specific)."
+msgstr ""
+"多出的拷贝在 haplotype A 上时，同样的 `chr_change` 在 haplotype-specific 输入下写作 "
+"`0/0,0/0,1/0,0/0,...`。如果基因组在 1 号染色体上有三个 site、2 号染色体上有两个 site，`site_change` "
+"列形如 `1:0,1,0;2:0,0`（总拷贝数）或 `1:0/0,1/0,0/0;2:0/0,0/0`（haplotype-specific）。"
+
+#: ../../source/file-formats/index.md
+msgid "How `cnetml` uses the values:"
+msgstr "`cnetml` 如何使用这些值："
+
+#: ../../source/file-formats/index.md
+msgid ""
+"`site_change` includes the change of the whole chromosome. `cnetml` "
+"subtracts the `chr_change` of the chromosome from each site value to get the"
+" site part. On a chromosome with `chr_change` 1, a site with no change of "
+"its own is written 1, and a site with one more duplication is written 2."
+msgstr ""
+"`site_change` 包含整条染色体的变化。`cnetml` 从每个 site 的值中减去该染色体的 `chr_change`，得到 site "
+"部分。在 `chr_change` 为 1 的染色体上，自身没有变化的 site 写 1，多一次 duplication 的 site 写 2。"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"The values of `site_change` are given to the sites of the sample in the "
+"order of the copy-number file. The chromosome number of a block is checked "
+"(1 to 22) but is not used to place the values. List every site of every "
+"chromosome, in that order."
+msgstr ""
+"`site_change` 的值按拷贝数文件中的顺序依次对应到该样本的各个 site。块里的染色体编号会被检查（1 到 "
+"22），但不用于确定值的位置。请按这个顺序列出每条染色体的每个 site。"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"If `chr_change` is 0 for every chromosome of every sample, it counts as not "
+"given, and `cnetml` works the chromosome changes out from the copy numbers. "
+"The same holds for `site_change`."
+msgstr ""
+"如果每个样本的每条染色体的 `chr_change` 都是 0，就视为没有给出，`cnetml` 会从拷贝数推算染色体变化。`site_change` "
+"也是如此。"
+
+#: ../../source/file-formats/index.md
+msgid "The values are not compared with the copy numbers."
+msgstr "这些值不会与拷贝数互相核对。"
+
+#: ../../source/file-formats/index.md
+msgid "Current limits, checked by running `cnetml` on small files:"
+msgstr "目前的限制（已用小文件实际运行 `cnetml` 核对）："
+
+#: ../../source/file-formats/index.md
+msgid ""
+"Give `chr_change` for every sample or for none. With a value for some "
+"samples only, or fewer than 22 values, `cnetml` stops with `Invalid "
+"chromosome lookup`."
+msgstr ""
+"`chr_change` 要么每个样本都给，要么都不给。只给部分样本，或者少于 22 个值时，`cnetml` 报 `Invalid "
+"chromosome lookup` 并停止。"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"Give `site_change` for every sample or for none, with one value per site. A "
+"sample without it can crash `cnetml`. A block left out moves all later "
+"values to the wrong sites without an error."
+msgstr ""
+"`site_change` 要么每个样本都给，要么都不给，并且每个 site 一个值。某个样本没有给时，`cnetml` "
+"可能崩溃。漏掉一个块会使后面所有的值对应到错误的 site，并且不报错。"
+
+#: ../../source/file-formats/index.md
+msgid ""
+"A row that cannot be read (a header without `#`, spaces instead of tabs, a "
+"missing or repeated sample, a missing `num_wgd`, a value out of range) stops"
+" `cnetml` with a message that names the line or the sample."
+msgstr ""
+"无法读取的行（没有 `#` 的表头、用空格代替 tab、样本缺失或重复、缺少 `num_wgd`、值超出范围）会使 `cnetml` "
+"停止，并给出指明行号或样本的信息。"
+
+#: ../../source/file-formats/index.md
+msgid "`cnetmcmc` accepts `--meta_file` but does not read the file yet."
+msgstr "`cnetmcmc` 接受 `--meta_file`，但目前还不读取这个文件。"

@@ -444,12 +444,7 @@ vector<double> read_time_info(const string& filename, const int Ns, int& age, in
 
 /**
  * @brief Parse the meta information file: known number of WGDs, and optionally chromosome gain/loss and site duplication/deletion inferred from observed copy numbers, for total or haplotype-specific copy number changes.
- * TODO: move the format description to the File format section of the documentation
- * Columns (tab-separated): sample_id num_wgd chr_change site_change
- * sample_id: 1..Ns (required)
- * num_wgd: integer, number of WGD events inferred from observed copy numbers, required when meta file is provided
- * chr_change: optional, comma-separated list of integer copy number changes for each chromosome, e.g. "0,1,-1" for no change, one gain, one loss. If haplotype-specific changes are provided, the changes should be ordered by haplotype, e.g. "0/0,1/-1" for no change, one gain on haplotype A and one loss on haplotype B. The chromosome changes should have been adjusted according to WGD events to avoid double counting when WGD events are provided.
- * site_change: optional, semicolon-separated list of chromosome-specific site changes, e.g. "1:0,1,-1;2:0,0,2;22:-1,1" for changes of three sites on chr 1, three sites on chr 2, and two sites on chr 22 and "1:0/1,1/-1;2:0/0,2/1" for haplotype-specific changes. The chromosome id should be between 1 and 22, and the site changes should be comma-separated integers for each chromosome. The site changes should have been adjusted according to chromosome gain/loss to avoid double counting when chromosome changes are provided.
+ * The file format (columns, a/b tokens of haplotype-specific changes, an example) is described under "Meta file" in docs/source/file-formats/index.md.
  * @param meta_file Path to the meta file; an empty path leaves every sample with 0 WGDs and no changes.
  * @param Ns Number of samples.
  * @param sample_num_wgd Output: number of WGDs in each sample.

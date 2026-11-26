@@ -772,8 +772,11 @@ msgstr ""
 #: ../../source/configuration/options.md
 msgid ""
 "Meta information: known number of WGDs (required if the file is given), "
-"optionally per-chromosome gain/loss and per-site duplication/deletion"
-msgstr "元信息：已知 WGD 次数（提供该文件时必须有），可选各染色体 gain/loss 和各 site duplication/deletion"
+"optionally per-chromosome gain/loss and per-site duplication/deletion. Read "
+"only with `model=3`. Format: [Meta file](../file-formats/index.md#meta-file)"
+msgstr ""
+"每个样本的已知信息：已知 WGD 次数（提供该文件时必须有），可选各染色体 gain/loss 和各 site duplication/deletion。只在 "
+"`model=3` 时读取。格式见 [Meta 文件](../file-formats/index.md#meta-file)"
 
 #: ../../source/configuration/options.md
 msgid "`--nsample`"

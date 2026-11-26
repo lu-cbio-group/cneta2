@@ -49,6 +49,84 @@ when estimating divergence times and mutation rates (see `--constrained`
 in `cnetml`, `--cons` in `cnetmcmc`, and `--tdiff` in `cnets` — see
 [Configuration](../configuration/index.md)).
 
+## Meta file
+
+`--meta_file` (optional input to `cnetml`) gives what is already known
+about each sample: its number of WGDs and, optionally, the copy-number
+change of each chromosome and of each site.
+
+`cnetml` reads the file only with `--model 3` and absolute copy numbers
+(`--is_rcn 0`). Model 3 splits every copy number into a WGD part, a
+chromosome part and a site part. Without the file, `cnetml` works these
+parts out from the copy numbers. Values in the file replace them.
+
+Tab-separated columns, no header. Blank lines and lines that start with
+`#` are skipped. Every sample from 1 to n needs exactly one row.
+
+| column        | required | meaning |
+| ------------- | -------- | ------- |
+| `sample_id`   | yes | 1 to n (number of patient samples) |
+| `num_wgd`     | yes | Number of WGDs in the sample (integer). Replaces the number `cnetml` takes from the mean copy number of the sample (above 3: one WGD; above 6: two). Must not be above `--max_wgd` |
+| `chr_change`  | no  | 22 comma-separated integers, one per chromosome from 1 to 22: copies the whole chromosome gained (positive) or lost (negative). Copies added by a WGD are not counted |
+| `site_change` | no  | One block per chromosome, separated by `;`. A block is `chr:v1,v2,...`, with one integer per site of that chromosome: copies the site gained or lost. Copies added by a WGD are not counted; the change of the whole chromosome is counted (see below) |
+
+An optional column counts as not given when it is left out, empty, or
+one of `.`, `NA`, `na`, `null`.
+
+For haplotype-specific input (`--is_total 0`), each value of
+`chr_change` and `site_change` is written `a/b`: the change on
+haplotype A, then on haplotype B. Each side is at least -1 and at most
+`--max_chr_change_haplotype` (default 1) for `chr_change` or
+`--max_site_change_haplotype` (default 2) for `site_change`.
+
+Example, total copy numbers, three samples. Samples 1 and 2 have one WGD
+and one more copy of chromosome 3; sample 3 has no change:
+
+```text
+# sample_id	num_wgd	chr_change
+1	1	0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+2	1	0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+3	0	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+```
+
+The same `chr_change` for haplotype-specific input is
+`0/0,0/0,1/0,0/0,...` when the extra copy is on haplotype A. A
+`site_change` column for a genome with three sites on chromosome 1 and
+two on chromosome 2 looks like `1:0,1,0;2:0,0` (total) or
+`1:0/0,1/0,0/0;2:0/0,0/0` (haplotype-specific).
+
+How `cnetml` uses the values:
+
+- `site_change` includes the change of the whole chromosome. `cnetml`
+  subtracts the `chr_change` of the chromosome from each site value to
+  get the site part. On a chromosome with `chr_change` 1, a site with no
+  change of its own is written 1, and a site with one more duplication
+  is written 2.
+- The values of `site_change` are given to the sites of the sample in
+  the order of the copy-number file. The chromosome number of a block is
+  checked (1 to 22) but is not used to place the values. List every site
+  of every chromosome, in that order.
+- If `chr_change` is 0 for every chromosome of every sample, it counts
+  as not given, and `cnetml` works the chromosome changes out from the
+  copy numbers. The same holds for `site_change`.
+- The values are not compared with the copy numbers.
+
+:::{warning}
+Current limits, checked by running `cnetml` on small files:
+
+- Give `chr_change` for every sample or for none. With a value for some
+  samples only, or fewer than 22 values, `cnetml` stops with
+  `Invalid chromosome lookup`.
+- Give `site_change` for every sample or for none, with one value per
+  site. A sample without it can crash `cnetml`. A block left out moves
+  all later values to the wrong sites without an error.
+- A row that cannot be read (a header without `#`, spaces instead of
+  tabs, a missing or repeated sample, a missing `num_wgd`, a value out
+  of range) stops `cnetml` with a message that names the line or the
+  sample.
+- `cnetmcmc` accepts `--meta_file` but does not read the file yet.
+:::
+
 ## Tree formats
 
 :::{warning}
