@@ -496,6 +496,8 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
         double tevent = gsl_ran_exponential(r, 1 / rate);
         time += tevent;
         count++;
+        // The next event falls after the end of the edge: stop without applying it
+        if(time >= blength) break;
 
         int e = rchoose(r, type_rates);     // assign the event to a site with probabilities proportional to the rates at the site
 

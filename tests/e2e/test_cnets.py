@@ -221,6 +221,23 @@ def test_tree_seed_gives_the_same_trees_across_rate_modes(tmp_path, cnets, run):
     )
 
 
+def test_no_event_falls_after_the_end_of_its_branch(tmp_path, cnets, run):
+    """With waiting times (--method 0) the event whose time passed the end of
+    the branch used to be applied as well: one extra event on every branch,
+    written to *-mut.txt with a relative position above 1."""
+    outdir = tmp_path / "out"
+    outdir.mkdir()
+    run([cnets, *cli.cnets_args(outdir, **{"--method": 0, "-r": 10,
+                                           "--dup_rate": 0.01,
+                                           "--del_rate": 0.01})]).assert_ok()
+
+    # Column 4 of *-mut.txt: position of the event relative to the branch length.
+    lines = (outdir / "sim-data-1-mut.txt").read_text().splitlines()
+    positions = [float(line.split("\t")[3]) for line in lines]
+    assert len(positions) > 100, "too few events to test anything"
+    assert max(positions) < 1, f"event at relative position {max(positions)}"
+
+
 def test_bsr_mode_is_refused_when_sequences_are_simulated_directly(tmp_path,
                                                                     cnets, run):
     """Branch-specific rates are only drawn on the waiting-times path
