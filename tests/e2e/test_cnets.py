@@ -236,10 +236,11 @@ def test_bsr_mode_is_refused_when_sequences_are_simulated_directly(tmp_path,
     assert "bsr_mode" in combined and "method" in combined, str(result)
 
 
-# Waiting-times runs in which WGDs happen: --use_wgd_shift needs --method 0,
-# and --cn_max 8 leaves room for a WGD and for chromosome gains after it.
-WGD_RUN = {"--method": 0, "--cn_max": 8, "--chr_gain": 0.002,
-           "--chr_loss": 0.002, "--wgd": 0.1}
+# Waiting-times runs in which WGDs happen: --use_wgd_shift needs --method 0.
+# --wgd 0.3 puts WGDs on a branch that has branches below it, where the rates
+# change, and --cn_max 16 leaves room for chromosome gains after two WGDs.
+WGD_RUN = {"--method": 0, "--cn_max": 16, "--chr_gain": 0.002,
+           "--chr_loss": 0.002, "--wgd": 0.3}
 GAIN, WGD = 2, 4   # event type codes in the third column of *-mut.txt
 
 
@@ -260,6 +261,13 @@ def _events(outdir, event_type: int) -> set[tuple[str, str]]:
     rows = (line.split() for line in
             (outdir / "sim-data-1-mut.txt").read_text().splitlines())
     return {(row[1], row[4]) for row in rows if int(row[2]) == event_type}
+
+
+def _edge_events(outdir, edge: str) -> set[tuple[str, ...]]:
+    """Every simulated event on one edge, without the sample column."""
+    rows = (line.split() for line in
+            (outdir / "sim-data-1-mut.txt").read_text().splitlines())
+    return {tuple(row[1:]) for row in rows if row[1] == edge}
 
 
 @pytest.mark.parametrize("unchanged", [
@@ -288,7 +296,9 @@ def test_wgd_shift_raises_only_the_rates_it_is_told_to(tmp_path, cnets, run):
     """With a mean multiplier of 50 on chromosome gains and 1 on the other
     four rates, the first WGD of a lineage must draw a gain multiplier above
     1 and leave the others at exactly 1, and the run must then have more
-    chromosome gains than the same run without the option."""
+    chromosome gains than the same run without the option. The branch with
+    that WGD keeps its rates: up to the first draw, both runs are the same,
+    so its events must be the same in both."""
     def simulate(name, **extra):
         outdir = tmp_path / name
         outdir.mkdir()
@@ -309,6 +319,11 @@ def test_wgd_shift_raises_only_the_rates_it_is_told_to(tmp_path, cnets, run):
         assert (dup, dele, loss, wgd) == ("1", "1", "1", "1")
     assert len(_events(shifted, GAIN)) > len(_events(plain, GAIN))
 
+    first_wgd_edge = next(line.split(",")[0].split()[-1] for line in
+                          log.splitlines() if line.startswith("WGD rate shift"))
+    assert _edge_events(shifted, first_wgd_edge) == _edge_events(
+        plain, first_wgd_edge)
+
 
 @pytest.mark.parametrize("bad, mentions", [
     ({"--method": 1}, "method"),
@@ -321,7 +336,7 @@ def test_wgd_shift_raises_only_the_rates_it_is_told_to(tmp_path, cnets, run):
         "not-a-number", "infinite"])
 def test_wgd_shift_refuses_what_it_cannot_do(tmp_path, cnets, run, bad,
                                              mentions):
-    """--use_wgd_shift needs the time of the WGD on the branch (--method 0,
+    """--use_wgd_shift needs events simulated along each branch (--method 0,
     models 0 to 2) and five mean multipliers of at least 1. Anything else
     must stop with a message that names the option at fault."""
     outdir = tmp_path / "out"

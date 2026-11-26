@@ -462,7 +462,7 @@ void print_sequences(map<int, copy_number>& cn_matrix, int cn_max, int model, in
 // density is 0 at a multiplier of 1 and has a light tail: values far above the mean are rare.
 const double WGD_SHIFT_GAMMA_SHAPE = 2.0;
 
-// Draw the rate multipliers a lineage carries from its first WGD on, one per event type.
+// Draw the rate multipliers a lineage carries on the edges below its first WGD, one per event type.
 // A mean of 1 leaves that rate unchanged and draws nothing; a mean above 1 gives
 // 1 + Gamma(shape, (mean - 1) / shape), so the multiplier is always above 1.
 vector<double> sample_wgd_multipliers(gsl_rng* r, const vector<double>& means){
@@ -478,8 +478,7 @@ vector<double> sample_wgd_multipliers(gsl_rng* r, const vector<double>& means){
 
 // Simulate mutations under different models by simulating waiting times of a Markov chain
 // Each mutation occur at some sites on one chromosome 
-// wgd_shift_means: mean rate multipliers after the first WGD of a lineage (--use_wgd_shift); empty when the option is off
-vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edge_id, const double blength, const double node_time, const vector<int>& chr_lengths, const vector<double>& rate_consts, const SV_SIZE& sv_size, int model, int cn_max, int& num_fail, int debug, const vector<double>& wgd_shift_means = {}){
+vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edge_id, const double blength, const double node_time, const vector<int>& chr_lengths, const vector<double>& rate_consts, const SV_SIZE& sv_size, int model, int cn_max, int& num_fail, int debug){
     if(debug){
         cout << "\tGenerate_mutations at node ID " << g.node_id + 1 << " (time " << node_time << "), edge ID " << edge_id + 1 << " with branch length:" << "\t" << blength << endl;
     }
@@ -505,16 +504,7 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
           cout << "There are " << get_num_available_chr(g) << " non-empty chromosomes before" << endl;
         }
 
-        // The edge rates times the multipliers this genome carries since its first WGD
-        vector<double> shifted_rate_consts;
-        if(!wgd_shift_means.empty()){
-            for(size_t i = 0; i < rate_consts.size(); ++i){
-                shifted_rate_consts.push_back(rate_consts[i] * g.wgd_multipliers[i]);
-            }
-        }
-        const vector<double>& curr_rate_consts = wgd_shift_means.empty() ? rate_consts : shifted_rate_consts;
-
-        double rate = get_total_rates_haplotype_specific(g, site_dup_rates, site_del_rates, chr_gain_rates, chr_loss_rates, type_rates, curr_rate_consts, model, cn_max, debug);
+        double rate = get_total_rates_haplotype_specific(g, site_dup_rates, site_del_rates, chr_gain_rates, chr_loss_rates, type_rates, rate_consts, model, cn_max, debug);
         if(rate <= 0){
             if(debug) cout << "This genome cannot be mutated any more on edge " << edge_id + 1 << endl;
             break;
@@ -599,13 +589,6 @@ vector<mutation> generate_mutation_by_model(gsl_rng* r, genome& g, const int edg
             // time/blength: relative time in the branch; node_time + time: real time when the mutation generates
             mutation mut(edge_id, e, time / blength, node_time + time, c, seg_id);
             ret.push_back(mut);
-            // Only the first WGD of a lineage draws multipliers; later WGDs keep them
-            if(e == WGD && !wgd_shift_means.empty() && g.nmuts[WGD] == 0){
-                g.wgd_multipliers = sample_wgd_multipliers(r, wgd_shift_means);
-                cout << "WGD rate shift on edge " << edge_id + 1 << " at time " << node_time + time << ", multipliers (" << MUT_TYPES[0] << ", " << MUT_TYPES[1] << ", " << MUT_TYPES[2] << ", " << MUT_TYPES[3] << ", " << MUT_TYPES[4] << "):";
-                for(double m : g.wgd_multipliers) cout << "\t" << m;
-                cout << endl;
-            }
             g.nmuts[e]++;
             g.mutations.push_back(mut);
             if(debug) cout << "Update copy number after each mutation event" << endl;
@@ -823,6 +806,12 @@ void traverse_tree_mutating_generic(gsl_rng* r, const int node_id, const evo_tre
         }
 
         vector<double> rates = tree.get_edge_rate_vec(edge_id);
+        // A WGD on an edge above multiplies the rates of this edge (--use_wgd_shift);
+        // the multipliers are 1 if there was none
+        if(!wgd_shift_means.empty()){
+            for(size_t i = 0; i < rates.size(); ++i) rates[i] *= genomes[node_id].wgd_multipliers[i];
+        }
+        const int num_wgd_before = genomes[node_id].nmuts[WGD];
         // print rates into a separate file
         // cout << "Rates for edge " << edge_id + 1 << ": ";
         // for(int i = 0; i < rates.size(); ++i){
@@ -834,7 +823,17 @@ void traverse_tree_mutating_generic(gsl_rng* r, const int node_id, const evo_tre
             muts = generate_mutation_times(r, edge_id, tree.edges[edge_id].length, tree.nodes[tree.nodes[node_id].parent].time, rates, debug);
             apply_mutations(r, muts, genomes[node_id], sv_size, debug);
         }else{
-            muts = generate_mutation_by_model(r, genomes[node_id], edge_id, tree.edges[edge_id].length, tree.nodes[tree.nodes[node_id].parent].time, chr_lengths, rates, sv_size, model, cn_max, num_fail, debug, wgd_shift_means);
+            muts = generate_mutation_by_model(r, genomes[node_id], edge_id, tree.edges[edge_id].length, tree.nodes[tree.nodes[node_id].parent].time, chr_lengths, rates, sv_size, model, cn_max, num_fail, debug);
+        }
+
+        // The first WGD of a lineage changes the rates of the edges below the end node of
+        // this edge, not of this edge, so that each edge has one set of rates. Later WGDs
+        // keep the multipliers.
+        if(!wgd_shift_means.empty() && num_wgd_before == 0 && genomes[node_id].nmuts[WGD] > 0 && !tree.nodes[node_id].daughters.empty()){
+            genomes[node_id].wgd_multipliers = sample_wgd_multipliers(r, wgd_shift_means);
+            cout << "WGD rate shift on the edges below edge " << edge_id + 1 << ", multipliers (" << MUT_TYPES[0] << ", " << MUT_TYPES[1] << ", " << MUT_TYPES[2] << ", " << MUT_TYPES[3] << ", " << MUT_TYPES[4] << "):";
+            for(double m : genomes[node_id].wgd_multipliers) cout << "\t" << m;
+            cout << endl;
         }
 
         // debug info for max CN after all mutations
@@ -1673,8 +1672,8 @@ int main (int argc, char** const argv) {
     int bsr_dist; // branch-specific-rate distribution
     double bsr_variance; // target variance of the branch-specific-rate sampling distribution
     double bsr_p; // probability of a rate change at each node (random local clock, bsr_mode=3)
-    int use_wgd_shift; // whether or not rates change after the first WGD of a lineage
-    string wgd_shift_means_str; // mean rate multipliers after that WGD, one per event type
+    int use_wgd_shift; // whether or not rates change below the edge with the first WGD of a lineage
+    string wgd_shift_means_str; // mean rate multipliers below that edge, one per event type
 
     int Ne;     // effective population size
     double beta, gtime;    // population growth rate
@@ -1759,7 +1758,7 @@ int main (int argc, char** const argv) {
         // where shape = 1 / bsr_variance and scale = bsr_variance,
         // so that E[m] = 1 and Var[m] = bsr_variance.
       ("bsr_p", po::value<double>(&bsr_p)->default_value(0.3), "probability of a rate change at each node, used only for random local clock (bsr_mode=3); must be in (0, 1)")
-      ("use_wgd_shift", po::value<int>(&use_wgd_shift)->default_value(0), "whether or not to change the rates of a lineage after its first WGD. If yes (1), each rate is multiplied from that WGD on, in the genome and all its descendants, by a multiplier drawn once (see --wgd_shift_means). Only with method=0 and model 0 to 2")
+      ("use_wgd_shift", po::value<int>(&use_wgd_shift)->default_value(0), "whether or not to change the rates of a lineage after its first WGD. If yes (1), the branch with that WGD keeps its rates, and each rate of all branches below it is multiplied by a multiplier drawn once (see --wgd_shift_means). Only with method=0 and model 0 to 2")
       ("wgd_shift_means", po::value<string>(&wgd_shift_means_str)->default_value("1,1,2.5,2.5,1"), "with --use_wgd_shift 1: comma-separated mean multipliers of the five rates, in the order dup_rate,del_rate,chr_gain,chr_loss,wgd; each must be >= 1. A mean of 1 leaves the rate unchanged; a mean above 1 draws the multiplier as 1 + gamma")
 
       ("seed", po::value<unsigned>(&seed)->default_value(0), "seed used for generating random numbers")
@@ -1796,8 +1795,8 @@ int main (int argc, char** const argv) {
         return 1;
     }
 
-    // Rates after a WGD (--use_wgd_shift) need the time of the WGD on the branch and
-    // rates that depend on the genome, which only the waiting-times path of models 0 to 2 has.
+    // Rates after a WGD (--use_wgd_shift) are carried by the genome, which only the
+    // waiting-times path of models 0 to 2 uses to set the rates.
     vector<double> wgd_shift_means;
     if(use_wgd_shift){
         if(method != SIM_TIME || model == INFINITE){
