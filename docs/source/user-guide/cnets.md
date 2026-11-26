@@ -89,7 +89,9 @@ Rates after a WGD
   the other rates stay the same). Branch-specific rates (`--bsr_mode`)
   work as before and are multiplied with these multipliers. The
   multipliers drawn are printed in the run log, one line per branch whose
-  WGD draws them; `*-edge_rates.txt` does not include them. Off by default.
+  WGD draws them, and written to `*-edge_rates.txt` (see
+  [File formats](../file-formats/index.md#simulation-edge-rate-table--edge_ratestxt-from-cnets)).
+  Off by default.
 
 ## Inputs
 
