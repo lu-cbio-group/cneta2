@@ -87,7 +87,7 @@ the simulation (`cnets` has no `--cn_type` option).
 
 | Option | Short | Default | Values | Description |
 |---|---|---|---|---|
-| `--use_wgd_shift` | | 0 | 0 / 1 | Only with `method=0` and `model` 0, 1 or 2; otherwise `cnets` stops with an error. 0: a WGD does not change the rates; 1: the branch with the first WGD of a lineage keeps its rates, and each rate of all branches below it is multiplied by a multiplier drawn once. A first WGD on a tip branch changes no rates, as there are no branches below it. Later WGDs in the same lineage keep these multipliers |
+| `--use_wgd_shift` | | 0 | 0 / 1 | Only with `method=0` and `model` 0, 1 or 2; otherwise `cnets` stops with an error. 0: a WGD does not change the rates; 1: the branch with the first WGD of a lineage keeps its rates, and each rate of all branches below it is multiplied by a multiplier drawn once. A first WGD on a terminal branch changes no rates, as there are no branches below it. Later WGDs in the same lineage keep these multipliers |
 | `--wgd_shift_means` | | 1,1,2.5,2.5,1 | five numbers ≥ 1 | `use_wgd_shift=1` only: mean multipliers, comma-separated, in the order `dup_rate`, `del_rate`, `chr_gain`, `chr_loss`, `wgd`. Mean 1: the rate does not change. Mean M > 1: the multiplier is 1 + Gamma(shape 2, scale (M − 1)/2), so it is always above 1 |
 
 ### Output

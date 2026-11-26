@@ -81,7 +81,7 @@ Rates after a WGD
   the genome and all its descendants then use the original branch rate
   times this multiplier. The branch where the first WGD occurs keeps the
   mutation rates it has at its beginning, with no rate change along the
-  branch. If it is a tip branch, there are no branches below it and no
+  branch. If it is a terminal branch, there are no branches below it and no
   rates change. A later WGD in the same lineage keeps the multipliers
   for simplicity. The mean multipliers are set with
   `--wgd_shift_means` (default `1,1,2.5,2.5,1`:
